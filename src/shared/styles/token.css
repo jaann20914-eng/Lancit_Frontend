@@ -1,0 +1,246 @@
+/* ============================================================
+   LANCIT Design Tokens
+   shared/styles/tokens.css
+   ============================================================ */
+
+:root {
+
+  /* ──────────────────────────────────────────
+     COLOR - Brand
+  ────────────────────────────────────────── */
+  --color-primary:          #1B2B4B;   /* 다크 네이비 - 사이드바, 주요 버튼 */
+  --color-primary-hover:    #253A63;
+  --color-primary-light:    #E8EDF5;   /* 선택된 메뉴 배경 등 연한 강조 */
+
+  --color-secondary:        #4A6FA5;   /* 보조 강조색 */
+  --color-secondary-hover:  #3A5A8A;
+
+  --color-accent:           #6C8EBF;   /* 링크, 아이콘 등 */
+
+  /* ──────────────────────────────────────────
+     COLOR - Semantic (상태 색상)
+  ────────────────────────────────────────── */
+  --color-success:          #22C55E;   /* 완료, 모집중 */
+  --color-success-bg:       #DCFCE7;
+  --color-success-text:     #15803D;
+
+  --color-warning:          #F59E0B;   /* 마감임박, 검토중 */
+  --color-warning-bg:       #FEF9C3;
+  --color-warning-text:     #92400E;
+
+  --color-danger:           #EF4444;   /* 파기, 삭제, 에러 */
+  --color-danger-hover:     #DC2626;
+  --color-danger-bg:        #FEE2E2;
+  --color-danger-text:      #991B1B;
+
+  --color-info:             #3B82F6;   /* 진행중, 협의중 */
+  --color-info-bg:          #DBEAFE;
+  --color-info-text:        #1D4ED8;
+
+  --color-neutral:          #6B7280;   /* 취소됨, 비활성 */
+  --color-neutral-bg:       #F3F4F6;
+  --color-neutral-text:     #374151;
+
+  /* ──────────────────────────────────────────
+     COLOR - 계약 상태 전용
+  ────────────────────────────────────────── */
+  --color-status-waiting:          var(--color-warning);
+  --color-status-waiting-bg:       var(--color-warning-bg);
+  --color-status-negotiating:      var(--color-info);
+  --color-status-negotiating-bg:   var(--color-info-bg);
+  --color-status-inprogress:       var(--color-success);
+  --color-status-inprogress-bg:    var(--color-success-bg);
+  --color-status-pending:          #8B5CF6;   /* COMPLETED_PENDING */
+  --color-status-pending-bg:       #EDE9FE;
+  --color-status-completed:        var(--color-neutral);
+  --color-status-completed-bg:     var(--color-neutral-bg);
+  --color-status-cancelled:        var(--color-danger);
+  --color-status-cancelled-bg:     var(--color-danger-bg);
+
+  /* ──────────────────────────────────────────
+     COLOR - Gray Scale
+  ────────────────────────────────────────── */
+  --color-gray-50:    #F9FAFB;
+  --color-gray-100:   #F3F4F6;
+  --color-gray-200:   #E5E7EB;
+  --color-gray-300:   #D1D5DB;
+  --color-gray-400:   #9CA3AF;
+  --color-gray-500:   #6B7280;
+  --color-gray-600:   #4B5563;
+  --color-gray-700:   #374151;
+  --color-gray-800:   #1F2937;
+  --color-gray-900:   #111827;
+
+  /* ──────────────────────────────────────────
+     COLOR - Background / Surface
+  ────────────────────────────────────────── */
+  --color-bg-base:      #F4F5F7;   /* 페이지 배경 */
+  --color-bg-surface:   #FFFFFF;   /* 카드, 패널 배경 */
+  --color-bg-sidebar:   #1B2B4B;   /* 사이드바 배경 */
+  --color-bg-overlay:   rgba(0, 0, 0, 0.4);  /* 모달 오버레이 */
+
+  /* ──────────────────────────────────────────
+     COLOR - Text
+  ────────────────────────────────────────── */
+  --color-text-primary:     #111827;   /* 본문 주요 텍스트 */
+  --color-text-secondary:   #4B5563;   /* 보조 텍스트 */
+  --color-text-muted:       #9CA3AF;   /* 힌트, 플레이스홀더 */
+  --color-text-inverse:     #FFFFFF;   /* 다크 배경 위 텍스트 */
+  --color-text-link:        #4A6FA5;
+
+  /* ──────────────────────────────────────────
+     COLOR - Border
+  ────────────────────────────────────────── */
+  --color-border:           #E5E7EB;
+  --color-border-focus:     #1B2B4B;
+  --color-border-error:     #EF4444;
+
+  /* ──────────────────────────────────────────
+     BUTTON - Primary (다크 네이비)
+  ────────────────────────────────────────── */
+  --btn-primary-bg:         #1B2B4B;
+  --btn-primary-bg-hover:   #253A63;
+  --btn-primary-text:       #FFFFFF;
+  --btn-primary-border:     transparent;
+
+  /* ──────────────────────────────────────────
+     BUTTON - Secondary (아웃라인)
+  ────────────────────────────────────────── */
+  --btn-secondary-bg:         #FFFFFF;
+  --btn-secondary-bg-hover:   #F3F4F6;
+  --btn-secondary-text:       #1B2B4B;
+  --btn-secondary-border:     #1B2B4B;
+
+  /* ──────────────────────────────────────────
+     BUTTON - Danger (파기/삭제)
+  ────────────────────────────────────────── */
+  --btn-danger-bg:          #EF4444;
+  --btn-danger-bg-hover:    #DC2626;
+  --btn-danger-text:        #FFFFFF;
+  --btn-danger-border:      transparent;
+
+  /* ──────────────────────────────────────────
+     BUTTON - Ghost (취소 등 약한 버튼)
+  ────────────────────────────────────────── */
+  --btn-ghost-bg:           transparent;
+  --btn-ghost-bg-hover:     #F3F4F6;
+  --btn-ghost-text:         #6B7280;
+  --btn-ghost-border:       transparent;
+
+  /* ──────────────────────────────────────────
+     BUTTON - Size
+  ────────────────────────────────────────── */
+  --btn-height-sm:    32px;
+  --btn-height-md:    40px;
+  --btn-height-lg:    48px;
+
+  --btn-padding-sm:   0 12px;
+  --btn-padding-md:   0 20px;
+  --btn-padding-lg:   0 28px;
+
+  --btn-font-size-sm: 13px;
+  --btn-font-size-md: 14px;
+  --btn-font-size-lg: 16px;
+
+  /* ──────────────────────────────────────────
+     BORDER RADIUS (라운드니스)
+  ────────────────────────────────────────── */
+  --radius-none:    0px;
+  --radius-sm:      4px;    /* 인풋, 작은 뱃지 */
+  --radius-md:      8px;    /* 버튼, 카드 */
+  --radius-lg:      12px;   /* 모달, 큰 카드 */
+  --radius-xl:      16px;
+  --radius-full:    9999px; /* 칩, 태그, 아바타 */
+
+  /* 컴포넌트별 라운드 */
+  --radius-btn:     var(--radius-md);
+  --radius-card:    var(--radius-lg);
+  --radius-input:   var(--radius-sm);
+  --radius-badge:   var(--radius-full);
+  --radius-modal:   var(--radius-lg);
+  --radius-avatar:  var(--radius-full);
+  --radius-tag:     var(--radius-full);
+
+  /* ──────────────────────────────────────────
+     TYPOGRAPHY - Font Size
+  ────────────────────────────────────────── */
+  --font-size-xs:   11px;
+  --font-size-sm:   12px;
+  --font-size-base: 14px;   /* 기본 본문 */
+  --font-size-md:   15px;
+  --font-size-lg:   16px;
+  --font-size-xl:   18px;
+  --font-size-2xl:  20px;
+  --font-size-3xl:  24px;
+  --font-size-4xl:  28px;
+  --font-size-5xl:  32px;
+
+  /* ──────────────────────────────────────────
+     TYPOGRAPHY - Font Weight
+  ────────────────────────────────────────── */
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  /* ──────────────────────────────────────────
+     TYPOGRAPHY - Line Height
+  ────────────────────────────────────────── */
+  --line-height-tight:  1.3;
+  --line-height-normal: 1.5;
+  --line-height-loose:  1.75;
+
+  /* ──────────────────────────────────────────
+     TYPOGRAPHY - Font Family
+  ────────────────────────────────────────── */
+  --font-family-base: 'Noto Sans KR', 'Apple SD Gothic Neo',
+                      'Malgun Gothic', sans-serif;
+  --font-family-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ──────────────────────────────────────────
+     SPACING (간격)
+  ────────────────────────────────────────── */
+  --spacing-1:    4px;
+  --spacing-2:    8px;
+  --spacing-3:    12px;
+  --spacing-4:    16px;
+  --spacing-5:    20px;
+  --spacing-6:    24px;
+  --spacing-8:    32px;
+  --spacing-10:   40px;
+  --spacing-12:   48px;
+  --spacing-16:   64px;
+
+  /* ──────────────────────────────────────────
+     LAYOUT
+  ────────────────────────────────────────── */
+  --sidebar-width:      220px;
+  --header-height:      60px;
+  --content-max-width:  1200px;
+  --card-padding:       var(--spacing-6);
+  --page-padding:       var(--spacing-6);
+
+  /* ──────────────────────────────────────────
+     SHADOW
+  ────────────────────────────────────────── */
+  --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md:    0 4px 12px rgba(0, 0, 0, 0.10);
+  --shadow-lg:    0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.20);
+
+  /* ──────────────────────────────────────────
+     TRANSITION
+  ────────────────────────────────────────── */
+  --transition-fast:    all 0.15s ease;
+  --transition-normal:  all 0.25s ease;
+  --transition-slow:    all 0.35s ease;
+
+  /* ──────────────────────────────────────────
+     Z-INDEX
+  ────────────────────────────────────────── */
+  --z-sidebar:    100;
+  --z-header:     200;
+  --z-dropdown:   300;
+  --z-modal:      400;
+  --z-toast:      500;
+}

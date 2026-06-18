@@ -1,20 +1,67 @@
+//라우트 목록
 const routes = [
-  {
-    path: '/login',
-    component: () => import('@/layouts/AuthLayout.vue'),
-    children: [
-      { path: '', component: () => import('@/pages/auth/LoginPage.vue') }
-    ]
-  },
+  // ── Auth (로그인/회원가입) ──────────────────
   {
     path: '/',
-    component: () => import('@/layouts/FreelancerLayout.vue'),
+    component: () => import('@/layouts/AuthLayout.vue'),
     children: [
-      { path: 'contracts', component: () => import('@/pages/contracts/ContractListPage.vue') },
-      { path: 'contracts/:id', component: () => import('@/pages/contracts/ContractDetailPage.vue') },
-      // 나머지 라우트 추가
+      { path: '', redirect: '/login' },
+      { path: 'login', name: 'Login', component: () => import('@/pages/auth/LoginPage.vue') },
+      { path: 'signup', name: 'Signup', component: () => import('@/pages/auth/SignupPage.vue') },
+      { path: 'password-reset', name: 'PasswordReset', component: () => import('@/pages/auth/PasswordResetPage.vue') },
     ]
-  }
+  },
+
+  // ── Freelancer Layout ──────────────────────
+  {
+    path: '/freelancer',
+    component: () => import('@/layouts/FreelancerLayout.vue'),
+    meta: { requiresAuth: true, role: 'user' },
+    children: [
+      { path: 'dashboard', name: 'FreelancerDashboard', component: () => import('@/pages/dashboard/FreelancerDashboardPage.vue') },
+      { path: 'account', name: 'AccountProfile', component: () => import('@/pages/account/AccountProfilePage.vue') },
+      { path: 'calendar', name: 'Calendar', component: () => import('@/pages/calendar/CalendarPage.vue') },
+      { path: 'contracts', name: 'ContractList', component: () => import('@/pages/contracts/ContractListPage.vue') },
+      { path: 'contracts/:id', name: 'ContractDetail', component: () => import('@/pages/contracts/ContractDetailPage.vue') },
+      { path: 'recruitments', name: 'RecruitmentList', component: () => import('@/pages/recruitments/RecruitmentListPage.vue') },
+      { path: 'recruitments/:id', name: 'RecruitmentDetail', component: () => import('@/pages/recruitments/RecruitmentDetailPage.vue') },
+      { path: 'recruitments/bookmarks', name: 'RecruitmentBookmark', component: () => import('@/pages/recruitments/RecruitmentBookmarkPage.vue') },
+      { path: 'applications', name: 'MyApplicationList', component: () => import('@/pages/applications/MyApplicationListPage.vue') },
+      { path: 'applications/:id', name: 'ApplicationDetail', component: () => import('@/pages/applications/ApplicationDetailPage.vue') },
+      { path: 'portfolio', name: 'PortfolioList', component: () => import('@/pages/portfolio/PortfolioListPage.vue') },
+      { path: 'portfolio/:id', name: 'PortfolioDetail', component: () => import('@/pages/portfolio/PortfolioDetailPage.vue') },
+      { path: 'portfolio/edit/:id', name: 'PortfolioEditor', component: () => import('@/pages/portfolio/PortfolioEditorPage.vue') },
+      { path: 'notifications', name: 'Notifications', component: () => import('@/pages/notifications/NotificationListPage.vue') },
+    ]
+  },
+
+  // ── Company Layout ─────────────────────────
+  {
+    path: '/company',
+    component: () => import('@/layouts/CompanyLayout.vue'),
+    meta: { requiresAuth: true, role: 'company' },
+    children: [
+      { path: 'dashboard', name: 'CompanyDashboard', component: () => import('@/pages/dashboard/CompanyDashboardPage.vue') },
+      { path: 'account', name: 'CompanyProfile', component: () => import('@/pages/account/CompanyProfilePage.vue') },
+      { path: 'calendar', name: 'CompanyCalendar', component: () => import('@/pages/calendar/CalendarPage.vue') },
+      { path: 'contracts', name: 'CompanyContractList', component: () => import('@/pages/contracts/ContractListPage.vue') },
+      { path: 'contracts/:id', name: 'CompanyContractDetail', component: () => import('@/pages/contracts/ContractDetailPage.vue') },
+      { path: 'recruitments', name: 'CompanyRecruitmentList', component: () => import('@/pages/company/recruitments/CompanyRecruitmentListPage.vue') },
+      { path: 'recruitments/new', name: 'CompanyRecruitmentCreate', component: () => import('@/pages/company/recruitments/CompanyRecruitmentEditorPage.vue') },
+      { path: 'recruitments/:id', name: 'CompanyRecruitmentDetail', component: () => import('@/pages/company/recruitments/CompanyRecruitmentDetailPage.vue') },
+      { path: 'recruitments/:id/edit', name: 'CompanyRecruitmentEdit', component: () => import('@/pages/company/recruitments/CompanyRecruitmentEditorPage.vue') },
+      { path: 'applicants/:recruitmentId', name: 'CompanyApplicantList', component: () => import('@/pages/company/applicants/CompanyApplicantListPage.vue') },
+      { path: 'applicants/:recruitmentId/:id', name: 'CompanyApplicantDetail', component: () => import('@/pages/company/applicants/CompanyApplicantDetailPage.vue') },
+      { path: 'talents', name: 'TalentSearch', component: () => import('@/pages/company/talents/TalentSearchPage.vue') },
+      { path: 'talents/:id', name: 'TalentDetail', component: () => import('@/pages/company/talents/TalentDetailPage.vue') },
+      { path: 'bookmarks', name: 'TalentBookmark', component: () => import('@/pages/company/bookmarks/TalentBookmarkPage.vue') },
+      { path: 'notifications', name: 'CompanyNotifications', component: () => import('@/pages/notifications/NotificationListPage.vue') },
+    ]
+  },
+
+  // ── Error ──────────────────────────────────
+  { path: '/403', name: 'Forbidden', component: () => import('@/pages/error/ForbiddenPage.vue') },
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('@/pages/error/NotFoundPage.vue') },
 ]
 
 export default routes
