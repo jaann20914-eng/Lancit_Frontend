@@ -11,22 +11,35 @@
       </div>
 
       <h2 class="reset-title">비밀번호 찾기</h2>
-      <p class="reset-sub">이메일로 인증코드를 받으세요</p>
 
       <div class="form-group">
-        <label class="form-label">이메일</label>
+        <label class="form-label">비밀번호 재설정</label>
         <input
-          v-model="email"
-          type="email"
+          v-model="newPassword"
+          type="password"
           class="form-input"
-          placeholder="이메일을 입력하세요"
+          placeholder="비밀번호를 입력하세요"
         />
       </div>
 
-      <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
+      <div class="form-group">
+        <label class="form-label">비밀번호 확인</label>
+        <input
+          v-model="newPasswordConfirm"
+          type="password"
+          class="form-input"
+          placeholder="비밀번호를 다시 입력하세요"
+        />
+        <p v-if="newPasswordConfirm && newPassword !== newPasswordConfirm" class="error-msg">
+          비밀번호가 일치하지 않습니다
+        </p>
+      </div>
 
-      <button class="btn-primary" @click="handleSend" :disabled="isLoading">
-        {{ isLoading ? '발송 중...' : '인증코드 발송' }}
+      <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
+      <p v-if="successMsg" class="success-msg">{{ successMsg }}</p>
+
+      <button class="btn-primary" @click="handleReset" :disabled="isLoading">
+        {{ isLoading ? '재설정 중...' : '비밀번호 재설정' }}
       </button>
 
       <p class="footer-link">
@@ -39,26 +52,39 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
-const email = ref('')
+const route = useRoute()
+
+const email = route.query.email || ''
+const newPassword = ref('')
+const newPasswordConfirm = ref('')
 const isLoading = ref(false)
 const errorMsg = ref('')
+const successMsg = ref('')
 
-async function handleSend() {
-  if (!email.value) {
-    errorMsg.value = '이메일을 입력하세요.'
+async function handleReset() {
+  errorMsg.value = ''
+  successMsg.value = ''
+
+  if (!newPassword.value) {
+    errorMsg.value = '새 비밀번호를 입력하세요.'
     return
   }
-  errorMsg.value = ''
+  if (newPassword.value !== newPasswordConfirm.value) {
+    errorMsg.value = '비밀번호가 일치하지 않습니다.'
+    return
+  }
+
   isLoading.value = true
 
   try {
-    // TODO: await sendResetCode(email.value)
-    router.push({ name: 'PasswordNew', query: { email: email.value } })
+    // TODO: await resetPassword(email, newPassword.value)
+    successMsg.value = '비밀번호가 재설정되었습니다.'
+    setTimeout(() => router.push('/login'), 1500)
   } catch (err) {
-    errorMsg.value = '인증코드 발송에 실패했습니다.'
+    errorMsg.value = '비밀번호 재설정에 실패했습니다.'
   } finally {
     isLoading.value = false
   }
@@ -106,12 +132,6 @@ async function handleSend() {
   margin: 0;
 }
 
-.reset-sub {
-  font-size: 14px;
-  color: #6C757D;
-  margin: 0;
-}
-
 .form-group {
   width: 100%;
   display: flex;
@@ -126,6 +146,8 @@ async function handleSend() {
 }
 
 .form-input {
+  box-sizing: border-box;
+
   width: 100%;
   height: 36px;
   padding: 4px 12px;
@@ -159,4 +181,5 @@ async function handleSend() {
 .footer-link { font-size: 14px; color: #6C757D; }
 .footer-link a { color: #1A233D; text-decoration: none; font-weight: 500; }
 .error-msg { font-size: 13px; color: #EF4444; margin: 0; width: 100%; }
+.success-msg { font-size: 13px; color: #22C55E; margin: 0; width: 100%; }
 </style>

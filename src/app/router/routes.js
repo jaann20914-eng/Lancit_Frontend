@@ -9,6 +9,7 @@ const routes = [
       { path: 'login', name: 'Login', component: () => import('@/pages/auth/LoginPage.vue') },
       { path: 'signup', name: 'Signup', component: () => import('@/pages/auth/SignupPage.vue') },
       { path: 'password-reset', name: 'PasswordReset', component: () => import('@/pages/auth/PasswordResetPage.vue') },
+      { path: 'password-new', name: 'PasswordNew', component: () => import('@/pages/auth/PasswordNewPage.vue') },
     ]
   },
 
