@@ -3,43 +3,87 @@
     <header class="page-header">
       <div>
         <h1>포트폴리오</h1>
-        <p>내가 진행한 프로젝트를 등록하고 관리할 수 있습니다.</p>
+        <p>나의 역량을 소개하고 진행한 프로젝트를 관리할 수 있습니다.</p>
       </div>
-      <button type="button" class="primary-button" @click="goToCreate">
-        <span aria-hidden="true">＋</span>
-        프로젝트 등록
-      </button>
     </header>
 
-    <div v-if="isLoading" class="state-card">
-      <span class="spinner" aria-hidden="true"></span>
-      <p>포트폴리오를 불러오고 있습니다.</p>
-    </div>
+    <section class="profile-section" aria-labelledby="profile-section-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="profile-section-title">포트폴리오 프로필</h2>
+          <p>프로젝트 전체를 대표하는 소개와 공개 여부입니다.</p>
+        </div>
+      </div>
 
-    <div v-else-if="errorMessage" class="state-card error-state">
-      <p>{{ errorMessage }}</p>
-      <button type="button" class="retry-button" @click="loadPortfolios">다시 시도</button>
-    </div>
+      <div v-if="isProfileLoading" class="state-card profile-state">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>프로필을 불러오고 있습니다.</p>
+      </div>
 
-    <PortfolioEmptyState
-      v-else-if="!portfolios.length"
-      title="아직 등록된 프로젝트가 없습니다."
-      description="경험과 역량을 보여줄 첫 프로젝트를 등록해보세요."
-      button-text="첫 프로젝트 등록하기"
-      @action="goToCreate"
-    />
+      <div v-else-if="profileLoadError" class="state-card profile-state error-state">
+        <p>{{ profileLoadError }}</p>
+        <button type="button" class="retry-button" @click="loadProfile">다시 시도</button>
+      </div>
 
-    <div v-else class="portfolio-grid">
-      <PortfolioCard
-        v-for="(portfolio, index) in portfolios"
-        :key="getPortfolioId(portfolio) ?? index"
-        :portfolio="portfolio"
-        :is-deleting="String(deletingId) === String(getPortfolioId(portfolio))"
-        @view="goToDetail"
-        @edit="goToEdit"
-        @delete="handleDelete"
+      <template v-else-if="profile">
+        <PortfolioProfileForm
+          v-if="isProfileEditing"
+          :initial-value="profile"
+          :is-submitting="isProfileSaving"
+          :error-message="profileSaveError"
+          @submit="handleProfileSave"
+          @cancel="cancelProfileEdit"
+        />
+        <PortfolioProfileCard v-else :profile="profile" @edit="startProfileEdit" />
+
+        <p v-if="profileSuccessMessage" class="save-message success" role="status">
+          {{ profileSuccessMessage }}
+        </p>
+      </template>
+    </section>
+
+    <section aria-labelledby="project-section-title">
+      <div class="section-heading project-heading">
+        <div>
+          <h2 id="project-section-title">내 프로젝트</h2>
+          <p>프로젝트별 공개 여부는 각 프로젝트에서 따로 설정합니다.</p>
+        </div>
+        <button type="button" class="primary-button" @click="goToCreate">
+          <span aria-hidden="true">＋</span>
+          프로젝트 등록
+        </button>
+      </div>
+
+      <div v-if="isLoading" class="state-card">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>포트폴리오를 불러오고 있습니다.</p>
+      </div>
+
+      <div v-else-if="errorMessage" class="state-card error-state">
+        <p>{{ errorMessage }}</p>
+        <button type="button" class="retry-button" @click="loadPortfolios">다시 시도</button>
+      </div>
+
+      <PortfolioEmptyState
+        v-else-if="!portfolios.length"
+        title="아직 등록된 프로젝트가 없습니다."
+        description="경험과 역량을 보여줄 첫 프로젝트를 등록해보세요."
+        button-text="첫 프로젝트 등록하기"
+        @action="goToCreate"
       />
-    </div>
+
+      <div v-else class="portfolio-grid">
+        <PortfolioCard
+          v-for="(portfolioItem, index) in portfolios"
+          :key="getPortfolioId(portfolioItem) ?? index"
+          :portfolio="portfolioItem"
+          :is-deleting="String(deletingId) === String(getPortfolioId(portfolioItem))"
+          @view="goToDetail"
+          @edit="goToEdit"
+          @delete="handleDelete"
+        />
+      </div>
+    </section>
   </div>
 </template>
 
@@ -47,17 +91,83 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { deletePortfolio, getMyPortfolios } from '@/features/portfolio/api/portfolioApi.js'
+import {
+  getPortfolioProfile,
+  updatePortfolioProfile,
+} from '@/features/portfolio/api/portfolioProfileApi.js'
 import PortfolioCard from '@/features/portfolio/ui/PortfolioCard.vue'
 import PortfolioEmptyState from '@/features/portfolio/ui/PortfolioEmptyState.vue'
+import PortfolioProfileCard from '@/features/portfolio/ui/PortfolioProfileCard.vue'
+import PortfolioProfileForm from '@/features/portfolio/ui/PortfolioProfileForm.vue'
 
 const router = useRouter()
 
+const profile = ref(null)
+const isProfileLoading = ref(true)
+const isProfileEditing = ref(false)
+const isProfileSaving = ref(false)
+const profileLoadError = ref('')
+const profileSaveError = ref('')
+const profileSuccessMessage = ref('')
 const portfolios = ref([])
 const isLoading = ref(true)
 const errorMessage = ref('')
 const deletingId = ref(null)
 
-onMounted(loadPortfolios)
+onMounted(() => {
+  loadProfile()
+  loadPortfolios()
+})
+
+async function loadProfile() {
+  isProfileLoading.value = true
+  profileLoadError.value = ''
+
+  try {
+    const data = await getPortfolioProfile()
+    if (!data) throw new Error('Invalid portfolio profile response')
+    profile.value = data
+  } catch (error) {
+    profileLoadError.value = getRequestError(
+      error,
+      '포트폴리오 프로필을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+    )
+  } finally {
+    isProfileLoading.value = false
+  }
+}
+
+function startProfileEdit() {
+  profileSaveError.value = ''
+  profileSuccessMessage.value = ''
+  isProfileEditing.value = true
+}
+
+function cancelProfileEdit() {
+  profileSaveError.value = ''
+  isProfileEditing.value = false
+}
+
+async function handleProfileSave(form) {
+  isProfileSaving.value = true
+  profileSaveError.value = ''
+  profileSuccessMessage.value = ''
+
+  try {
+    const updatedProfile = await updatePortfolioProfile(form)
+    if (!updatedProfile) throw new Error('Invalid portfolio profile response')
+    profile.value = updatedProfile
+    isProfileEditing.value = false
+    profileSuccessMessage.value = '포트폴리오 프로필이 저장되었습니다.'
+  } catch (error) {
+    profileSaveError.value = getRequestError(
+      error,
+      '포트폴리오 프로필을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    )
+  } finally {
+    isProfileSaving.value = false
+  }
+}
 
 async function loadPortfolios() {
   isLoading.value = true
@@ -67,7 +177,10 @@ async function loadPortfolios() {
     const data = await getMyPortfolios({ page: 1, size: 10 })
     portfolios.value = extractPortfolioList(data)
   } catch (error) {
-    errorMessage.value = getRequestError(error, '포트폴리오를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+    errorMessage.value = getRequestError(
+      error,
+      '포트폴리오를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+    )
   } finally {
     isLoading.value = false
   }
@@ -139,7 +252,7 @@ function getRequestError(error, fallback) {
 }
 
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -157,6 +270,35 @@ function getRequestError(error, fallback) {
   margin: 0;
   color: #6c757d;
   font-size: 14px;
+}
+
+.profile-section {
+  margin-bottom: 40px;
+}
+
+.section-heading {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.section-heading h2 {
+  margin: 0 0 5px;
+  color: #1a233d;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.section-heading p {
+  margin: 0;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.project-heading {
+  align-items: center;
 }
 
 .primary-button {
@@ -198,6 +340,10 @@ function getRequestError(error, fallback) {
   text-align: center;
 }
 
+.state-card.profile-state {
+  min-height: 180px;
+}
+
 .state-card p {
   margin: 14px 0 0;
   font-size: 14px;
@@ -227,8 +373,23 @@ function getRequestError(error, fallback) {
   cursor: pointer;
 }
 
+.save-message {
+  margin: 12px 0 0;
+  padding: 10px 13px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.save-message.success {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 820px) {
@@ -243,6 +404,11 @@ function getRequestError(error, fallback) {
   }
 
   .page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .project-heading {
     align-items: stretch;
     flex-direction: column;
   }
