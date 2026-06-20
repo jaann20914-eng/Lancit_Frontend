@@ -93,13 +93,13 @@ async function handleLogin() {
     })
 
     // 역할에 따라 대시보드로 이동
-    if (data.role === 'user') {
+    if (authStore.role === 'user') {
       router.push('/freelancer/dashboard')
     } else {
       router.push('/company/dashboard')
     }
 
-  } catch (err) {
+  } catch {
     errorMsg.value = '이메일 또는 비밀번호가 올바르지 않습니다.'
   } finally {
     isLoading.value = false
