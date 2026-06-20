@@ -57,6 +57,11 @@ const routes = [
       { path: 'talents/:id', name: 'TalentDetail', component: () => import('@/pages/company/talents/TalentDetailPage.vue') },
       { path: 'bookmarks', name: 'TalentBookmark', component: () => import('@/pages/company/bookmarks/TalentBookmarkPage.vue') },
       { path: 'notifications', name: 'CompanyNotifications', component: () => import('@/pages/notifications/NotificationListPage.vue') },
+      { path: 'talents/:id', name: 'TalentDetail', component: () => import('@/pages/company/talents/TalentDetailPage.vue') },
+      { path: 'proposal/select', name: 'ProposalSelect', component: () => import('@/pages/proposal/ProposalSelectPage.vue') },
+
+      // 포트폴리오 상세 -라우팅만 (임시 빈 페이지)
+      { path: 'portfolio/:id', name: 'TalentPortfolioDetail', component: () => import('@/pages/portfolio/PortfolioDetailPage.vue') },
     ]
   },
 

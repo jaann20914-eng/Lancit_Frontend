@@ -1,3 +1,5 @@
+
+
 <template>
   <div class="signup-wrap">
     <div class="signup-box">
@@ -96,14 +98,9 @@
           <label class="form-label">직군</label>
           <select v-model="form.jobCategory" class="form-input">
             <option value="">직군 선택</option>
-            <option value="IT">IT</option>
-            <option value="DESIGN">디자인</option>
-            <option value="MARKETING">마케팅</option>
-            <option value="VIDEO">영상</option>
-            <option value="MUSIC">음악</option>
-            <option value="EDUCATION">교육</option>
-            <option value="WRITING">작문</option>
-            <option value="ETC">기타</option>
+            <option v-for="opt in JOB_CATEGORY_OPTIONS" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
           </select>
         </div>
 
@@ -192,15 +189,10 @@
         <div class="form-group">
           <label class="form-label">업종</label>
           <select v-model="form.jobCategory" class="form-input">
-            <option value="">업종 선택</option>
-            <option value="IT">IT</option>
-            <option value="DESIGN">디자인</option>
-            <option value="MARKETING">마케팅</option>
-            <option value="VIDEO">영상</option>
-            <option value="MUSIC">음악</option>
-            <option value="EDUCATION">교육</option>
-            <option value="WRITING">작문</option>
-            <option value="ETC">기타</option>
+            <option value="">직군 선택</option>
+            <option v-for="opt in JOB_CATEGORY_OPTIONS" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
           </select>
         </div>
 
@@ -230,6 +222,7 @@
 </template>
 
 <script setup>
+import { JOB_CATEGORY_OPTIONS } from '@/shared/constants/jobCategory.js'
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { signupUser, signupCompany } from '@/features/auth/api/authApi.js'
