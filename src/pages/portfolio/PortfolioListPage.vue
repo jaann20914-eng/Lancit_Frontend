@@ -60,6 +60,46 @@
         </button>
       </div>
 
+      <div class="project-toolbar" role="search">
+        <div class="search-input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input
+            v-model="keyword"
+            type="search"
+            class="search-input"
+            placeholder="프로젝트로 검색..."
+            aria-label="프로젝트 검색"
+            @keyup.enter="submitPortfolioSearch"
+          />
+        </div>
+        <select
+          v-model="categoryFilter"
+          class="filter-select"
+          aria-label="프로젝트 카테고리"
+          @change="loadPortfolios"
+        >
+          <option value="">전체</option>
+          <option value="WEB_APP">웹/앱</option>
+          <option value="DESIGN">디자인</option>
+          <option value="VIDEO">영상</option>
+          <option value="BRANDING">브랜딩</option>
+          <option value="MARKETING">마케팅</option>
+          <option value="PLANNING">기획</option>
+        </select>
+        <select
+          v-model="sortType"
+          class="filter-select"
+          aria-label="프로젝트 정렬"
+          @change="loadPortfolios"
+        >
+          <option value="LATEST">최신순</option>
+          <option value="OLDEST">오래된순</option>
+        </select>
+      </div>
+
       <div v-if="isLoading" class="state-card">
         <span class="spinner" aria-hidden="true"></span>
         <p>포트폴리오를 불러오고 있습니다.</p>
@@ -71,18 +111,23 @@
       </div>
 
       <PortfolioEmptyState
-        v-else-if="!portfolios.length"
+        v-else-if="!portfolios.length && !hasActiveProjectFilters"
         title="아직 등록된 프로젝트가 없습니다."
         description="경험과 역량을 보여줄 첫 프로젝트를 등록해보세요."
         button-text="첫 프로젝트 등록하기"
         @action="goToCreate"
       />
 
+      <div v-else-if="!visiblePortfolios.length" class="state-card filter-empty-state">
+        <p>검색 조건에 맞는 프로젝트가 없습니다.</p>
+      </div>
+
       <div v-else class="portfolio-grid">
         <PortfolioCard
-          v-for="(portfolioItem, index) in portfolios"
+          v-for="(portfolioItem, index) in visiblePortfolios"
           :key="getPortfolioId(portfolioItem) ?? index"
           :portfolio="portfolioItem"
+          :banner-url="portfolioBannerUrls[getPortfolioId(portfolioItem)]"
           :is-deleting="String(deletingId) === String(getPortfolioId(portfolioItem))"
           @view="goToDetail"
           @edit="goToEdit"
@@ -94,9 +139,13 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { deletePortfolio, getMyPortfolios } from '@/features/portfolio/api/portfolioApi.js'
+import {
+  deletePortfolio,
+  getMyPortfolios,
+  getPortfolioFileUrl,
+} from '@/features/portfolio/api/portfolioApi.js'
 import {
   getPortfolioProfile,
   getPortfolioProfileImageUrl,
@@ -119,9 +168,60 @@ const profileLoadError = ref('')
 const profileSaveError = ref('')
 const profileSuccessMessage = ref('')
 const portfolios = ref([])
+const portfolioBannerUrls = ref({})
+const keyword = ref('')
+const categoryFilter = ref('')
+const sortType = ref('LATEST')
 const isLoading = ref(true)
 const errorMessage = ref('')
 const deletingId = ref(null)
+
+const CATEGORY_LABELS = {
+  WEB_APP: '웹/앱',
+  DESIGN: '디자인',
+  VIDEO: '영상',
+  BRANDING: '브랜딩',
+  MARKETING: '마케팅',
+  PLANNING: '기획',
+}
+
+const visiblePortfolios = computed(() => {
+  const normalizedKeyword = keyword.value.trim().toLowerCase()
+  const filtered = portfolios.value.filter((portfolio) => {
+    const matchesCategory = !categoryFilter.value || portfolio.category === categoryFilter.value
+    const searchableText = [
+      portfolio.title,
+      portfolio.projectTitle,
+      portfolio.summary,
+      portfolio.description,
+      CATEGORY_LABELS[portfolio.category],
+      portfolio.category,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+
+    return matchesCategory && (!normalizedKeyword || searchableText.includes(normalizedKeyword))
+  })
+
+  return filtered.sort((first, second) => {
+    const difference = getPortfolioSortValue(second) - getPortfolioSortValue(first)
+    return sortType.value === 'LATEST' ? difference : -difference
+  })
+})
+
+const hasActiveProjectFilters = computed(
+  () => Boolean(keyword.value.trim()) || Boolean(categoryFilter.value),
+)
+
+let searchTimerId = null
+
+watch(keyword, () => {
+  clearTimeout(searchTimerId)
+  searchTimerId = setTimeout(loadPortfolios, 300)
+})
+
+onBeforeUnmount(() => clearTimeout(searchTimerId))
 
 onMounted(() => {
   loadProfile()
@@ -203,8 +303,15 @@ async function loadPortfolios() {
   errorMessage.value = ''
 
   try {
-    const data = await getMyPortfolios({ page: 1, size: 10 })
+    const data = await getMyPortfolios({
+      keyword: keyword.value.trim() || undefined,
+      category: categoryFilter.value || undefined,
+      sort: sortType.value === 'OLDEST' ? 'oldest' : 'latest',
+      page: 1,
+      size: 10,
+    })
     portfolios.value = extractPortfolioList(data)
+    loadPortfolioBannerUrls(portfolios.value)
   } catch (error) {
     errorMessage.value = getRequestError(
       error,
@@ -215,12 +322,43 @@ async function loadPortfolios() {
   }
 }
 
+function submitPortfolioSearch() {
+  clearTimeout(searchTimerId)
+  loadPortfolios()
+}
+
+async function loadPortfolioBannerUrls(items) {
+  portfolioBannerUrls.value = {}
+
+  await Promise.all(
+    items.map(async (portfolio) => {
+      const id = getPortfolioId(portfolio)
+      const fileId = portfolio?.bannerFileId
+      if (id === null || id === undefined || fileId === null || fileId === undefined) return
+
+      try {
+        const url = await getPortfolioFileUrl(fileId)
+        if (url) portfolioBannerUrls.value = { ...portfolioBannerUrls.value, [id]: url }
+      } catch {
+        // 배너를 불러오지 못해도 카드 placeholder와 관리 기능은 유지합니다.
+      }
+    }),
+  )
+}
+
 function extractPortfolioList(data) {
   return Array.isArray(data?.content) ? data.content : []
 }
 
 function getPortfolioId(portfolio) {
   return portfolio?.portfolioId
+}
+
+function getPortfolioSortValue(portfolio) {
+  const dateValue = portfolio?.updatedAt || portfolio?.createdAt
+  const timestamp = dateValue ? new Date(dateValue).getTime() : NaN
+  if (Number.isFinite(timestamp)) return timestamp
+  return Number(getPortfolioId(portfolio)) || 0
 }
 
 function goToCreate() {
@@ -349,10 +487,67 @@ function getRequestError(error, fallback) {
   background: #253a63;
 }
 
+.project-toolbar {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 8px;
+}
+
+.search-input-wrap {
+  position: relative;
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: #9ca3af;
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.search-input,
+.filter-select {
+  height: 40px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1a233d;
+  font-size: 14px;
+  outline: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0 12px 0 38px;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+.search-input:focus,
+.filter-select:focus {
+  border-color: #1a233d;
+  box-shadow: 0 0 0 2px rgba(26, 35, 61, 0.08);
+}
+
+.filter-select {
+  min-width: 96px;
+  padding: 0 30px 0 12px;
+  cursor: pointer;
+}
+
 .portfolio-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .state-card {
@@ -371,6 +566,10 @@ function getRequestError(error, fallback) {
 
 .state-card.profile-state {
   min-height: 180px;
+}
+
+.state-card.filter-empty-state {
+  min-height: 160px;
 }
 
 .state-card p {
@@ -421,7 +620,13 @@ function getRequestError(error, fallback) {
   }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 1100px) {
+  .portfolio-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
   .portfolio-grid {
     grid-template-columns: 1fr;
   }
@@ -444,6 +649,14 @@ function getRequestError(error, fallback) {
 
   .primary-button {
     align-self: flex-start;
+  }
+
+  .project-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .search-input-wrap {
+    flex-basis: 100%;
   }
 }
 </style>

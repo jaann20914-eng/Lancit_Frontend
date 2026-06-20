@@ -24,6 +24,12 @@ export async function getPortfolioDetail(id) {
   return mapPortfolioDetailResponse(unwrapResponse(response))
 }
 
+export async function getPortfolioFileUrl(fileId) {
+  if (fileId === null || fileId === undefined) return ''
+  const response = await httpClient.get(`/api/files/${fileId}/url`)
+  return unwrapResponse(response) ?? ''
+}
+
 export async function createPortfolio(form) {
   const response = await httpClient.post('/api/portfolios', mapPortfolioFormToRequest(form))
   return unwrapResponse(response)
