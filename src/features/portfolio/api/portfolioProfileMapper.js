@@ -1,4 +1,6 @@
 export const PORTFOLIO_PROFILE_INTRO_MAX_LENGTH = 30
+export const PORTFOLIO_PROFILE_DESCRIPTION_MAX_LENGTH = 200
+export const PORTFOLIO_PROFILE_DISPLAY_NAME_MAX_LENGTH = 100
 export const PORTFOLIO_PROFILE_TECH_STACK_MAX_LENGTH = 100
 
 export function normalizeTechStacks(value) {
@@ -31,11 +33,12 @@ export function mapPortfolioProfileFromApi(dto) {
 
   return {
     freelancerEmail: dto.freelancerEmail ?? '',
-    name: dto.name ?? '',
+    displayName: dto.displayName ?? dto.name ?? '',
     jobCategory: dto.jobCategory ?? null,
     profileFileId: dto.profileFileId ?? null,
     isPortfolioPublic: Boolean(dto.isPortfolioPublic),
     intro: dto.intro ?? '',
+    description: dto.description ?? '',
     techStacks: normalizeTechStacks(dto.techStacks),
     createdAt: dto.createdAt ?? null,
     updatedAt: dto.updatedAt ?? null,
@@ -44,8 +47,12 @@ export function mapPortfolioProfileFromApi(dto) {
 
 export function mapPortfolioProfileFormToRequest(form = {}) {
   return {
+    displayName: typeof form.displayName === 'string' ? form.displayName.trim() : '',
+    jobCategory: form.jobCategory ?? null,
+    profileFileId: form.profileFileId ?? null,
     isPortfolioPublic: Boolean(form.isPortfolioPublic),
     intro: typeof form.intro === 'string' ? form.intro.trim() : '',
+    description: typeof form.description === 'string' ? form.description.trim() : '',
     techStacks: normalizeTechStacks(form.techStacks),
   }
 }

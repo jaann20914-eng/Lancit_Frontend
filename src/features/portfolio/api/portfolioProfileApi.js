@@ -20,3 +20,21 @@ export async function updatePortfolioProfile(form) {
   )
   return mapPortfolioProfileFromApi(unwrapResponse(response))
 }
+
+export async function uploadPortfolioProfileImage(file) {
+  const formData = new FormData()
+  formData.append('files', file)
+
+  const response = await httpClient.post('/api/files/upload', formData, {
+    params: { parentType: 'TEMP' },
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  const files = unwrapResponse(response)
+  return Array.isArray(files) ? files[0] ?? null : null
+}
+
+export async function getPortfolioProfileImageUrl(fileId) {
+  if (fileId === null || fileId === undefined) return ''
+  const response = await httpClient.get(`/api/files/${fileId}/url`)
+  return unwrapResponse(response) ?? ''
+}
