@@ -333,7 +333,7 @@ function isOwner(item) {
 }
 
 function canManage(item) {
-  return activeTab.value === 'MY' && isOwner(item)
+  return isOwner(item)
 }
 
 function goToCreate() {
