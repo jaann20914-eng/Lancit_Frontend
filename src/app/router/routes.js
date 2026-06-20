@@ -30,8 +30,14 @@ const routes = [
       { path: 'applications', name: 'MyApplicationList', component: () => import('@/pages/applications/MyApplicationListPage.vue') },
       { path: 'applications/:id', name: 'ApplicationDetail', component: () => import('@/pages/applications/ApplicationDetailPage.vue') },
       { path: 'portfolio', name: 'PortfolioList', component: () => import('@/pages/portfolio/PortfolioListPage.vue') },
+      { path: 'portfolio/new', name: 'PortfolioCreate', component: () => import('@/pages/portfolio/PortfolioEditorPage.vue') },
       { path: 'portfolio/:id', name: 'PortfolioDetail', component: () => import('@/pages/portfolio/PortfolioDetailPage.vue') },
-      { path: 'portfolio/edit/:id', name: 'PortfolioEditor', component: () => import('@/pages/portfolio/PortfolioEditorPage.vue') },
+      {
+        path: 'portfolio/:id/edit',
+        alias: 'portfolio/edit/:id',
+        name: 'PortfolioEditor',
+        component: () => import('@/pages/portfolio/PortfolioEditorPage.vue')
+      },
       { path: 'notifications', name: 'Notifications', component: () => import('@/pages/notifications/NotificationListPage.vue') },
     ]
   },
