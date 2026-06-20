@@ -38,7 +38,7 @@
           </div>
           <div class="info-row">
             <span class="info-label">직종</span>
-            <span class="info-value">{{ info.jobCategory }}</span>
+            <span class="info-value">{{ jobCategoryLabel(info.jobCategory) }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">알림 수신</span>
@@ -102,14 +102,9 @@
         <div class="form-group">
           <label class="form-label">직종</label>
           <select v-model="editForm.jobCategory" class="form-input">
-            <option value="IT">IT</option>
-            <option value="DESIGN">디자인</option>
-            <option value="MARKETING">마케팅</option>
-            <option value="VIDEO">영상</option>
-            <option value="MUSIC">음악</option>
-            <option value="EDUCATION">교육</option>
-            <option value="WRITING">작문</option>
-            <option value="ETC">기타</option>
+            <option v-for="opt in JOB_CATEGORY_OPTIONS" :key="opt.value" :value="opt.value">
+              {{ opt.label }}}
+            </option>
           </select>
         </div>
 
@@ -136,6 +131,7 @@
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
+import { JOB_CATEGORY_OPTIONS, jobCategoryLabel } from '@/shared/constants/jobCategory.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -151,7 +147,7 @@ const info = reactive({
   email: authStore.email || 'free@example.com',
   name: '김프리',
   phone: '010-1234-5678',
-  jobCategory: '디자이너',
+  jobCategory: 'DESIGN',
   pushable: false,
 })
 

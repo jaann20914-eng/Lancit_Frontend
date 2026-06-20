@@ -4,12 +4,23 @@
       <button type="button" class="back-button" @click="goToList">
         <span aria-hidden="true">←</span> 목록으로 돌아가기
       </button>
+      <!--
       <div v-if="portfolio" class="management-actions">
         <button type="button" class="edit-button" @click="goToEdit">수정</button>
         <button type="button" class="delete-button" :disabled="isDeleting" @click="handleDelete">
           {{ isDeleting ? '삭제 중...' : '삭제' }}
         </button>
       </div>
+      -->
+
+      <!-- 회사도 이 페이지 보는 경우가 있어서 수정&삭제 버튼 보이는 분기 점 추가 -->
+      <div v-if="portfolio && !isCompanyView" class="management-actions">
+        <button type="button" class="edit-button" @click="goToEdit">수정</button>
+        <button type="button" class="delete-button" :disabled="isDeleting" @click="handleDelete">
+          {{ isDeleting ? '삭제 중...' : '삭제' }}
+        </button>
+      </div>
+
     </div>
 
     <div v-if="isLoading" class="state-card">
@@ -124,9 +135,42 @@ function formatDate(value) {
   return String(value).slice(0, 10).replaceAll('-', '.')
 }
 
+// function goToList() {
+//   router.push({ name: 'PortfolioList' })
+// }
+
+// 이 포트폴리오 디테일 페이지를 사용하는 경우 3
+// 1. 프리랜서 본인이 포트폴리오 페이지에서 보는경우
+// 1.5. 프리랜서페이지에서 더 필요하다면 분기점 더 쪼개서 추가해주세요!! 
+// 2. 회사 → 지원자 포트폴리오
+// 3. 회사 → 인재찾기 공개 포폴
+// 회사 권한으로 들어온 페이지인지 (route name 기준)
+const isCompanyView = computed(() => route.name === 'TalentPortfolioDetail')
 function goToList() {
-  router.push({ name: 'PortfolioList' })
+  const from = route.query.from
+
+  if (from === 'applicant') {
+    // 2번 경우 : 지원자 목록의 특정 지원 상세로 복귀
+    router.push({
+      name: 'CompanyApplicantDetail',
+      params: {
+        recruitmentId: route.query.recruitmentId,
+        applicationId: route.query.applicationId
+      }
+    })
+  } else if (from === 'talent') {
+    // 3번 경우 : 인재찾기 상세로 복귀
+    router.push({
+      name: 'TalentDetail',
+      params: { id: route.query.freelancerEmail }
+    })
+  } else {
+    // 1번경우 : 프리랜서 본인 - 기본 목록
+    router.push({ name: 'PortfolioList' })
+  }
 }
+
+
 
 function goToEdit() {
   router.push({ name: 'PortfolioEditor', params: { id: route.params.id } })
