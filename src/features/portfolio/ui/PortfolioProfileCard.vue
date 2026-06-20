@@ -1,13 +1,16 @@
 <template>
   <article class="profile-card">
     <div class="profile-main">
-      <div class="avatar" aria-hidden="true">{{ initial }}</div>
+      <div class="avatar" aria-hidden="true">
+        <img v-if="profileImageUrl" :src="profileImageUrl" alt="" />
+        <span v-else>{{ initial }}</span>
+      </div>
 
       <div class="profile-content">
         <div class="profile-heading">
           <div>
             <div class="identity-row">
-              <h3>{{ profile.name || '이름 미등록' }}</h3>
+              <h3>{{ profile.displayName || '이름 미등록' }}</h3>
               <span :class="['visibility', profile.isPortfolioPublic ? 'public' : 'private']">
                 {{ profile.isPortfolioPublic ? '전체 공개' : '비공개' }}
               </span>
@@ -21,6 +24,8 @@
         <p :class="['intro', { empty: !profile.intro }]">
           {{ profile.intro || '나를 소개하는 한 줄을 작성해보세요.' }}
         </p>
+
+        <p v-if="profile.description" class="description">{{ profile.description }}</p>
 
         <div v-if="profile.techStacks.length" class="tech-stack-list" aria-label="기술 스택">
           <span v-for="techStack in profile.techStacks" :key="techStack" class="tech-stack">
@@ -41,6 +46,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  profileImageUrl: {
+    type: String,
+    default: '',
+  },
 })
 
 defineEmits(['edit'])
@@ -56,7 +65,7 @@ const JOB_CATEGORY_LABELS = {
   ETC: '기타',
 }
 
-const initial = computed(() => props.profile.name?.trim().charAt(0) || '?')
+const initial = computed(() => props.profile.displayName?.trim().charAt(0) || '?')
 const jobCategoryLabel = computed(() => {
   const category = props.profile.jobCategory
   return JOB_CATEGORY_LABELS[category] || category || '직종 미등록'
@@ -90,6 +99,13 @@ const jobCategoryLabel = computed(() => {
   justify-content: center;
   font-size: 23px;
   font-weight: 700;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
 }
 
 .profile-content {
@@ -165,6 +181,14 @@ h3 {
   color: #374151;
   font-size: 15px;
   line-height: 1.6;
+}
+
+.description {
+  margin: -4px 0 14px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .intro.empty,
