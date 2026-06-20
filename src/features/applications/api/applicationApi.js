@@ -1,0 +1,59 @@
+import httpClient from '@/shared/api/httpClient.js'
+import { mapApplicationDetailFromApi, mapApplicationRequest } from './applicationMapper.js'
+
+function unwrapResponse(response) {
+  return response.data?.data ?? response.data
+}
+
+export async function applyToRecruitment(recruitmentId, form) {
+  const response = await httpClient.post(
+    `/api/recruitments/${recruitmentId}/applications`,
+    mapApplicationRequest(form),
+  )
+  return mapApplicationDetailFromApi(unwrapResponse(response))
+}
+
+export async function getCompanyApplication(recruitmentId, applicationId) {
+  const response = await httpClient.get(
+    `/api/recruitments/${recruitmentId}/applications/${applicationId}`,
+  )
+  return mapApplicationDetailFromApi(unwrapResponse(response))
+}
+
+export async function getCompanyApplicationPortfolio(recruitmentId, applicationId, portfolioId) {
+  const response = await httpClient.get(
+    `/api/recruitments/${recruitmentId}/applications/${applicationId}/portfolios/${portfolioId}`,
+  )
+  return unwrapResponse(response)
+}
+
+export async function getCompanyApplicationPortfolioFileUrl(
+  recruitmentId,
+  applicationId,
+  portfolioId,
+  fileId,
+) {
+  const response = await httpClient.get(
+    `/api/recruitments/${recruitmentId}/applications/${applicationId}/portfolios/${portfolioId}/files/${fileId}/url`,
+  )
+  return unwrapResponse(response) ?? ''
+}
+
+export async function getCompanyApplicationPortfolioFileDownloadUrl(
+  recruitmentId,
+  applicationId,
+  portfolioId,
+  fileId,
+) {
+  const response = await httpClient.get(
+    `/api/recruitments/${recruitmentId}/applications/${applicationId}/portfolios/${portfolioId}/files/${fileId}/download`,
+  )
+  return unwrapResponse(response) ?? ''
+}
+
+export async function getCompanyApplicationProfileImageUrl(recruitmentId, applicationId) {
+  const response = await httpClient.get(
+    `/api/recruitments/${recruitmentId}/applications/${applicationId}/profile/image-url`,
+  )
+  return unwrapResponse(response) ?? ''
+}

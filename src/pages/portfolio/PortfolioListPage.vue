@@ -29,12 +29,18 @@
         <PortfolioProfileForm
           v-if="isProfileEditing"
           :initial-value="profile"
+          :initial-image-url="profileImageUrl"
           :is-submitting="isProfileSaving"
           :error-message="profileSaveError"
           @submit="handleProfileSave"
           @cancel="cancelProfileEdit"
         />
-        <PortfolioProfileCard v-else :profile="profile" @edit="startProfileEdit" />
+        <PortfolioProfileCard
+          v-else
+          :profile="profile"
+          :profile-image-url="profileImageUrl"
+          @edit="startProfileEdit"
+        />
 
         <p v-if="profileSuccessMessage" class="save-message success" role="status">
           {{ profileSuccessMessage }}
@@ -93,6 +99,8 @@ import { useRouter } from 'vue-router'
 import { deletePortfolio, getMyPortfolios } from '@/features/portfolio/api/portfolioApi.js'
 import {
   getPortfolioProfile,
+  getPortfolioProfileImageUrl,
+  uploadPortfolioProfileImage,
   updatePortfolioProfile,
 } from '@/features/portfolio/api/portfolioProfileApi.js'
 import PortfolioCard from '@/features/portfolio/ui/PortfolioCard.vue'
@@ -103,6 +111,7 @@ import PortfolioProfileForm from '@/features/portfolio/ui/PortfolioProfileForm.v
 const router = useRouter()
 
 const profile = ref(null)
+const profileImageUrl = ref('')
 const isProfileLoading = ref(true)
 const isProfileEditing = ref(false)
 const isProfileSaving = ref(false)
@@ -127,6 +136,7 @@ async function loadProfile() {
     const data = await getPortfolioProfile()
     if (!data) throw new Error('Invalid portfolio profile response')
     profile.value = data
+    await loadProfileImage(data.profileFileId)
   } catch (error) {
     profileLoadError.value = getRequestError(
       error,
@@ -154,9 +164,17 @@ async function handleProfileSave(form) {
   profileSuccessMessage.value = ''
 
   try {
-    const updatedProfile = await updatePortfolioProfile(form)
+    let profileFileId = form.profileFileId
+    if (form.profileImageFile) {
+      const uploadedFile = await uploadPortfolioProfileImage(form.profileImageFile)
+      if (!uploadedFile?.fileId) throw new Error('Invalid profile image upload response')
+      profileFileId = uploadedFile.fileId
+    }
+
+    const updatedProfile = await updatePortfolioProfile({ ...form, profileFileId })
     if (!updatedProfile) throw new Error('Invalid portfolio profile response')
     profile.value = updatedProfile
+    await loadProfileImage(updatedProfile.profileFileId)
     isProfileEditing.value = false
     profileSuccessMessage.value = '포트폴리오 프로필이 저장되었습니다.'
   } catch (error) {
@@ -166,6 +184,17 @@ async function handleProfileSave(form) {
     )
   } finally {
     isProfileSaving.value = false
+  }
+}
+
+async function loadProfileImage(fileId) {
+  profileImageUrl.value = ''
+  if (fileId === null || fileId === undefined) return
+
+  try {
+    profileImageUrl.value = await getPortfolioProfileImageUrl(fileId)
+  } catch {
+    profileImageUrl.value = ''
   }
 }
 
