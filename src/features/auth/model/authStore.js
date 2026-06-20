@@ -1,10 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
+function normalizeRole(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : null
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('accessToken') || null)
   const email = ref(localStorage.getItem('email') || null)
-  const role = ref(localStorage.getItem('role') || null)  // 'user' | 'company'
+  const role = ref(normalizeRole(localStorage.getItem('role')))  // 'user' | 'company'
 
   const isLoggedIn = computed(() => !!token.value)
   const isFreelancer = computed(() => role.value === 'user')
@@ -13,10 +17,10 @@ export const useAuthStore = defineStore('auth', () => {
   function login(data) {
     token.value = data.accessToken
     email.value = data.email
-    role.value = data.role
+    role.value = normalizeRole(data.role)
     localStorage.setItem('accessToken', data.accessToken)
     localStorage.setItem('email', data.email)
-    localStorage.setItem('role', data.role)
+    localStorage.setItem('role', role.value)
   }
 
   function logout() {

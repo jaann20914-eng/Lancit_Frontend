@@ -1,0 +1,65 @@
+import httpClient from '@/shared/api/httpClient.js'
+import {
+  mapRecruitmentFormToRequest,
+  mapRecruitmentFromApi,
+  mapRecruitmentPageResponse,
+} from './companyRecruitmentMapper.js'
+
+function unwrapResponse(response) {
+  return response.data?.data ?? response.data
+}
+
+export async function getMyRecruitments(params = {}) {
+  const response = await httpClient.get('/api/recruitments/my', { params })
+  return mapRecruitmentPageResponse(unwrapResponse(response))
+}
+
+export async function getAllRecruitments(params = {}) {
+  const response = await httpClient.get('/api/recruitments', { params })
+  return mapRecruitmentPageResponse(unwrapResponse(response))
+}
+
+export async function getCompanyRecruitment(recruitmentId) {
+  const response = await httpClient.get(`/api/recruitments/${recruitmentId}`)
+  return mapRecruitmentFromApi(unwrapResponse(response))
+}
+
+export async function createCompanyRecruitment(form) {
+  const response = await httpClient.post('/api/recruitments', mapRecruitmentFormToRequest(form))
+  return mapRecruitmentFromApi(unwrapResponse(response))
+}
+
+export async function updateCompanyRecruitment(recruitmentId, form) {
+  const response = await httpClient.put(
+    `/api/recruitments/${recruitmentId}`,
+    mapRecruitmentFormToRequest(form),
+  )
+  return mapRecruitmentFromApi(unwrapResponse(response))
+}
+
+export async function deleteCompanyRecruitment(recruitmentId) {
+  const response = await httpClient.delete(`/api/recruitments/${recruitmentId}`)
+  return unwrapResponse(response)
+}
+
+export async function updateCompanyRecruitmentStatus(recruitmentId, status) {
+  const response = await httpClient.patch(`/api/recruitments/${recruitmentId}/status`, { status })
+  return mapRecruitmentFromApi(unwrapResponse(response))
+}
+
+export async function uploadRecruitmentImage(file) {
+  const formData = new FormData()
+  formData.append('files', file)
+  const response = await httpClient.post('/api/files/upload', formData, {
+    params: { parentType: 'TEMP' },
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  const files = unwrapResponse(response)
+  return Array.isArray(files) ? files[0] ?? null : null
+}
+
+export async function getFileUrl(fileId) {
+  if (fileId === null || fileId === undefined) return null
+  const response = await httpClient.get(`/api/files/${fileId}/url`)
+  return unwrapResponse(response)
+}
