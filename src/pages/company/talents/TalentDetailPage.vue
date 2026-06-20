@@ -88,9 +88,6 @@
               </svg>
               {{ formatDate(item.workEndAt || item.createdAt) }}
             </span>
-            <span :class="['visibility-badge', item.isPublic ? 'public' : 'private']">
-              {{ item.isPublic ? '공개' : '비공개' }}
-            </span>
           </div>
         </div>
       </div>
@@ -174,7 +171,7 @@ async function fetchProfile() {
   try {
     const res = await getTalentProfile(freelancerEmail)
     Object.assign(profile, res.data.data)
-  } catch (err) {
+  } catch {
     // noop
   }
 }
@@ -192,7 +189,7 @@ async function fetchPortfolios() {
     const data = res.data.data
     portfolios.value = data.content || data.list || []
     totalPages.value = data.totalPages || 1
-  } catch (err) {
+  } catch {
     portfolios.value = []
   } finally {
     isLoading.value = false
@@ -471,23 +468,6 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  color: #9CA3AF;
-}
-
-.visibility-badge {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.visibility-badge.public {
-  background: #DCFCE7;
-  color: #16A34A;
-}
-
-.visibility-badge.private {
-  background: #F3F4F6;
   color: #9CA3AF;
 }
 

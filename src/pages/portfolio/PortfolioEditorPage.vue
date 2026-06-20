@@ -2,7 +2,13 @@
   <div class="page">
     <header class="page-header">
       <h1>{{ isEdit ? '프로젝트 수정' : '프로젝트 등록' }}</h1>
-      <p>{{ isEdit ? '등록한 프로젝트 정보를 수정할 수 있습니다.' : '진행한 프로젝트와 나의 역할을 소개해보세요.' }}</p>
+      <p>
+        {{
+          isEdit
+            ? '등록한 프로젝트 정보를 수정할 수 있습니다.'
+            : '진행한 프로젝트와 나의 역할을 소개해보세요.'
+        }}
+      </p>
     </header>
 
     <div v-if="isLoading" class="state-card">
@@ -21,6 +27,8 @@
       :is-edit="isEdit"
       :is-submitting="isSubmitting"
       :error-message="submitError"
+      :initial-files="initialFiles"
+      :initial-banner-url="initialBannerUrl"
       @submit="handleSubmit"
       @cancel="handleCancel"
     />
@@ -32,8 +40,13 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   createPortfolio,
+  deletePortfolio,
+  deletePortfolioFile,
+  getMyPortfolios,
   getPortfolioDetail,
-  updatePortfolio
+  getPortfolioFileUrl,
+  uploadPortfolioFiles,
+  updatePortfolio,
 } from '@/features/portfolio/api/portfolioApi.js'
 import PortfolioForm from '@/features/portfolio/ui/PortfolioForm.vue'
 
@@ -41,6 +54,8 @@ const route = useRoute()
 const router = useRouter()
 
 const initialValue = ref({})
+const initialFiles = ref([])
+const initialBannerUrl = ref('')
 const isLoading = ref(false)
 const isSubmitting = ref(false)
 const loadError = ref('')
@@ -56,6 +71,8 @@ async function loadInitialValue() {
 
   if (!isEdit.value) {
     initialValue.value = {}
+    initialFiles.value = []
+    initialBannerUrl.value = ''
     isLoading.value = false
     return
   }
@@ -65,8 +82,19 @@ async function loadInitialValue() {
     const data = await getPortfolioDetail(route.params.id)
     if (!data.portfolio) throw new Error('Invalid portfolio response')
     initialValue.value = data.portfolio
+    initialFiles.value = data.files
+    if (data.portfolio.bannerFileId) {
+      initialBannerUrl.value = await getPortfolioFileUrl(data.portfolio.bannerFileId).catch(
+        () => '',
+      )
+    } else {
+      initialBannerUrl.value = ''
+    }
   } catch (error) {
-    loadError.value = getRequestError(error, '프로젝트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+    loadError.value = getRequestError(
+      error,
+      '프로젝트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+    )
   } finally {
     isLoading.value = false
   }
@@ -78,18 +106,125 @@ async function handleSubmit(payload) {
 
   try {
     if (isEdit.value) {
-      await updatePortfolio(route.params.id, payload)
+      await savePortfolioFiles(route.params.id, payload)
       router.push({ name: 'PortfolioDetail', params: { id: route.params.id } })
       return
     }
 
-    await createPortfolio(payload)
+    await createPortfolioWithFiles(payload)
     router.push({ name: 'PortfolioList' })
   } catch (error) {
-    submitError.value = getRequestError(error, '프로젝트를 저장하지 못했습니다. 입력 내용을 확인하고 다시 시도해주세요.')
+    submitError.value = getRequestError(
+      error,
+      '프로젝트를 저장하지 못했습니다. 입력 내용을 확인하고 다시 시도해주세요.',
+    )
   } finally {
     isSubmitting.value = false
   }
+}
+
+async function savePortfolioFiles(portfolioId, payload) {
+  const uploadedFileIds = []
+  const previousBannerFileId = payload.bannerFileId
+
+  try {
+    if (payload.bannerFile) {
+      const uploadedBanners = await uploadPortfolioFiles(
+        [payload.bannerFile],
+        'PORTFOLIO_BANNER',
+        portfolioId,
+      )
+      const bannerFileId = uploadedBanners[0]?.fileId
+      if (bannerFileId === null || bannerFileId === undefined) {
+        throw new Error('Invalid banner upload response')
+      }
+      uploadedFileIds.push(bannerFileId)
+      payload.bannerFileId = bannerFileId
+    }
+
+    if (payload.resultFiles.length) {
+      const uploadedResults = await uploadPortfolioFiles(
+        payload.resultFiles,
+        'PORTFOLIO_FILE',
+        portfolioId,
+      )
+      uploadedFileIds.push(...uploadedResults.map((file) => file.fileId))
+      if (uploadedResults.length !== payload.resultFiles.length) {
+        throw new Error('Invalid result file upload response')
+      }
+    }
+
+    await updatePortfolio(portfolioId, payload)
+
+    if (payload.bannerFile && previousBannerFileId) {
+      await deletePortfolioFile(previousBannerFileId).catch(() => {})
+    }
+  } catch (error) {
+    await cleanupUploadedFiles(uploadedFileIds)
+    throw error
+  }
+}
+
+async function createPortfolioWithFiles(payload) {
+  const hasFiles = Boolean(payload.bannerFile || payload.resultFiles.length)
+  if (!hasFiles) {
+    await createPortfolio(payload)
+    return
+  }
+
+  const beforePage = await getMyPortfolios({
+    page: 1,
+    size: 100,
+    sort: 'created_at',
+    direction: 'DESC',
+  })
+  const beforeIds = new Set(beforePage.content.map((portfolio) => portfolio.portfolioId))
+  let createdPortfolioId = null
+
+  try {
+    const created = await createPortfolio({ ...payload, bannerFileId: null })
+    createdPortfolioId = getPortfolioId(created)
+
+    if (createdPortfolioId === null) {
+      const afterPage = await getMyPortfolios({
+        page: 1,
+        size: 100,
+        sort: 'created_at',
+        direction: 'DESC',
+      })
+      const createdPortfolio = afterPage.content.find(
+        (portfolio) =>
+          !beforeIds.has(portfolio.portfolioId) &&
+          portfolio.title === payload.title &&
+          portfolio.summary === payload.summary &&
+          portfolio.category === payload.category,
+      )
+      createdPortfolioId = createdPortfolio?.portfolioId ?? null
+    }
+
+    if (createdPortfolioId === null) throw new Error('Created portfolio id was not found')
+    await savePortfolioFiles(createdPortfolioId, payload)
+  } catch (error) {
+    if (createdPortfolioId !== null) {
+      await deletePortfolio(createdPortfolioId).catch(() => {})
+    }
+    throw error
+  }
+}
+
+function getPortfolioId(created) {
+  const candidate = created?.portfolioId ?? created?.id ?? created
+  if (candidate === null || candidate === undefined || candidate === '') return null
+  const portfolioId = Number(candidate)
+  return Number.isInteger(portfolioId) ? portfolioId : null
+}
+
+async function cleanupUploadedFiles(fileIds) {
+  await Promise.allSettled(
+    fileIds
+      .filter((fileId) => fileId !== null && fileId !== undefined)
+      .map((fileId) => deletePortfolioFile(fileId)),
+  )
 }
 
 function handleCancel() {
@@ -174,7 +309,9 @@ function getRequestError(error, fallback) {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 600px) {

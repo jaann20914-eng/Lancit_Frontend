@@ -102,70 +102,117 @@
         <article v-for="item in recruitments" :key="item.recruitmentId" class="recruitment-card">
           <div class="card-main">
             <div class="card-heading">
-              <div class="badge-row">
+              <div class="title-area">
+                <button type="button" class="title-button" @click="goToDetail(item.recruitmentId)">
+                  {{ item.title || '제목 없는 공고' }}
+                </button>
+                <div class="meta-row">
+                  <span class="meta-item">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h2a2 2 0 0 1 2 2v10M8 7h4M8 11h4M8 15h4M3 21h18" />
+                    </svg>
+                    {{ item.companyName || '기업 정보 없음' }}
+                  </span>
+                  <span class="meta-separator" aria-hidden="true">·</span>
+                  <span class="meta-item">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                      <circle cx="12" cy="10" r="2.5" />
+                    </svg>
+                    {{ item.workLocation || '위치 협의' }}
+                  </span>
+                  <span class="meta-separator" aria-hidden="true">·</span>
+                  <span class="meta-item">{{ item.jobCategoryLabel }}</span>
+                </div>
+              </div>
+
+              <div class="status-actions">
+                <button
+                  type="button"
+                  :class="['bookmark-button', { bookmarked: item.isBookmarked }]"
+                  :aria-label="item.isBookmarked ? '찜 해제' : '찜하기'"
+                  :aria-pressed="item.isBookmarked"
+                  :disabled="bookmarkingIds.has(item.recruitmentId)"
+                  @click="handleBookmark(item)"
+                >
+                  <span aria-hidden="true">
+                    {{ bookmarkingIds.has(item.recruitmentId) ? '…' : item.isBookmarked ? '♥' : '♡' }}
+                  </span>
+                </button>
+                <span v-if="item.isApplied" class="applied-badge">지원 완료</span>
                 <span :class="['status-badge', item.statusMeta.className]">
                   {{ item.statusMeta.label }}
                 </span>
-                <span class="category-badge">{{ item.jobCategoryLabel }}</span>
-                <span class="category-badge light">{{ item.recruitmentCategoryLabel }}</span>
-                <span v-if="item.isApplied" class="applied-badge">지원 완료</span>
-                <!-- TODO: 목록 API에 applicationStatus가 제공되면 지원 상세 상태 배지를 추가한다. -->
-                <span v-if="item.canApply" class="available-badge">지원 가능</span>
               </div>
-
-              <button
-                type="button"
-                :class="['bookmark-button', { bookmarked: item.isBookmarked }]"
-                :aria-label="item.isBookmarked ? '찜 해제' : '찜하기'"
-                :aria-pressed="item.isBookmarked"
-                :disabled="bookmarkingIds.has(item.recruitmentId)"
-                @click="handleBookmark(item)"
-              >
-                <span aria-hidden="true">{{ item.isBookmarked ? '♥' : '♡' }}</span>
-                {{ bookmarkingIds.has(item.recruitmentId) ? '처리 중' : item.isBookmarked ? '찜됨' : '찜' }}
-              </button>
             </div>
 
-            <p class="company-name">{{ item.companyName || '기업 정보 없음' }}</p>
-            <button type="button" class="title-button" @click="goToDetail(item.recruitmentId)">
-              {{ item.title || '제목 없는 공고' }}
-            </button>
             <p class="summary">{{ item.summary || '등록된 요약이 없습니다.' }}</p>
 
-            <div v-if="item.techStacks.length" class="tech-stack-row">
-              <span v-for="techStack in item.techStacks" :key="techStack" class="tech-tag">
-                {{ techStack }}
-              </span>
-            </div>
-            <p v-else class="tech-stack-empty">등록된 기술 스택이 없습니다.</p>
-
-            <dl class="information-row">
-              <div>
-                <dt>예산</dt>
-                <dd>{{ formatBudget(item.budget) }}</dd>
+            <dl class="information-panel">
+              <div class="information-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <ellipse cx="12" cy="5" rx="7" ry="3" />
+                  <path d="M5 5v5c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 10v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5M5 15v4c0 1.7 3.1 3 7 3s7-1.3 7-3v-4" />
+                </svg>
+                <div>
+                  <dt>예산</dt>
+                  <dd>{{ formatBudget(item.budget) }}</dd>
+                </div>
               </div>
-              <div>
-                <dt>근무 위치</dt>
-                <dd>{{ item.workLocation || '협의' }}</dd>
+              <div class="information-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M16 3v4M8 3v4M3 10h18" />
+                </svg>
+                <div>
+                  <dt>예상 계약 기간</dt>
+                  <dd>{{ formatDateRange(item.contractStartAt, item.contractEndAt) }}</dd>
+                </div>
               </div>
-              <div>
-                <dt>모집 기간</dt>
-                <dd>{{ formatDateRange(item.recruitmentStartAt, item.recruitmentEndAt) }}</dd>
+              <div class="information-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+                <div>
+                  <dt>마감일</dt>
+                  <dd>{{ formatDate(item.recruitmentEndAt) }}</dd>
+                </div>
               </div>
-              <div>
-                <dt>계약 기간</dt>
-                <dd>{{ formatDateRange(item.contractStartAt, item.contractEndAt) }}</dd>
+              <div class="information-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="2.5" />
+                </svg>
+                <div>
+                  <dt>지원자</dt>
+                  <dd>{{ item.applicantCount.toLocaleString('ko-KR') }}명</dd>
+                </div>
               </div>
             </dl>
-          </div>
 
-          <div class="card-actions">
-            <span v-if="item.isApplied" class="application-state">이미 지원한 공고입니다.</span>
-            <span v-else-if="item.canApply" class="application-state available">현재 지원할 수 있습니다.</span>
-            <span v-else class="application-state">현재 지원할 수 없는 공고입니다.</span>
-            <button type="button" class="detail-button" @click="goToDetail(item.recruitmentId)">
-              상세 보기
-            </button>
+            <div class="card-footer">
+              <div v-if="item.techStacks.length" class="tech-stack-row">
+                <span v-for="techStack in item.techStacks" :key="techStack" class="tech-tag">
+                  {{ techStack }}
+                </span>
+              </div>
+              <p v-else class="tech-stack-empty">등록된 기술 스택이 없습니다.</p>
+
+            <div class="action-buttons">
+              <button type="button" class="detail-button" @click="goToDetail(item.recruitmentId)">
+                상세 보기
+              </button>
+              <button
+                type="button"
+                class="apply-button"
+                :disabled="item.isApplied || !item.canApply"
+                @click="goToApply(item.recruitmentId)"
+              >
+                {{ item.isApplied ? '지원 완료' : item.canApply ? '지원하기' : '지원 불가' }}
+              </button>
+            </div>
+            </div>
           </div>
         </article>
       </div>
@@ -355,6 +402,10 @@ function goToDetail(recruitmentId) {
   router.push({ name: 'RecruitmentDetail', params: { id: recruitmentId } })
 }
 
+function goToApply(recruitmentId) {
+  router.push({ name: 'RecruitmentApply', params: { recruitmentId } })
+}
+
 function formatDateRange(startAt, endAt) {
   if (!startAt && !endAt) return '미정'
   return `${formatDate(startAt)} ~ ${formatDate(endAt)}`
@@ -404,37 +455,46 @@ function getRecruitmentError(error, fallback) {
 .reset-button { border-color: #d1d5db; color: #6b7280; }
 .result-summary { margin-bottom: 10px; color: #6b7280; font-size: 13px; }
 .recruitment-list { display: grid; gap: 14px; }
-.recruitment-card { border: 1px solid #e5e7eb; border-radius: 12px; background: white; overflow: hidden; }
-.card-main { padding: 24px; }
+.recruitment-card { border: 1px solid #e5e7eb; border-radius: 12px; background: white; overflow: hidden; box-shadow: 0 2px 8px rgba(15, 23, 42, .05); transition: border-color .15s, box-shadow .15s; }
+.recruitment-card:hover { border-color: #d1d5db; box-shadow: 0 6px 18px rgba(15, 23, 42, .08); }
+.card-main { padding: 22px 24px 16px; }
 .card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.badge-row { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 7px; }
-.status-badge, .category-badge, .applied-badge, .available-badge, .tech-tag { min-height: 25px; padding: 0 9px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; }
+.title-area { min-width: 0; }
+.status-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: 0 0 auto; }
+.status-badge, .applied-badge, .tech-tag { min-height: 25px; padding: 0 9px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; }
 .status-open { background: #dcfce7; color: #15803d; }
 .status-closed, .status-expired { background: #f3f4f6; color: #4b5563; }
 .status-cancelled, .status-unknown { background: #fee2e2; color: #991b1b; }
-.category-badge { background: #e8edf5; color: #1a233d; }
-.category-badge.light { background: #f3f4f6; color: #6b7280; }
 .applied-badge { background: #ede9fe; color: #6d28d9; }
-.available-badge { background: #ecfdf5; color: #047857; }
-.bookmark-button { min-width: 72px; height: 36px; padding: 0 11px; border: 1px solid #d1d5db; border-radius: 7px; background: white; color: #6b7280; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.bookmark-button span { margin-right: 3px; font-size: 16px; }
-.bookmark-button.bookmarked { border-color: #fda4af; background: #fff1f2; color: #e11d48; }
+.bookmark-button { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #94a3b8; display: grid; place-items: center; cursor: pointer; }
+.bookmark-button span { font-size: 23px; line-height: 1; }
+.bookmark-button:hover { background: #f8fafc; color: #64748b; }
+.bookmark-button.bookmarked { color: #e11d48; }
 .bookmark-button:disabled { opacity: .55; cursor: not-allowed; }
-.company-name { margin: 0 0 5px; color: #6b7280; font-size: 13px; font-weight: 600; }
-.title-button { padding: 0; border: 0; background: none; color: #1a233d; font-size: 19px; font-weight: 700; text-align: left; cursor: pointer; }
+.title-button { padding: 0; border: 0; background: none; color: #1a233d; font-size: 19px; font-weight: 700; line-height: 1.4; text-align: left; cursor: pointer; }
 .title-button:hover { text-decoration: underline; }
-.summary { margin: 7px 0 14px; color: #6b7280; font-size: 14px; line-height: 1.6; }
-.tech-stack-row { margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 6px; }
-.tech-tag { background: #f0f4f9; color: #4a6fa5; font-weight: 500; }
-.tech-stack-empty { margin: 0 0 16px; color: #9ca3af; font-size: 12px; }
-.information-row { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-.information-row div { min-width: 0; }
-.information-row dt { margin-bottom: 4px; color: #9ca3af; font-size: 11px; }
-.information-row dd { margin: 0; color: #374151; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
-.card-actions { min-height: 60px; padding: 12px 18px; border-top: 1px solid #e5e7eb; background: #fafafa; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.application-state { color: #6b7280; font-size: 12px; }
-.application-state.available { color: #047857; font-weight: 600; }
-.detail-button { min-height: 36px; padding: 0 14px; border: 1px solid #1a233d; border-radius: 6px; background: #1a233d; color: white; font-size: 12px; font-weight: 600; cursor: pointer; }
+.meta-row { margin-top: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #7c8799; font-size: 12px; }
+.meta-item { display: inline-flex; align-items: center; gap: 5px; }
+.meta-item svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.meta-separator { color: #cbd5e1; }
+.summary { margin: 14px 0 16px; color: #6b7280; font-size: 13px; line-height: 1.6; }
+.information-panel { margin: 0; padding: 13px 14px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fcfcfd; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.information-item { min-width: 0; padding: 0 14px; border-right: 1px solid #e5e7eb; display: flex; align-items: center; gap: 11px; }
+.information-item:first-child { padding-left: 0; }
+.information-item:last-child { padding-right: 0; border-right: 0; }
+.information-item > svg { width: 22px; height: 22px; fill: none; stroke: #64748b; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; flex: 0 0 auto; }
+.information-item div { min-width: 0; }
+.information-item dt { margin-bottom: 3px; color: #9ca3af; font-size: 10px; }
+.information-item dd { margin: 0; color: #374151; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.card-footer { min-height: 48px; padding-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.tech-stack-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.tech-tag { background: #eef1f6; color: #334155; font-weight: 500; }
+.tech-stack-empty { margin: 0; color: #9ca3af; font-size: 11px; }
+.action-buttons { display: flex; gap: 8px; }
+.detail-button, .apply-button { min-height: 36px; padding: 0 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.detail-button { border: 1px solid #cbd5e1; background: white; color: #334155; }
+.apply-button { border: 1px solid #1a233d; background: #1a233d; color: white; }
+.apply-button:disabled { border-color: #d1d5db; background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
 .state-card, .empty-state { min-height: 330px; padding: 40px; border: 1px solid #e5e7eb; border-radius: 12px; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .state-card { color: #6b7280; }
 .state-card p { margin: 14px 0 0; }
@@ -448,6 +508,6 @@ function getRecruitmentError(error, fallback) {
 .pagination button { height: 34px; padding: 0 13px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #374151; cursor: pointer; }
 .pagination button:disabled { opacity: .4; cursor: not-allowed; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 800px) { .page { padding: 24px 18px; } .information-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .search-row { flex-wrap: wrap; } .search-input { flex-basis: 100%; } .search-button { width: 100%; } .filter-select, .sort-select, .reset-button { width: 100%; } .card-heading { align-items: stretch; flex-direction: column; } .bookmark-button { align-self: flex-start; } .information-row { grid-template-columns: 1fr; } .card-actions { align-items: stretch; flex-direction: column; } .detail-button { width: 100%; } }
+@media (max-width: 800px) { .page { padding: 24px 18px; } .information-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); } .information-item { padding: 12px; border-right: 0; border-bottom: 1px solid #e5e7eb; } .information-item:nth-child(odd) { padding-left: 0; border-right: 1px solid #e5e7eb; } .information-item:nth-child(even) { padding-right: 0; } .information-item:nth-last-child(-n + 2) { border-bottom: 0; } }
+@media (max-width: 560px) { .search-row { flex-wrap: wrap; } .search-input { flex-basis: 100%; } .search-button { width: 100%; } .filter-select, .sort-select, .reset-button { width: 100%; } .card-heading { flex-direction: column; } .status-actions { width: 100%; justify-content: flex-start; } .information-panel { grid-template-columns: 1fr; } .information-item, .information-item:nth-child(odd), .information-item:nth-child(even) { padding: 12px 0; border-right: 0; border-bottom: 1px solid #e5e7eb; } .information-item:first-child { padding-top: 0; } .information-item:last-child { padding-bottom: 0; border-bottom: 0; } .card-footer { align-items: stretch; flex-direction: column; } .action-buttons { display: grid; grid-template-columns: 1fr 1fr; } }
 </style>

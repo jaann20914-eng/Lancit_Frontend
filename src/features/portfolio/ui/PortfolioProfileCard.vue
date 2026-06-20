@@ -11,14 +11,19 @@
           <div>
             <div class="identity-row">
               <h3>{{ profile.displayName || '이름 미등록' }}</h3>
-              <span :class="['visibility', profile.isPortfolioPublic ? 'public' : 'private']">
+              <span
+                v-if="showVisibility"
+                :class="['visibility', profile.isPortfolioPublic ? 'public' : 'private']"
+              >
                 {{ profile.isPortfolioPublic ? '전체 공개' : '비공개' }}
               </span>
             </div>
             <p class="meta">{{ jobCategoryLabel }} · {{ profile.freelancerEmail }}</p>
           </div>
 
-          <button type="button" class="edit-button" @click="$emit('edit')">프로필 수정</button>
+          <button v-if="editable" type="button" class="edit-button" @click="$emit('edit')">
+            프로필 수정
+          </button>
         </div>
 
         <p :class="['intro', { empty: !profile.intro }]">
@@ -49,6 +54,14 @@ const props = defineProps({
   profileImageUrl: {
     type: String,
     default: '',
+  },
+  editable: {
+    type: Boolean,
+    default: true,
+  },
+  showVisibility: {
+    type: Boolean,
+    default: true,
   },
 })
 

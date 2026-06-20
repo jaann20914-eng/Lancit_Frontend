@@ -1,9 +1,25 @@
 <template>
-  <article class="portfolio-card" tabindex="0" @click="emitView" @keydown.enter.self="emitView">
+  <article
+    :class="['portfolio-card', { selected, readonly }]"
+    tabindex="0"
+    :role="selectable ? 'checkbox' : undefined"
+    :aria-checked="selectable ? selected : undefined"
+    :aria-disabled="selectable ? disabled : undefined"
+    @click="handleCardClick"
+    @keydown.enter.self.prevent="handleCardClick"
+  >
     <div class="card-banner">
       <img v-if="resolvedBannerUrl" :src="resolvedBannerUrl" :alt="`${title} 배너`" />
-      <span class="category banner-category">{{ categoryLabel }}</span>
-      <div class="card-actions">
+      <label v-if="selectable" class="selection-control" @click.stop>
+        <input
+          type="checkbox"
+          :checked="selected"
+          :disabled="disabled"
+          @change="$emit('select', portfolio, $event.target.checked)"
+        />
+        <span>{{ selected ? '선택됨' : '선택' }}</span>
+      </label>
+      <div v-else-if="!readonly" class="card-actions">
         <button type="button" class="edit-button" @click.stop="$emit('edit', portfolio)">수정</button>
         <button
           type="button"
@@ -29,7 +45,9 @@
           </svg>
           {{ period }}
         </span>
-        <span :class="['visibility', visibility.className]">{{ visibility.label }}</span>
+        <span v-if="showVisibility" :class="['visibility', visibility.className]">
+          {{ visibility.label }}
+        </span>
       </div>
     </div>
   </article>
@@ -50,14 +68,35 @@ const props = defineProps({
   bannerUrl: {
     type: String,
     default: ''
+  },
+  selectable: {
+    type: Boolean,
+    default: false
+  },
+  selected: {
+    type: Boolean,
+    default: false
+  },
+  disabled: {
+    type: Boolean,
+    default: false
+  },
+  readonly: {
+    type: Boolean,
+    default: false
+  },
+  showVisibility: {
+    type: Boolean,
+    default: true
   }
 })
 
-const emit = defineEmits(['view', 'edit', 'delete'])
+const emit = defineEmits(['view', 'edit', 'delete', 'select'])
 
 const CATEGORY_LABELS = {
   WEB_APP: '웹/앱',
   DESIGN: '디자인',
+  VIDEO: '영상',
   BRANDING: '브랜딩',
   MARKETING: '마케팅',
   PLANNING: '기획'
@@ -99,7 +138,12 @@ function formatDate(value) {
   return String(value).slice(0, 10).replaceAll('-', '.')
 }
 
-function emitView() {
+function handleCardClick() {
+  if (props.selectable) {
+    if (props.disabled) return
+    emit('select', props.portfolio, !props.selected)
+    return
+  }
   emit('view', props.portfolio)
 }
 </script>
@@ -122,6 +166,17 @@ function emitView() {
   box-shadow: 0 6px 16px rgba(26, 35, 61, 0.08);
   transform: translateY(-2px);
   outline: none;
+}
+
+.portfolio-card.selected {
+  border-color: var(--color-primary, #1a233d);
+  box-shadow: 0 0 0 2px rgba(26, 35, 61, 0.12);
+}
+
+.portfolio-card[aria-disabled='true'] {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .card-banner {
@@ -166,13 +221,6 @@ function emitView() {
 .category {
   background: var(--color-primary-light, #e8edf5);
   color: var(--color-primary, #1a233d);
-}
-
-.banner-category {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  background: rgba(255, 255, 255, 0.92);
 }
 
 .body-category {
@@ -241,6 +289,35 @@ h2 {
   right: 8px;
   display: flex;
   gap: 6px;
+}
+
+.selection-control {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  color: #374151;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.selection-control input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--color-primary, #1a233d);
+}
+
+.selection-control:has(input:disabled) {
+  cursor: not-allowed;
 }
 
 .card-actions button {
