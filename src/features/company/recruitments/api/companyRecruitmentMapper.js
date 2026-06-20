@@ -90,12 +90,12 @@ export function mapRecruitmentFromApi(dto) {
 
   const viewStatus = dto.viewStatus ?? dto.status ?? null
   return {
-    recruitmentId: dto.recruitmentId ?? null,
+    recruitmentId: dto.recruitmentId ?? dto.id ?? null,
     title: dto.title ?? '',
     summary: dto.summary ?? '',
     content: dto.content ?? '',
     requirements: dto.requirements ?? '',
-    companyEmail: dto.companyEmail ?? '',
+    companyEmail: dto.companyEmail ?? dto.company?.email ?? dto.ownerEmail ?? dto.writerEmail ?? '',
     companyName: dto.companyName ?? '',
     imageFileId: dto.imageFileId ?? null,
     jobCategory: dto.jobCategory ?? null,
@@ -126,15 +126,17 @@ export function mapRecruitmentPageResponse(data) {
   const content = Array.isArray(data?.content)
     ? data.content.map(mapRecruitmentFromApi).filter(Boolean)
     : []
+  const page = Number(data?.page ?? (data?.number !== undefined ? Number(data.number) + 1 : 1))
+  const totalPages = Number(data?.totalPages ?? (content.length ? 1 : 0))
 
   return {
     content,
-    page: Number(data?.page ?? 1),
+    page,
     size: Number(data?.size ?? content.length),
     totalElements: Number(data?.totalElements ?? content.length),
-    totalPages: Number(data?.totalPages ?? (content.length ? 1 : 0)),
-    hasNext: Boolean(data?.hasNext),
-    hasPrev: Boolean(data?.hasPrev),
+    totalPages,
+    hasNext: data?.hasNext === undefined ? page < totalPages : Boolean(data.hasNext),
+    hasPrev: data?.hasPrev === undefined ? page > 1 : Boolean(data.hasPrev),
   }
 }
 

@@ -14,6 +14,11 @@ export async function getMyRecruitments(params = {}) {
   return mapRecruitmentPageResponse(unwrapResponse(response))
 }
 
+export async function getAllRecruitments(params = {}) {
+  const response = await httpClient.get('/api/recruitments', { params })
+  return mapRecruitmentPageResponse(unwrapResponse(response))
+}
+
 export async function getCompanyRecruitment(recruitmentId) {
   const response = await httpClient.get(`/api/recruitments/${recruitmentId}`)
   return mapRecruitmentFromApi(unwrapResponse(response))

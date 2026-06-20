@@ -3,10 +3,28 @@
     <header class="page-header">
       <div>
         <h1>공고 관리</h1>
-        <p>등록한 공고와 지원 현황을 한눈에 관리할 수 있습니다.</p>
+        <p>{{ activeTabDescription }}</p>
       </div>
       <button type="button" class="primary-button" @click="goToCreate">＋ 공고 등록</button>
     </header>
+
+    <div class="scope-tabs" role="tablist" aria-label="공고 조회 범위">
+      <button
+        v-for="tab in SCOPE_TABS"
+        :key="tab.value"
+        type="button"
+        role="tab"
+        :aria-selected="activeTab === tab.value"
+        :class="['scope-tab', { active: activeTab === tab.value }]"
+        @click="changeScope(tab.value)"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <p v-if="activeTab === 'ALL'" class="scope-notice">
+      전체 공고 모드입니다. 다른 기업의 공고는 조회만 가능합니다.
+    </p>
 
     <section class="filter-panel" aria-label="공고 검색 및 정렬">
       <div class="status-tabs" role="tablist" aria-label="공고 상태">
@@ -50,9 +68,11 @@
 
     <section v-else-if="!recruitments.length" class="empty-state">
       <div class="empty-icon" aria-hidden="true">＋</div>
-      <h2>등록한 공고가 없습니다.</h2>
-      <p>새 공고를 등록하고 프리랜서를 모집해보세요.</p>
-      <button type="button" class="primary-button" @click="goToCreate">공고 등록</button>
+      <h2>{{ activeTab === 'MY' ? '등록한 공고가 없습니다.' : '조회된 공고가 없습니다.' }}</h2>
+      <p>{{ emptyStateDescription }}</p>
+      <button v-if="activeTab === 'MY'" type="button" class="primary-button" @click="goToCreate">
+        공고 등록
+      </button>
     </section>
 
     <template v-else>
@@ -65,6 +85,9 @@
               <span :class="['status-badge', item.statusMeta.className]">{{ item.statusMeta.label }}</span>
               <span class="category-badge">{{ item.jobCategoryLabel }}</span>
               <span class="category-badge light">{{ item.recruitmentCategoryLabel }}</span>
+              <span v-if="activeTab === 'ALL'" class="company-badge">
+                {{ item.companyName || item.companyEmail || '기업 정보 없음' }}
+              </span>
             </div>
             <button type="button" class="title-button" @click="goToDetail(item.recruitmentId)">
               {{ item.title || '제목 없는 공고' }}
@@ -97,30 +120,41 @@
 
           <div class="card-actions">
             <button type="button" class="action-button" @click="goToDetail(item.recruitmentId)">상세 보기</button>
-            <button
-              type="button"
-              class="action-button"
-              :disabled="!item.canEdit"
-              :title="item.canEdit ? '' : '지원자가 있는 공고는 수정할 수 없습니다.'"
-              @click="goToEdit(item.recruitmentId)"
-            >
-              수정
-            </button>
-            <button type="button" class="action-button primary-outline" @click="goToApplicants(item.recruitmentId)">
-              지원자 보기 ({{ item.applicantCount }})
-            </button>
-            <select
-              v-if="item.canChangeStatus"
-              class="action-select"
-              aria-label="공고 상태 변경"
-              :disabled="changingStatusId === item.recruitmentId"
-              @change="handleStatusChange(item, $event)"
-            >
-              <option value="">상태 변경</option>
-              <option v-if="item.status !== 'OPEN'" value="OPEN">모집중으로 변경</option>
-              <option v-if="item.status !== 'CLOSED'" value="CLOSED">마감으로 변경</option>
-              <option v-if="item.status !== 'CANCELLED'" value="CANCELLED">취소로 변경</option>
-            </select>
+            <template v-if="canManage(item)">
+              <button
+                type="button"
+                class="action-button"
+                :disabled="!item.canEdit"
+                :title="item.canEdit ? '' : '지원자가 있는 공고는 수정할 수 없습니다.'"
+                @click="goToEdit(item)"
+              >
+                수정
+              </button>
+              <button type="button" class="action-button primary-outline" @click="goToApplicants(item)">
+                지원자 보기 ({{ item.applicantCount }})
+              </button>
+              <select
+                v-if="item.canChangeStatus"
+                class="action-select"
+                aria-label="공고 상태 변경"
+                :disabled="changingStatusId === item.recruitmentId"
+                @change="handleStatusChange(item, $event)"
+              >
+                <option value="">상태 변경</option>
+                <option v-if="item.status !== 'OPEN'" value="OPEN">모집중으로 변경</option>
+                <option v-if="item.status !== 'CLOSED'" value="CLOSED">마감으로 변경</option>
+                <option v-if="item.status !== 'CANCELLED'" value="CANCELLED">취소로 변경</option>
+              </select>
+              <button
+                type="button"
+                class="action-button danger"
+                :disabled="!item.canDelete || deletingId === item.recruitmentId"
+                :title="item.canDelete ? '' : '지원자가 있는 공고는 삭제할 수 없습니다.'"
+                @click="handleDelete(item)"
+              >
+                {{ deletingId === item.recruitmentId ? '삭제 중...' : '삭제' }}
+              </button>
+            </template>
           </div>
         </article>
       </div>
@@ -135,9 +169,12 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/features/auth/model/authStore.js'
 import {
+  deleteCompanyRecruitment,
+  getAllRecruitments,
   getMyRecruitments,
   updateCompanyRecruitmentStatus,
 } from '@/features/company/recruitments/api/companyRecruitmentApi.js'
@@ -149,29 +186,54 @@ import {
   RECRUITMENT_STATUS_OPTIONS,
 } from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
 
+const SCOPE_TABS = [
+  { value: 'MY', label: '내 공고' },
+  { value: 'ALL', label: '전체 공고' },
+]
+
+const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const recruitments = ref([])
 const isLoading = ref(true)
 const errorMessage = ref('')
 const searchKeyword = ref('')
 const changingStatusId = ref(null)
+const deletingId = ref(null)
+const activeTab = ref(route.query.scope === 'all' ? 'ALL' : 'MY')
 const filters = reactive({ status: '', keyword: '', sort: 'LATEST' })
 const pagination = reactive({ page: 1, size: 10, totalElements: 0, totalPages: 0, hasNext: false, hasPrev: false })
+let latestRequestId = 0
+
+const activeTabDescription = computed(() =>
+  activeTab.value === 'MY'
+    ? '내 회사가 등록한 공고를 관리합니다.'
+    : '다른 기업의 공고도 확인할 수 있습니다.',
+)
+const emptyStateDescription = computed(() =>
+  activeTab.value === 'MY'
+    ? '새 공고를 등록하고 프리랜서를 모집해보세요.'
+    : '검색어나 필터를 변경한 뒤 다시 확인해주세요.',
+)
 
 onMounted(loadRecruitments)
 
 async function loadRecruitments() {
+  const requestId = ++latestRequestId
+  const requestedTab = activeTab.value
   isLoading.value = true
   errorMessage.value = ''
   try {
-    const data = await getMyRecruitments({
+    const getRecruitments = requestedTab === 'MY' ? getMyRecruitments : getAllRecruitments
+    const data = await getRecruitments({
       page: pagination.page,
       size: pagination.size,
       status: filters.status || undefined,
       keyword: filters.keyword || undefined,
       sort: filters.sort,
     })
+    if (requestId !== latestRequestId || requestedTab !== activeTab.value) return
     recruitments.value = data.content
     Object.assign(pagination, {
       page: data.page,
@@ -182,11 +244,26 @@ async function loadRecruitments() {
       hasPrev: data.hasPrev,
     })
   } catch (error) {
+    if (requestId !== latestRequestId || requestedTab !== activeTab.value) return
     recruitments.value = []
     errorMessage.value = getCompanyApiError(error, '공고를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
   } finally {
-    isLoading.value = false
+    if (requestId === latestRequestId) isLoading.value = false
   }
+}
+
+function changeScope(scope) {
+  if (activeTab.value === scope) return
+  activeTab.value = scope
+  errorMessage.value = ''
+  recruitments.value = []
+  pagination.page = 1
+
+  const query = { ...route.query }
+  if (scope === 'ALL') query.scope = 'all'
+  else delete query.scope
+  router.replace({ query })
+  loadRecruitments()
 }
 
 function changeStatusFilter(status) {
@@ -214,7 +291,7 @@ function changePage(page) {
 async function handleStatusChange(item, event) {
   const status = event.target.value
   event.target.value = ''
-  if (!status) return
+  if (!status || !canManage(item)) return
 
   const label = getRecruitmentStatusMeta(status).label
   if (!confirm(`'${item.title}' 공고를 '${label}' 상태로 변경하시겠습니까?`)) return
@@ -230,20 +307,55 @@ async function handleStatusChange(item, event) {
   }
 }
 
+async function handleDelete(item) {
+  if (!canManage(item) || !item.canDelete) return
+  if (!confirm(`'${item.title}' 공고를 삭제하시겠습니까?`)) return
+
+  deletingId.value = item.recruitmentId
+  try {
+    await deleteCompanyRecruitment(item.recruitmentId)
+    await loadRecruitments()
+  } catch (error) {
+    alert(getCompanyApiError(error, '공고를 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.'))
+  } finally {
+    deletingId.value = null
+  }
+}
+
+function normalizeEmail(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : ''
+}
+
+function isOwner(item) {
+  const currentCompanyEmail = normalizeEmail(authStore.email)
+  const recruitmentCompanyEmail = normalizeEmail(item?.companyEmail)
+  return Boolean(currentCompanyEmail && recruitmentCompanyEmail && currentCompanyEmail === recruitmentCompanyEmail)
+}
+
+function canManage(item) {
+  return activeTab.value === 'MY' && isOwner(item)
+}
+
 function goToCreate() {
   router.push({ name: 'CompanyRecruitmentCreate' })
 }
 
 function goToDetail(recruitmentId) {
-  router.push({ name: 'CompanyRecruitmentDetail', params: { recruitmentId } })
+  router.push({
+    name: 'CompanyRecruitmentDetail',
+    params: { recruitmentId },
+    query: activeTab.value === 'ALL' ? { scope: 'all' } : {},
+  })
 }
 
-function goToEdit(recruitmentId) {
-  router.push({ name: 'CompanyRecruitmentEdit', params: { recruitmentId } })
+function goToEdit(item) {
+  if (!canManage(item)) return
+  router.push({ name: 'CompanyRecruitmentEdit', params: { recruitmentId: item.recruitmentId } })
 }
 
-function goToApplicants(recruitmentId) {
-  router.push({ name: 'CompanyApplicantList', params: { recruitmentId } })
+function goToApplicants(item) {
+  if (!canManage(item)) return
+  router.push({ name: 'CompanyApplicantList', params: { recruitmentId: item.recruitmentId } })
 }
 </script>
 
@@ -254,6 +366,10 @@ function goToApplicants(recruitmentId) {
 .page-header p { margin: 0; color: #6b7280; font-size: 14px; }
 .primary-button { min-height: 42px; padding: 0 17px; border: 0; border-radius: 6px; background: #1a233d; color: white; font-size: 14px; font-weight: 600; cursor: pointer; }
 .primary-button:hover { background: #253a63; }
+.scope-tabs { margin-bottom: 12px; border-bottom: 1px solid #d1d5db; display: flex; gap: 4px; }
+.scope-tab { min-width: 100px; padding: 13px 18px 11px; border: 0; border-bottom: 3px solid transparent; background: none; color: #6b7280; font-size: 14px; font-weight: 600; cursor: pointer; }
+.scope-tab.active { border-bottom-color: #1a233d; color: #1a233d; }
+.scope-notice { margin: 0 0 16px; padding: 12px 14px; border-radius: 7px; background: #f0f4f9; color: #4a6fa5; font-size: 13px; }
 .filter-panel { margin-bottom: 22px; border: 1px solid #e5e7eb; border-radius: 10px; background: white; }
 .status-tabs { padding: 0 18px; border-bottom: 1px solid #e5e7eb; display: flex; overflow-x: auto; }
 .status-tab { padding: 15px 16px 13px; border: 0; border-bottom: 2px solid transparent; background: none; color: #6b7280; font-size: 13px; cursor: pointer; white-space: nowrap; }
@@ -269,12 +385,13 @@ function goToApplicants(recruitmentId) {
 .recruitment-card { border: 1px solid #e5e7eb; border-radius: 12px; background: white; overflow: hidden; }
 .card-main { padding: 24px; }
 .badge-row { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 7px; }
-.status-badge, .category-badge, .tech-tag { min-height: 25px; padding: 0 9px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; }
+.status-badge, .category-badge, .company-badge, .tech-tag { min-height: 25px; padding: 0 9px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; }
 .status-open { background: #dcfce7; color: #15803d; }
 .status-closed, .status-expired { background: #f3f4f6; color: #4b5563; }
 .status-cancelled, .status-unknown { background: #fee2e2; color: #991b1b; }
 .category-badge { background: #e8edf5; color: #1a233d; }
 .category-badge.light { background: #f3f4f6; color: #6b7280; }
+.company-badge { background: #fff7ed; color: #9a3412; }
 .title-button { padding: 0; border: 0; background: none; color: #1a233d; font-size: 19px; font-weight: 700; text-align: left; cursor: pointer; }
 .title-button:hover { text-decoration: underline; }
 .summary { margin: 7px 0 14px; color: #6b7280; font-size: 14px; line-height: 1.6; }
@@ -288,6 +405,7 @@ function goToApplicants(recruitmentId) {
 .card-actions { padding: 13px 18px; border-top: 1px solid #e5e7eb; background: #fafafa; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .action-button, .action-select { min-height: 34px; padding: 0 11px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #4b5563; font-size: 12px; cursor: pointer; }
 .action-button.primary-outline { border-color: #1a233d; color: #1a233d; font-weight: 600; }
+.action-button.danger { border-color: #fecaca; color: #dc2626; }
 .action-button:disabled, .action-select:disabled { opacity: .45; cursor: not-allowed; }
 .state-card, .empty-state { min-height: 330px; padding: 40px; border: 1px solid #e5e7eb; border-radius: 12px; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .state-card { color: #6b7280; }

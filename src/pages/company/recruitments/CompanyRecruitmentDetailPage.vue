@@ -2,7 +2,7 @@
   <div class="page">
     <div class="top-actions">
       <button type="button" class="back-button" @click="goToList">← 공고 목록</button>
-      <div v-if="recruitment" class="management-actions">
+      <div v-if="recruitment && isOwner" class="management-actions">
         <button type="button" class="applicants-button" @click="goToApplicants">
           지원자 보기 ({{ recruitment.applicantCount }})
         </button>
@@ -91,15 +91,19 @@
 
       <footer class="detail-footer">
         <span>최근 수정 {{ formatDateTime(recruitment.updatedAt) }}</span>
-        <span v-if="!recruitment.canEdit" class="permission-note">지원자가 있는 공고는 내용 수정 및 삭제가 제한됩니다.</span>
+        <span v-if="isOwner && !recruitment.canEdit" class="permission-note">
+          지원자가 있는 공고는 내용 수정 및 삭제가 제한됩니다.
+        </span>
+        <span v-else-if="!isOwner" class="permission-note">다른 기업의 공고는 조회만 가능합니다.</span>
       </footer>
     </article>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/features/auth/model/authStore.js'
 import {
   deleteCompanyRecruitment,
   getCompanyRecruitment,
@@ -116,6 +120,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const recruitment = ref(null)
 const imageUrl = ref('')
@@ -125,6 +130,11 @@ const isChangingStatus = ref(false)
 const errorMessage = ref('')
 
 const recruitmentId = () => route.params.recruitmentId ?? route.params.id
+const isOwner = computed(() => {
+  const currentCompanyEmail = normalizeEmail(authStore.email)
+  const recruitmentCompanyEmail = normalizeEmail(recruitment.value?.companyEmail)
+  return Boolean(currentCompanyEmail && recruitmentCompanyEmail && currentCompanyEmail === recruitmentCompanyEmail)
+})
 
 watch(() => recruitmentId(), loadRecruitment, { immediate: true })
 
@@ -135,11 +145,6 @@ async function loadRecruitment() {
   try {
     const data = await getCompanyRecruitment(recruitmentId())
     if (!data) throw new Error('Invalid recruitment response')
-    if (!data.isMine) {
-      errorMessage.value = '본인이 등록한 공고만 관리할 수 있습니다.'
-      recruitment.value = null
-      return
-    }
     recruitment.value = data
     if (data.imageFileId !== null) {
       try {
@@ -164,7 +169,7 @@ function formatPeriod(start, end) {
 async function handleStatusChange(event) {
   const status = event.target.value
   event.target.value = ''
-  if (!status) return
+  if (!status || !isOwner.value || !recruitment.value?.canChangeStatus) return
   const label = getRecruitmentStatusMeta(status).label
   if (!confirm(`공고 상태를 '${label}'(으)로 변경하시겠습니까?`)) return
 
@@ -179,6 +184,7 @@ async function handleStatusChange(event) {
 }
 
 async function handleDelete() {
+  if (!isOwner.value || !recruitment.value?.canDelete) return
   if (!confirm(`'${recruitment.value.title}' 공고를 삭제하시겠습니까?`)) return
   isDeleting.value = true
   try {
@@ -191,9 +197,26 @@ async function handleDelete() {
   }
 }
 
-function goToList() { router.push({ name: 'CompanyRecruitmentList' }) }
-function goToEdit() { router.push({ name: 'CompanyRecruitmentEdit', params: { recruitmentId: recruitmentId() } }) }
-function goToApplicants() { router.push({ name: 'CompanyApplicantList', params: { recruitmentId: recruitmentId() } }) }
+function normalizeEmail(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : ''
+}
+
+function goToList() {
+  router.push({
+    name: 'CompanyRecruitmentList',
+    query: route.query.scope === 'all' ? { scope: 'all' } : {},
+  })
+}
+
+function goToEdit() {
+  if (!isOwner.value) return
+  router.push({ name: 'CompanyRecruitmentEdit', params: { recruitmentId: recruitmentId() } })
+}
+
+function goToApplicants() {
+  if (!isOwner.value) return
+  router.push({ name: 'CompanyApplicantList', params: { recruitmentId: recruitmentId() } })
+}
 </script>
 
 <style scoped>
