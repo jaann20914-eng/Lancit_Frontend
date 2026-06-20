@@ -74,7 +74,7 @@
         <div class="portfolio-thumb">
           <img v-if="item.bannerUrl" :src="item.bannerUrl" />
           <div v-else class="thumb-placeholder"></div>
-          <!-- <span class="thumb-tag">{{ categoryTagLabel(item.category) }}</span> -->
+          <span class="thumb-tag">{{ categoryTagLabel(item.category) }}</span>
         </div>
 
         <div class="portfolio-body">
@@ -141,10 +141,14 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 const pageSize = 4
 
-import { TALENT_TAB_OPTIONS, jobCategoryLabel } from '@/shared/constants/jobCategory.js'
-const jobCategoryTabs = TALENT_TAB_OPTIONS
+const jobCategoryMap = {
+  IT: 'IT', DESIGN: '디자이너', MARKETING: '마케팅', VIDEO: '영상',
+  MUSIC: '음악', EDUCATION: '교육', WRITING: '작문', ETC: '기타'
+}
 
-
+function jobCategoryLabel(code) {
+  return jobCategoryMap[code] || code || ''
+}
 
 // 포트폴리오 카테고리 라벨 (카드 본문 상단 태그)
 const portfolioCategoryMap = {
@@ -203,7 +207,13 @@ function changePage(p) {
 
 function goPortfolioDetail(portfolioId) {
   // 포트폴리오 상세는 다른 파트 - 라우팅만 연결
-  router.push({ name: 'TalentPortfolioDetail', params: { id: portfolioId } })
+  // from/freelancerEmail 쿼리로 "어디서 왔는지" 전달 -> 상세 페이지의 뒤로가기 버튼이
+  // 인재 상세(TalentDetail)로 돌아갈 수 있도록 함
+  router.push({
+    name: 'TalentPortfolioDetail',
+    params: { id: portfolioId },
+    query: { from: 'talent', freelancerEmail: freelancerEmail }
+  })
 }
 
 function goPropose() {
@@ -219,7 +229,7 @@ onMounted(() => {
 <style scoped>
 .page {
   padding: 32px;
-  max-width: 1100px;
+  max-width: 100%;
 }
 
 .back-link {
