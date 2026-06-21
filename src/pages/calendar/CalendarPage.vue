@@ -790,6 +790,7 @@ onMounted(loadCategories)
 .calendar-card :deep(.fc .fc-daygrid-day-number) { padding: 8px; color: #475569; font-size: 12px; text-decoration: none; }
 .calendar-card :deep(.fc .fc-day-sun .fc-daygrid-day-number) { color: #dc2626; }
 .calendar-card :deep(.fc .fc-day-sat .fc-daygrid-day-number) { color: #2563eb; }
+.calendar-card :deep(.fc .fc-daygrid-day:has(.calendar-holiday-event) .fc-daygrid-day-number) { color: #dc2626; }
 .calendar-card :deep(.fc .calendar-category-event) {
   border-color: var(--calendar-category-color, #64748b);
   background-color: var(--calendar-category-color, #64748b);
@@ -797,17 +798,22 @@ onMounted(loadCategories)
 }
 .calendar-card :deep(.fc .calendar-category-event:hover) { filter: brightness(0.92); }
 .calendar-card :deep(.fc .calendar-holiday-event) {
-  border-color: #fecaca;
-  background: #fff1f2;
-  color: #b91c1c;
+  --fc-event-text-color: #dc2626;
+  border-color: transparent;
+  background: transparent;
+  color: #dc2626;
   cursor: default;
+  font-size: 12px;
+  text-align: right;
 }
 .calendar-card :deep(.fc .calendar-holiday-substitute) {
-  border-color: #fed7aa;
-  background: #fff7ed;
-  color: #c2410c;
+  border-color: transparent;
+  background: transparent;
+  color: #dc2626;
 }
 .calendar-card :deep(.fc .fc-event-title) { font-weight: 600; }
+.calendar-card :deep(.fc .calendar-holiday-event .fc-event-title) { font-weight: 400; }
+.calendar-card :deep(.fc .fc-day-other .calendar-holiday-event) { opacity: 0.3; }
 
 @media (max-width: 980px) {
   .calendar-page { padding: 30px 24px 44px; }
