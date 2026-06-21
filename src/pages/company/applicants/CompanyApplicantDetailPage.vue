@@ -93,8 +93,10 @@ import {
 } from '@/features/company/recruitments/api/companyRecruitmentApi.js'
 import { getCompanyApiError } from '@/features/company/recruitments/api/companyRecruitmentError.js'
 import { formatDateTime } from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
-import { getPortfolioFileUrl } from '@/features/portfolio/api/portfolioApi.js'
-import { getPortfolioProfileImageUrl } from '@/features/portfolio/api/portfolioProfileApi.js'
+import {
+  getCompanyApplicationPortfolioFileUrl,
+  getCompanyApplicationProfileImageUrl,
+} from '@/features/applications/api/applicationApi.js'
 import PortfolioCard from '@/features/portfolio/ui/PortfolioCard.vue'
 import PortfolioProfileCard from '@/features/portfolio/ui/PortfolioProfileCard.vue'
 
@@ -149,12 +151,17 @@ async function loadSubmittedAssetUrls(data) {
   const profileImagePromise =
     profileFileId === null || profileFileId === undefined
       ? Promise.resolve('')
-      : getPortfolioProfileImageUrl(profileFileId).catch(() => '')
+      : getCompanyApplicationProfileImageUrl(recruitmentId(), applicationId()).catch(() => '')
 
   const bannerEntriesPromise = Promise.all(
     data.portfolios.map(async (portfolio) => {
       if (portfolio.bannerFileId === null || portfolio.bannerFileId === undefined) return null
-      const bannerUrl = await getPortfolioFileUrl(portfolio.bannerFileId).catch(() => '')
+      const bannerUrl = await getCompanyApplicationPortfolioFileUrl(
+        recruitmentId(),
+        applicationId(),
+        portfolio.portfolioId,
+        portfolio.bannerFileId,
+      ).catch(() => '')
       return bannerUrl ? [portfolio.portfolioId, bannerUrl] : null
     }),
   )

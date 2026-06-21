@@ -79,12 +79,11 @@
           v-model="categoryFilter"
           class="filter-select"
           aria-label="프로젝트 카테고리"
-          @change="loadPortfolios"
+          @change="resetPortfolioPage"
         >
           <option value="">전체</option>
           <option value="WEB_APP">웹/앱</option>
           <option value="DESIGN">디자인</option>
-          <option value="VIDEO">영상</option>
           <option value="BRANDING">브랜딩</option>
           <option value="MARKETING">마케팅</option>
           <option value="PLANNING">기획</option>
@@ -93,7 +92,7 @@
           v-model="sortType"
           class="filter-select"
           aria-label="프로젝트 정렬"
-          @change="loadPortfolios"
+          @change="resetPortfolioPage"
         >
           <option value="LATEST">최신순</option>
           <option value="OLDEST">오래된순</option>
@@ -122,18 +121,38 @@
         <p>검색 조건에 맞는 프로젝트가 없습니다.</p>
       </div>
 
-      <div v-else class="portfolio-grid">
-        <PortfolioCard
-          v-for="(portfolioItem, index) in visiblePortfolios"
-          :key="getPortfolioId(portfolioItem) ?? index"
-          :portfolio="portfolioItem"
-          :banner-url="portfolioBannerUrls[getPortfolioId(portfolioItem)]"
-          :is-deleting="String(deletingId) === String(getPortfolioId(portfolioItem))"
-          @view="goToDetail"
-          @edit="goToEdit"
-          @delete="handleDelete"
-        />
-      </div>
+      <template v-else>
+        <div class="portfolio-grid">
+          <PortfolioCard
+            v-for="(portfolioItem, index) in visiblePortfolios"
+            :key="getPortfolioId(portfolioItem) ?? index"
+            :portfolio="portfolioItem"
+            :banner-url="portfolioBannerUrls[getPortfolioId(portfolioItem)]"
+            :is-deleting="String(deletingId) === String(getPortfolioId(portfolioItem))"
+            @view="goToDetail"
+            @edit="goToEdit"
+            @delete="handleDelete"
+          />
+        </div>
+
+        <nav v-if="totalPages > 1" class="pagination" aria-label="포트폴리오 페이지">
+          <button
+            type="button"
+            :disabled="currentPage <= 1 || isLoading"
+            @click="changePage(currentPage - 1)"
+          >
+            이전
+          </button>
+          <span>{{ currentPage }} / {{ totalPages }}</span>
+          <button
+            type="button"
+            :disabled="currentPage >= totalPages || isLoading"
+            @click="changePage(currentPage + 1)"
+          >
+            다음
+          </button>
+        </nav>
+      </template>
     </section>
   </div>
 </template>
@@ -172,43 +191,13 @@ const portfolioBannerUrls = ref({})
 const keyword = ref('')
 const categoryFilter = ref('')
 const sortType = ref('LATEST')
+const currentPage = ref(1)
+const totalPages = ref(0)
 const isLoading = ref(true)
 const errorMessage = ref('')
 const deletingId = ref(null)
 
-const CATEGORY_LABELS = {
-  WEB_APP: '웹/앱',
-  DESIGN: '디자인',
-  VIDEO: '영상',
-  BRANDING: '브랜딩',
-  MARKETING: '마케팅',
-  PLANNING: '기획',
-}
-
-const visiblePortfolios = computed(() => {
-  const normalizedKeyword = keyword.value.trim().toLowerCase()
-  const filtered = portfolios.value.filter((portfolio) => {
-    const matchesCategory = !categoryFilter.value || portfolio.category === categoryFilter.value
-    const searchableText = [
-      portfolio.title,
-      portfolio.projectTitle,
-      portfolio.summary,
-      portfolio.description,
-      CATEGORY_LABELS[portfolio.category],
-      portfolio.category,
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
-
-    return matchesCategory && (!normalizedKeyword || searchableText.includes(normalizedKeyword))
-  })
-
-  return filtered.sort((first, second) => {
-    const difference = getPortfolioSortValue(second) - getPortfolioSortValue(first)
-    return sortType.value === 'LATEST' ? difference : -difference
-  })
-})
+const visiblePortfolios = computed(() => portfolios.value)
 
 const hasActiveProjectFilters = computed(
   () => Boolean(keyword.value.trim()) || Boolean(categoryFilter.value),
@@ -218,6 +207,7 @@ let searchTimerId = null
 
 watch(keyword, () => {
   clearTimeout(searchTimerId)
+  currentPage.value = 1
   searchTimerId = setTimeout(loadPortfolios, 300)
 })
 
@@ -306,11 +296,19 @@ async function loadPortfolios() {
     const data = await getMyPortfolios({
       keyword: keyword.value.trim() || undefined,
       category: categoryFilter.value || undefined,
-      sort: sortType.value === 'OLDEST' ? 'oldest' : 'latest',
-      page: 1,
+      sort: 'created_at',
+      direction: sortType.value === 'OLDEST' ? 'ASC' : 'DESC',
+      page: currentPage.value,
       size: 10,
     })
     portfolios.value = extractPortfolioList(data)
+    totalPages.value = Number(data?.totalPages) || 0
+
+    if (currentPage.value > 1 && currentPage.value > totalPages.value) {
+      currentPage.value = Math.max(1, totalPages.value)
+      await loadPortfolios()
+      return
+    }
     loadPortfolioBannerUrls(portfolios.value)
   } catch (error) {
     errorMessage.value = getRequestError(
@@ -324,6 +322,18 @@ async function loadPortfolios() {
 
 function submitPortfolioSearch() {
   clearTimeout(searchTimerId)
+  currentPage.value = 1
+  loadPortfolios()
+}
+
+function resetPortfolioPage() {
+  currentPage.value = 1
+  loadPortfolios()
+}
+
+function changePage(page) {
+  if (page < 1 || page > totalPages.value || page === currentPage.value) return
+  currentPage.value = page
   loadPortfolios()
 }
 
@@ -352,13 +362,6 @@ function extractPortfolioList(data) {
 
 function getPortfolioId(portfolio) {
   return portfolio?.portfolioId
-}
-
-function getPortfolioSortValue(portfolio) {
-  const dateValue = portfolio?.updatedAt || portfolio?.createdAt
-  const timestamp = dateValue ? new Date(dateValue).getTime() : NaN
-  if (Number.isFinite(timestamp)) return timestamp
-  return Number(getPortfolioId(portfolio)) || 0
 }
 
 function goToCreate() {
@@ -548,6 +551,36 @@ function getRequestError(error, fallback) {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+
+.pagination {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.pagination button {
+  min-width: 64px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination span {
+  color: #6b7280;
+  font-size: 13px;
 }
 
 .state-card {

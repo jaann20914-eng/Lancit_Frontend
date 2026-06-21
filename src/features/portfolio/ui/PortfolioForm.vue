@@ -33,6 +33,13 @@
         <span>{{ selectedBanner.name }}</span>
         <button type="button" @click="clearBanner">선택 취소</button>
       </div>
+      <div
+        v-else-if="form.bannerFileId !== null && form.bannerFileId !== undefined"
+        class="selected-banner-row"
+      >
+        <span>등록된 배너 이미지</span>
+        <button type="button" @click="removeExistingBanner">배너 삭제</button>
+      </div>
       <p v-if="errors.banner" class="form-error">{{ errors.banner }}</p>
     </div>
 
@@ -153,11 +160,10 @@
             <small>{{ formatFileSize(file.size) }}{{ file.isExisting ? ' · 등록됨' : '' }}</small>
           </span>
           <button
-            v-if="!file.isExisting"
             type="button"
             class="remove-file-button"
             :aria-label="`${file.name} 삭제`"
-            @click="removeResultFile(file.index)"
+            @click="removeDisplayedFile(file)"
           >
             ×
           </button>
@@ -233,16 +239,23 @@ const bannerInput = ref(null)
 const resultFileInput = ref(null)
 const selectedBanner = ref(null)
 const selectedResultFiles = ref([])
+const removedExistingFileIds = ref([])
+const removedBannerFileId = ref(null)
 const localBannerUrl = ref('')
 
-const bannerPreviewUrl = computed(() => localBannerUrl.value || props.initialBannerUrl)
+const bannerPreviewUrl = computed(
+  () => localBannerUrl.value || (removedBannerFileId.value === null ? props.initialBannerUrl : ''),
+)
 const displayedFiles = computed(() => [
-  ...props.initialFiles.map((file) => ({
-    key: `existing-${file.fileId}`,
-    name: file.oriName || '등록된 파일',
-    size: Number(file.fileSize) || 0,
-    isExisting: true,
-  })),
+  ...props.initialFiles
+    .filter((file) => !removedExistingFileIds.value.includes(file.fileId))
+    .map((file) => ({
+      key: `existing-${file.fileId}`,
+      fileId: file.fileId,
+      name: file.oriName || '등록된 파일',
+      size: Number(file.fileSize) || 0,
+      isExisting: true,
+    })),
   ...selectedResultFiles.value.map((file, index) => ({
     key: `selected-${file.name}-${file.size}-${file.lastModified}`,
     name: file.name,
@@ -277,6 +290,15 @@ watch(
     form.workEndAt = toDateInput(source.workEndAt)
     form.isPublic = Boolean(source.isPublic)
     form.bannerFileId = source.bannerFileId ?? null
+    removedBannerFileId.value = null
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.initialFiles,
+  () => {
+    removedExistingFileIds.value = []
   },
   { immediate: true },
 )
@@ -309,6 +331,13 @@ function handleBannerChange(event) {
   revokeLocalBannerUrl()
   selectedBanner.value = file
   localBannerUrl.value = URL.createObjectURL(file)
+}
+
+function removeExistingBanner() {
+  if (form.bannerFileId === null || form.bannerFileId === undefined) return
+  removedBannerFileId.value = form.bannerFileId
+  form.bannerFileId = null
+  delete errors.banner
 }
 
 function clearBanner() {
@@ -357,6 +386,14 @@ function removeResultFile(index) {
   delete errors.files
 }
 
+function removeDisplayedFile(file) {
+  if (file.isExisting) {
+    removedExistingFileIds.value = [...removedExistingFileIds.value, file.fileId]
+    return
+  }
+  removeResultFile(file.index)
+}
+
 function formatFileSize(size) {
   if (!size) return '0 KB'
   if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`
@@ -389,7 +426,9 @@ function handleSubmit() {
     isPublic: form.isPublic,
     bannerFileId: form.bannerFileId,
     bannerFile: selectedBanner.value,
+    removedBannerFileId: removedBannerFileId.value,
     resultFiles: [...selectedResultFiles.value],
+    removedFileIds: [...removedExistingFileIds.value],
   })
 }
 

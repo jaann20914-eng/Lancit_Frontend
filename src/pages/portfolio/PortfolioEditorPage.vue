@@ -125,7 +125,8 @@ async function handleSubmit(payload) {
 
 async function savePortfolioFiles(portfolioId, payload) {
   const uploadedFileIds = []
-  const previousBannerFileId = payload.bannerFileId
+  const previousBannerFileId = payload.removedBannerFileId ?? payload.bannerFileId
+  let portfolioUpdated = false
 
   try {
     if (payload.bannerFile) {
@@ -155,12 +156,17 @@ async function savePortfolioFiles(portfolioId, payload) {
     }
 
     await updatePortfolio(portfolioId, payload)
+    portfolioUpdated = true
 
-    if (payload.bannerFile && previousBannerFileId) {
-      await deletePortfolioFile(previousBannerFileId).catch(() => {})
-    }
+    const fileIdsToDelete = [
+      ...(Array.isArray(payload.removedFileIds) ? payload.removedFileIds : []),
+      ...(previousBannerFileId && (payload.bannerFile || payload.removedBannerFileId)
+        ? [previousBannerFileId]
+        : []),
+    ]
+    await Promise.all(fileIdsToDelete.map((fileId) => deletePortfolioFile(fileId)))
   } catch (error) {
-    await cleanupUploadedFiles(uploadedFileIds)
+    if (!portfolioUpdated) await cleanupUploadedFiles(uploadedFileIds)
     throw error
   }
 }

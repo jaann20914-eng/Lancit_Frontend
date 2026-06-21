@@ -30,6 +30,12 @@ export async function getPortfolioFileUrl(fileId) {
   return unwrapResponse(response) ?? ''
 }
 
+export async function getPortfolioFileDownloadUrl(fileId) {
+  if (fileId === null || fileId === undefined) return ''
+  const response = await httpClient.get(`/files/${fileId}/download`)
+  return unwrapResponse(response) ?? ''
+}
+
 export async function uploadPortfolioFiles(files, parentType, parentId) {
   const fileList = Array.from(files ?? [])
   if (!fileList.length) return []
