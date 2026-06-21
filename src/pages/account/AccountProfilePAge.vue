@@ -1,6 +1,5 @@
 <template>
   <div class="page">
-
     <!-- 조회 모드 -->
     <div v-if="!isEditing">
       <div class="page-header">
@@ -9,9 +8,16 @@
           <p class="page-sub">내 정보를 확인하고 관리하세요</p>
         </div>
         <button class="btn-edit" @click="startEdit">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
           </svg>
           수정
         </button>
@@ -77,9 +83,17 @@
           @change="handleFileChange"
         />
         <button class="btn-img-change" @click="triggerFileInput">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
           프로필 이미지 변경
         </button>
@@ -91,12 +105,22 @@
 
         <div class="form-group">
           <label class="form-label">이름</label>
-          <input v-model="editForm.name" type="text" class="form-input" placeholder="프리랜서 이름" />
+          <input
+            v-model="editForm.name"
+            type="text"
+            class="form-input"
+            placeholder="프리랜서 이름"
+          />
         </div>
 
         <div class="form-group">
           <label class="form-label">연락처</label>
-          <input v-model="editForm.phone" type="tel" class="form-input" placeholder="010-1234-5678" />
+          <input
+            v-model="editForm.phone"
+            type="tel"
+            class="form-input"
+            placeholder="010-1234-5678"
+          />
         </div>
 
         <div class="form-group">
@@ -110,7 +134,11 @@
 
         <div class="form-row">
           <span class="form-label">알림 수신</span>
-          <div class="toggle" :class="{ on: editForm.pushable }" @click="editForm.pushable = !editForm.pushable">
+          <div
+            class="toggle"
+            :class="{ on: editForm.pushable }"
+            @click="editForm.pushable = !editForm.pushable"
+          >
             <div class="toggle-thumb"></div>
           </div>
         </div>
@@ -123,7 +151,6 @@
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -216,7 +243,7 @@ function handleWithdraw() {
 <style scoped>
 .page {
   padding: 32px;
-  max-width: 560px;
+  max-width: 100%;
 }
 
 .page-header {
@@ -229,13 +256,13 @@ function handleWithdraw() {
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #1A233D;
+  color: #1a233d;
   margin: 0 0 4px;
 }
 
 .page-sub {
   font-size: 14px;
-  color: #6C757D;
+  color: #6c757d;
   margin: 0;
 }
 
@@ -244,7 +271,7 @@ function handleWithdraw() {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #1A233D;
+  background: #1a233d;
   color: white;
   border: none;
   border-radius: 6px;
@@ -257,7 +284,7 @@ function handleWithdraw() {
   background: white;
   border-radius: 12px;
   padding: 32px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -268,20 +295,20 @@ function handleWithdraw() {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: #D1D5DB;
+  background: #d1d5db;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 28px;
   font-weight: 600;
-  color: #6B7280;
+  color: #6b7280;
   overflow: hidden;
 }
 
 .profile-name {
   font-size: 20px;
   font-weight: 600;
-  color: #1A233D;
+  color: #1a233d;
   margin: 0;
 }
 
@@ -291,7 +318,7 @@ function handleWithdraw() {
   gap: 6px;
   background: none;
   border: none;
-  color: #6C757D;
+  color: #6c757d;
   font-size: 13px;
   cursor: pointer;
   margin-top: -8px;
@@ -301,45 +328,51 @@ function handleWithdraw() {
   width: 100%;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid #F3F4F6;
-  border-bottom: 1px solid #F3F4F6;
+  border-top: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .info-row {
   display: flex;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #f3f4f6;
   gap: 16px;
 }
 
-.info-row:last-child { border-bottom: none; }
+.info-row:last-child {
+  border-bottom: none;
+}
 
 .info-label {
   width: 70px;
   font-size: 13px;
-  color: #6C757D;
+  color: #6c757d;
   flex-shrink: 0;
 }
 
 .info-value {
   font-size: 14px;
-  color: #1A233D;
+  color: #1a233d;
   font-weight: 500;
 }
 
 .toggle {
   width: 40px;
   height: 22px;
-  background: #D1D5DB;
+  background: #d1d5db;
   border-radius: 11px;
   position: relative;
   cursor: pointer;
   transition: background 0.2s;
 }
 
-.toggle.on { background: #1A233D; }
-.toggle.readonly { cursor: default; }
+.toggle.on {
+  background: #1a233d;
+}
+.toggle.readonly {
+  cursor: default;
+}
 
 .toggle-thumb {
   width: 18px;
@@ -352,7 +385,9 @@ function handleWithdraw() {
   transition: left 0.2s;
 }
 
-.toggle.on .toggle-thumb { left: 20px; }
+.toggle.on .toggle-thumb {
+  left: 20px;
+}
 
 .avatar-img {
   width: 100%;
@@ -371,12 +406,12 @@ function handleWithdraw() {
 .form-label {
   font-size: 13px;
   font-weight: 500;
-  color: #6C757D;
+  color: #6c757d;
 }
 
 .form-static {
   font-size: 14px;
-  color: #1A233D;
+  color: #1a233d;
   margin: 0;
 }
 
@@ -384,14 +419,16 @@ function handleWithdraw() {
   width: 100%;
   height: 40px;
   padding: 0 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 14px;
-  color: #1A233D;
+  color: #1a233d;
   outline: none;
 }
 
-.form-input:focus { border-color: #1A233D; }
+.form-input:focus {
+  border-color: #1a233d;
+}
 
 .form-row {
   width: 100%;
@@ -409,7 +446,7 @@ function handleWithdraw() {
 .btn-save {
   flex: 1;
   height: 44px;
-  background: #1A233D;
+  background: #1a233d;
   color: white;
   border: none;
   border-radius: 6px;
@@ -418,14 +455,17 @@ function handleWithdraw() {
   cursor: pointer;
 }
 
-.btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .btn-cancel {
   flex: 1;
   height: 44px;
   background: white;
-  color: #6C757D;
-  border: 1px solid #E5E7EB;
+  color: #6c757d;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
@@ -435,8 +475,8 @@ function handleWithdraw() {
   width: 100%;
   height: 44px;
   background: white;
-  color: #EF4444;
-  border: 1px solid #EF4444;
+  color: #ef4444;
+  border: 1px solid #ef4444;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
@@ -446,7 +486,7 @@ function handleWithdraw() {
 .btn-withdraw {
   background: none;
   border: none;
-  color: #9CA3AF;
+  color: #9ca3af;
   font-size: 13px;
   cursor: pointer;
   text-decoration: underline;
