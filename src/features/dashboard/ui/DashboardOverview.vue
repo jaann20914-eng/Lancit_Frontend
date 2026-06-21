@@ -7,6 +7,16 @@
       </div>
     </header>
 
+    <div v-if="isLoading" class="dashboard-state" role="status">
+      대시보드를 불러오는 중입니다.
+    </div>
+
+    <div v-else-if="errorMessage" class="dashboard-state dashboard-state--error" role="alert">
+      <p>{{ errorMessage }}</p>
+      <button type="button" @click="$emit('retry')">다시 시도</button>
+    </div>
+
+    <template v-else>
     <section class="summary-grid" aria-label="주요 현황">
       <RouterLink
         v-for="item in summaryItems"
@@ -60,11 +70,14 @@
         :class="{ 'dashboard-panel--wide': panel.wide }"
       />
     </div>
+    </template>
   </div>
 </template>
 
 <script setup>
 import DashboardPanel from './DashboardPanel.vue'
+
+defineEmits(['retry'])
 
 defineProps({
   summaryItems: {
@@ -74,6 +87,14 @@ defineProps({
   panels: {
     type: Array,
     required: true,
+  },
+  isLoading: {
+    type: Boolean,
+    default: false,
+  },
+  errorMessage: {
+    type: String,
+    default: '',
   },
 })
 </script>
@@ -204,6 +225,37 @@ defineProps({
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 30px 22px;
+}
+
+.dashboard-state {
+  min-height: 320px;
+  border: 1px solid #e1e4e9;
+  border-radius: 12px;
+  background: #fff;
+  color: #7b8494;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.dashboard-state p {
+  margin: 0;
+}
+
+.dashboard-state button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #1a233d;
+  border-radius: 6px;
+  background: #fff;
+  color: #1a233d;
+  cursor: pointer;
+}
+
+.dashboard-state--error {
+  color: #b91c1c;
 }
 
 .dashboard-panel--wide {
