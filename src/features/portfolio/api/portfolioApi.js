@@ -26,7 +26,7 @@ export async function getPortfolioDetail(id) {
 
 export async function getPortfolioFileUrl(fileId) {
   if (fileId === null || fileId === undefined) return ''
-  const response = await httpClient.get(`/api/files/${fileId}/url`)
+  const response = await httpClient.get(`/files/${fileId}/url`)
   return unwrapResponse(response) ?? ''
 }
 
@@ -37,7 +37,7 @@ export async function uploadPortfolioFiles(files, parentType, parentId) {
   const formData = new FormData()
   fileList.forEach((file) => formData.append('files', file))
 
-  const response = await httpClient.post('/api/files/upload', formData, {
+  const response = await httpClient.post('/files/upload', formData, {
     params: { parentType, parentId },
     headers: { 'Content-Type': 'multipart/form-data' },
   })
@@ -47,7 +47,7 @@ export async function uploadPortfolioFiles(files, parentType, parentId) {
 
 export async function deletePortfolioFile(fileId) {
   if (fileId === null || fileId === undefined) return
-  await httpClient.delete(`/api/files/${fileId}`)
+  await httpClient.delete(`/files/${fileId}`)
 }
 
 export async function createPortfolio(form) {

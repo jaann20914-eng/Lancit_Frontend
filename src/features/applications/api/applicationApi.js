@@ -7,7 +7,7 @@ function unwrapResponse(response) {
 
 export async function applyToRecruitment(recruitmentId, form) {
   const response = await httpClient.post(
-    `/api/recruitments/${recruitmentId}/applications`,
+    `/recruitments/${recruitmentId}/applications`,
     mapApplicationRequest(form),
   )
   return mapApplicationDetailFromApi(unwrapResponse(response))
@@ -15,14 +15,14 @@ export async function applyToRecruitment(recruitmentId, form) {
 
 export async function getCompanyApplication(recruitmentId, applicationId) {
   const response = await httpClient.get(
-    `/api/recruitments/${recruitmentId}/applications/${applicationId}`,
+    `/recruitments/${recruitmentId}/applications/${applicationId}`,
   )
   return mapApplicationDetailFromApi(unwrapResponse(response))
 }
 
 export async function getCompanyApplicationPortfolio(recruitmentId, applicationId, portfolioId) {
   const response = await httpClient.get(
-    `/api/recruitments/${recruitmentId}/applications/${applicationId}/portfolios/${portfolioId}`,
+    `/recruitments/${recruitmentId}/applications/${applicationId}/portfolios/${portfolioId}`,
   )
   return unwrapResponse(response)
 }
@@ -34,7 +34,7 @@ export async function getCompanyApplicationPortfolioFileUrl(
   fileId,
 ) {
   const response = await httpClient.get(
-    `/api/recruitments/${recruitmentId}/applications/${applicationId}/portfolios/${portfolioId}/files/${fileId}/url`,
+    `/recruitments/${recruitmentId}/applications/${applicationId}/portfolios/${portfolioId}/files/${fileId}/url`,
   )
   return unwrapResponse(response) ?? ''
 }
@@ -46,14 +46,14 @@ export async function getCompanyApplicationPortfolioFileDownloadUrl(
   fileId,
 ) {
   const response = await httpClient.get(
-    `/api/recruitments/${recruitmentId}/applications/${applicationId}/portfolios/${portfolioId}/files/${fileId}/download`,
+    `/recruitments/${recruitmentId}/applications/${applicationId}/portfolios/${portfolioId}/files/${fileId}/download`,
   )
   return unwrapResponse(response) ?? ''
 }
 
 export async function getCompanyApplicationProfileImageUrl(recruitmentId, applicationId) {
   const response = await httpClient.get(
-    `/api/recruitments/${recruitmentId}/applications/${applicationId}/profile/image-url`,
+    `/recruitments/${recruitmentId}/applications/${applicationId}/profile/image-url`,
   )
   return unwrapResponse(response) ?? ''
 }
