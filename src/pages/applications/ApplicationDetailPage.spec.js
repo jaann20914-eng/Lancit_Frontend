@@ -7,7 +7,7 @@ import ApplicationDetailPage from './ApplicationDetailPage.vue'
 const mocks = vi.hoisted(() => ({
   cancelMyApplication: vi.fn(),
   getMyApplication: vi.fn(),
-  getMyPortfolios: vi.fn(),
+  getAllMyPortfolios: vi.fn(),
   getPortfolioFileUrl: vi.fn(),
   push: vi.fn(),
   updateMyApplication: vi.fn(),
@@ -25,7 +25,7 @@ vi.mock('@/features/applications/api/applicationApi.js', () => ({
 }))
 
 vi.mock('@/features/portfolio/api/portfolioApi.js', () => ({
-  getMyPortfolios: mocks.getMyPortfolios,
+  getAllMyPortfolios: mocks.getAllMyPortfolios,
   getPortfolioFileUrl: mocks.getPortfolioFileUrl,
 }))
 
@@ -49,12 +49,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(window, 'confirm').mockReturnValue(true)
   mocks.getMyApplication.mockResolvedValue(application)
-  mocks.getMyPortfolios.mockResolvedValue({
-    content: [
-      ...application.portfolios,
-      { portfolioId: 12, title: '추가 프로젝트', summary: '추가 요약', category: 'DESIGN' },
-    ],
-  })
+  mocks.getAllMyPortfolios.mockResolvedValue([
+    ...application.portfolios,
+    { portfolioId: 12, title: '추가 프로젝트', summary: '추가 요약', category: 'DESIGN' },
+  ])
   mocks.getPortfolioFileUrl.mockResolvedValue('')
   mocks.updateMyApplication.mockImplementation(async (_id, form) => ({
     ...application,
@@ -104,5 +102,61 @@ describe('ApplicationDetailPage', () => {
       name: 'RecruitmentList',
       query: { tab: 'APPLIED' },
     })
+  })
+
+  it('shows viewed application actions but keeps them disabled', async () => {
+    mocks.getMyApplication.mockResolvedValueOnce({
+      ...application,
+      viewedAt: '2026-06-21T10:00:00',
+    })
+    const wrapper = mount(ApplicationDetailPage)
+    await flushPromises()
+
+    const editButton = wrapper.get('.section-heading .secondary-button')
+    const cancelButton = wrapper.get('.danger-button')
+    expect(editButton.attributes('disabled')).toBeDefined()
+    expect(cancelButton.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('회사가 열람한 지원서는 수정하거나 취소할 수 없습니다.')
+
+    await editButton.trigger('click')
+    await cancelButton.trigger('click')
+    expect(mocks.getAllMyPortfolios).not.toHaveBeenCalled()
+    expect(mocks.cancelMyApplication).not.toHaveBeenCalled()
+  })
+
+  it('removes unavailable portfolio ids before updating', async () => {
+    mocks.getMyApplication.mockResolvedValueOnce({
+      ...application,
+      portfolios: [
+        ...application.portfolios,
+        { portfolioId: 99, title: '삭제된 프로젝트', summary: '삭제됨', category: 'WEB_APP' },
+      ],
+    })
+    const wrapper = mount(ApplicationDetailPage)
+    await flushPromises()
+
+    await wrapper.get('.section-heading .secondary-button').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('선택에서 제외했습니다')
+    await wrapper.get('.action-panel .primary-button').trigger('click')
+    await flushPromises()
+
+    expect(mocks.updateMyApplication).toHaveBeenCalledWith('7', {
+      intro: '기존 지원 소개',
+      portfolioIds: [11],
+    })
+  })
+
+  it('links an accepted application to its contract', async () => {
+    mocks.getMyApplication.mockResolvedValueOnce({
+      ...application,
+      status: 'ACCEPTED',
+      contractId: 55,
+    })
+    const wrapper = mount(ApplicationDetailPage)
+    await flushPromises()
+
+    await wrapper.get('.contract-button').trigger('click')
+    expect(mocks.push).toHaveBeenCalledWith({ name: 'ContractDetail', params: { id: 55 } })
   })
 })

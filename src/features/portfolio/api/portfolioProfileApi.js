@@ -33,6 +33,11 @@ export async function uploadPortfolioProfileImage(file) {
   return Array.isArray(files) ? files[0] ?? null : null
 }
 
+export async function deletePortfolioProfileImage(fileId) {
+  if (fileId === null || fileId === undefined) return
+  await httpClient.delete(`/files/${fileId}`)
+}
+
 export async function getPortfolioProfileImageUrl(fileId) {
   if (fileId === null || fileId === undefined) return ''
   const response = await httpClient.get(`/files/${fileId}/url`)

@@ -2,7 +2,17 @@
   <div class="page">
     <div class="top-actions">
       <button type="button" class="back-button" @click="goToApplications">← 지원한 공고</button>
-      <button type="button" class="recruitment-button" @click="goToRecruitment">공고 보기</button>
+      <div class="top-action-buttons">
+        <button
+          v-if="application?.contractId"
+          type="button"
+          class="contract-button"
+          @click="goToContract"
+        >
+          계약 보기
+        </button>
+        <button type="button" class="recruitment-button" @click="goToRecruitment">공고 보기</button>
+      </div>
     </div>
 
     <div v-if="isLoading" class="state-card">
@@ -21,12 +31,17 @@
           <p class="eyebrow">지원 공고</p>
           <h1>{{ application.recruitmentTitle || '공고 지원서' }}</h1>
           <p>지원일 {{ formatDateTime(application.appliedAt) }}</p>
+          <p v-if="application.viewedAt">회사 열람 {{ formatDateTime(application.viewedAt) }}</p>
+          <p v-if="application.canceledAt">취소일 {{ formatDateTime(application.canceledAt) }}</p>
         </div>
         <span :class="['status-badge', statusMeta.className]">{{ statusMeta.label }}</span>
       </header>
 
       <p v-if="successMessage" class="success-message" role="status">{{ successMessage }}</p>
       <p v-if="actionError" class="action-error" role="alert">{{ actionError }}</p>
+      <p v-if="isViewedPending" class="readonly-message">
+        회사가 열람한 지원서는 수정하거나 취소할 수 없습니다.
+      </p>
 
       <section class="page-section">
         <div class="section-heading">
@@ -35,9 +50,11 @@
             <p>공고 담당자에게 전달한 소개입니다.</p>
           </div>
           <button
-            v-if="canModify && !isEditing"
+            v-if="isPending && !isEditing"
             type="button"
             class="secondary-button"
+            :disabled="!canModify"
+            :title="readOnlyReason"
             @click="startEditing"
           >
             지원서 수정
@@ -119,6 +136,9 @@
         <div v-else-if="isEditing && !portfolios.length" class="section-state">
           <p>수정에 사용할 프로젝트가 없습니다.</p>
         </div>
+        <p v-if="removedPortfolioMessage" class="portfolio-notice">
+          {{ removedPortfolioMessage }}
+        </p>
         <div v-else-if="displayedPortfolios.length" class="project-grid">
           <PortfolioCard
             v-for="portfolio in displayedPortfolios"
@@ -145,12 +165,19 @@
         </button>
       </div>
 
-      <div v-else-if="canModify" class="cancel-panel">
-        <p>지원 취소 후에는 이 지원서를 다시 수정할 수 없습니다.</p>
+      <div v-else-if="isPending" class="cancel-panel">
+        <p>
+          {{
+            isViewedPending
+              ? '회사가 열람하여 지원을 취소할 수 없습니다.'
+              : '지원 취소 후 해당 공고에 다시 지원할 수 있습니다.'
+          }}
+        </p>
         <button
           type="button"
           class="danger-button"
-          :disabled="isCancelling"
+          :disabled="isCancelling || !canModify"
+          :title="readOnlyReason"
           @click="cancelApplication"
         >
           {{ isCancelling ? '취소 중...' : '지원 취소' }}
@@ -172,7 +199,7 @@ import {
   JOB_CATEGORY_OPTIONS,
   formatDateTime,
 } from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
-import { getMyPortfolios, getPortfolioFileUrl } from '@/features/portfolio/api/portfolioApi.js'
+import { getAllMyPortfolios, getPortfolioFileUrl } from '@/features/portfolio/api/portfolioApi.js'
 import PortfolioCard from '@/features/portfolio/ui/PortfolioCard.vue'
 
 const APPLICATION_STATUS_META = {
@@ -196,6 +223,7 @@ const loadError = ref('')
 const portfolioError = ref('')
 const actionError = ref('')
 const successMessage = ref('')
+const removedPortfolioMessage = ref('')
 const editForm = reactive({ intro: '', portfolioIds: [] })
 
 const recruitmentId = computed(() => route.params.id)
@@ -206,7 +234,12 @@ const statusMeta = computed(
       className: 'status-unknown',
     },
 )
-const canModify = computed(() => application.value?.status === 'PENDING')
+const isPending = computed(() => application.value?.status === 'PENDING')
+const isViewedPending = computed(() => isPending.value && Boolean(application.value?.viewedAt))
+const canModify = computed(() => isPending.value && !application.value?.viewedAt)
+const readOnlyReason = computed(() =>
+  isViewedPending.value ? '회사가 열람한 지원서는 변경할 수 없습니다.' : '',
+)
 const displayedPortfolios = computed(() =>
   isEditing.value ? portfolios.value : (application.value?.portfolios ?? []),
 )
@@ -218,6 +251,7 @@ async function loadApplication() {
   loadError.value = ''
   actionError.value = ''
   successMessage.value = ''
+  removedPortfolioMessage.value = ''
   isEditing.value = false
   try {
     const data = await getMyApplication(recruitmentId.value)
@@ -251,8 +285,15 @@ async function loadEditablePortfolios() {
   isPortfolioLoading.value = true
   portfolioError.value = ''
   try {
-    const data = await getMyPortfolios({ page: 1, size: 100, sort: 'latest' })
-    portfolios.value = (data?.content ?? []).filter((portfolio) => !portfolio.isDeleted)
+    const data = await getAllMyPortfolios({ sort: 'latest' })
+    portfolios.value = data.filter((portfolio) => !portfolio.isDeleted)
+    const availableIds = new Set(portfolios.value.map((portfolio) => Number(portfolio.portfolioId)))
+    const selectedIds = editForm.portfolioIds.filter((portfolioId) => availableIds.has(portfolioId))
+    removedPortfolioMessage.value =
+      selectedIds.length === editForm.portfolioIds.length
+        ? ''
+        : '삭제되었거나 사용할 수 없는 프로젝트는 선택에서 제외했습니다.'
+    editForm.portfolioIds = selectedIds
     await loadBannerUrls(portfolios.value)
   } catch (error) {
     portfolios.value = []
@@ -323,10 +364,15 @@ function cancelEditing() {
   isEditing.value = false
   portfolioError.value = ''
   actionError.value = ''
+  removedPortfolioMessage.value = ''
 }
 
 async function cancelApplication() {
-  if (!canModify.value || !confirm('이 공고 지원을 취소하시겠습니까?')) return
+  if (
+    !canModify.value ||
+    !confirm('지원을 취소하시겠습니까? 취소 후 해당 공고에 다시 지원할 수 있습니다.')
+  )
+    return
   isCancelling.value = true
   actionError.value = ''
   try {
@@ -348,6 +394,11 @@ function goToApplications() {
 
 function goToRecruitment() {
   router.push({ name: 'RecruitmentDetail', params: { id: recruitmentId.value } })
+}
+
+function goToContract() {
+  if (!application.value?.contractId) return
+  router.push({ name: 'ContractDetail', params: { id: application.value.contractId } })
 }
 
 function jobCategoryLabel(value) {
@@ -382,8 +433,13 @@ function getRequestError(error, fallback) {
   justify-content: space-between;
   gap: 12px;
 }
+.top-action-buttons {
+  display: flex;
+  gap: 8px;
+}
 .back-button,
 .recruitment-button,
+.contract-button,
 .retry-button,
 .secondary-button,
 .primary-button,
@@ -399,6 +455,7 @@ function getRequestError(error, fallback) {
   cursor: pointer;
 }
 .recruitment-button,
+.contract-button,
 .primary-button {
   border-color: #1a233d;
   background: #1a233d;
@@ -598,6 +655,20 @@ button:disabled {
 .action-error {
   background: #fef2f2;
   color: #b91c1c;
+}
+.readonly-message,
+.portfolio-notice {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+}
+.portfolio-notice {
+  margin-bottom: 12px;
+  background: #fffbeb;
+  color: #92400e;
 }
 .action-panel,
 .cancel-panel {

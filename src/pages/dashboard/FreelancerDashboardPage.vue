@@ -7,7 +7,7 @@ import DashboardOverview from '@/features/dashboard/ui/DashboardOverview.vue'
 
 const summaryItems = [
   { label: '진행 중인 계약', count: 2, icon: 'contract', tone: 'blue', to: '/freelancer/contracts' },
-  { label: '받은 제안서', count: 3, icon: 'proposal', tone: 'green', to: '/freelancer/applications' },
+  { label: '받은 제안서', count: 3, icon: 'proposal', tone: 'green', to: '/freelancer/proposals' },
   { label: '지원한 공고', count: 5, icon: 'application', tone: 'purple', to: '/freelancer/applications' },
   { label: '포트폴리오', count: 4, icon: 'portfolio', tone: 'orange', to: '/freelancer/portfolio' },
 ]
@@ -39,7 +39,7 @@ const panels = [
   },
   {
     title: '받은 제안서',
-    to: '/freelancer/applications',
+    to: '/freelancer/proposals',
     items: [
       {
         title: '커머스 프론트엔드 고도화',

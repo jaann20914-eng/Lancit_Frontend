@@ -151,12 +151,13 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { applyToRecruitment } from '@/features/applications/api/applicationApi.js'
 import {
+  deletePortfolioProfileImage,
   getPortfolioProfile,
   getPortfolioProfileImageUrl,
   updatePortfolioProfile,
   uploadPortfolioProfileImage,
 } from '@/features/portfolio/api/portfolioProfileApi.js'
-import { getMyPortfolios, getPortfolioFileUrl } from '@/features/portfolio/api/portfolioApi.js'
+import { getAllMyPortfolios, getPortfolioFileUrl } from '@/features/portfolio/api/portfolioApi.js'
 import PortfolioCard from '@/features/portfolio/ui/PortfolioCard.vue'
 import PortfolioProfileCard from '@/features/portfolio/ui/PortfolioProfileCard.vue'
 import PortfolioProfileForm from '@/features/portfolio/ui/PortfolioProfileForm.vue'
@@ -259,8 +260,8 @@ async function loadPortfolios() {
   selectedPortfolioIds.value = []
 
   try {
-    const data = await getMyPortfolios({ page: 1, size: 100, sort: 'latest' })
-    portfolios.value = (Array.isArray(data?.content) ? data.content : []).filter(
+    const data = await getAllMyPortfolios({ sort: 'latest' })
+    portfolios.value = (Array.isArray(data) ? data : []).filter(
       (portfolio) => !portfolio.isDeleted && Number.isInteger(getPortfolioId(portfolio)),
     )
     await loadPortfolioBannerUrls(portfolios.value)
@@ -310,15 +311,25 @@ async function handleProfileSave(form) {
 
 async function persistProfile(form) {
   let profileFileId = form.profileFileId
-  if (form.profileImageFile) {
-    const uploadedFile = await uploadPortfolioProfileImage(form.profileImageFile)
-    if (!uploadedFile?.fileId) throw new Error('Invalid profile image upload response')
-    profileFileId = uploadedFile.fileId
-  }
+  let uploadedFileId = null
 
-  const updatedProfile = await updatePortfolioProfile({ ...form, profileFileId })
-  if (!updatedProfile) throw new Error('Invalid portfolio profile response')
-  return updatedProfile
+  try {
+    if (form.profileImageFile) {
+      const uploadedFile = await uploadPortfolioProfileImage(form.profileImageFile)
+      if (!uploadedFile?.fileId) throw new Error('Invalid profile image upload response')
+      uploadedFileId = uploadedFile.fileId
+      profileFileId = uploadedFileId
+    }
+
+    const updatedProfile = await updatePortfolioProfile({ ...form, profileFileId })
+    if (!updatedProfile) throw new Error('Invalid portfolio profile response')
+    return updatedProfile
+  } catch (error) {
+    if (uploadedFileId !== null) {
+      await deletePortfolioProfileImage(uploadedFileId).catch(() => {})
+    }
+    throw error
+  }
 }
 
 async function handleApply() {

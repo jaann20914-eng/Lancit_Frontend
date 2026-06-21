@@ -6,7 +6,8 @@ import RecruitmentApplyPage from './RecruitmentApplyPage.vue'
 
 const mocks = vi.hoisted(() => ({
   applyToRecruitment: vi.fn(),
-  getMyPortfolios: vi.fn(),
+  deletePortfolioProfileImage: vi.fn(),
+  getAllMyPortfolios: vi.fn(),
   getPortfolioFileUrl: vi.fn(),
   getPortfolioProfile: vi.fn(),
   getPortfolioProfileImageUrl: vi.fn(),
@@ -26,11 +27,12 @@ vi.mock('@/features/applications/api/applicationApi.js', () => ({
 }))
 
 vi.mock('@/features/portfolio/api/portfolioApi.js', () => ({
-  getMyPortfolios: mocks.getMyPortfolios,
+  getAllMyPortfolios: mocks.getAllMyPortfolios,
   getPortfolioFileUrl: mocks.getPortfolioFileUrl,
 }))
 
 vi.mock('@/features/portfolio/api/portfolioProfileApi.js', () => ({
+  deletePortfolioProfileImage: mocks.deletePortfolioProfileImage,
   getPortfolioProfile: mocks.getPortfolioProfile,
   getPortfolioProfileImageUrl: mocks.getPortfolioProfileImageUrl,
   updatePortfolioProfile: mocks.updatePortfolioProfile,
@@ -79,19 +81,18 @@ beforeEach(() => {
   mocks.getPortfolioProfile.mockResolvedValue(profile)
   mocks.getPortfolioProfileImageUrl.mockResolvedValue('')
   mocks.getPortfolioFileUrl.mockResolvedValue('')
-  mocks.getMyPortfolios.mockResolvedValue({
-    content: [
-      {
-        portfolioId: 11,
-        title: '프로젝트',
-        summary: '프로젝트 요약',
-        category: 'WEB_APP',
-        isPublic: false,
-        isDeleted: false,
-        techStacks: ['Vue'],
-      },
-    ],
-  })
+  mocks.getAllMyPortfolios.mockResolvedValue([
+    {
+      portfolioId: 11,
+      title: '프로젝트',
+      summary: '프로젝트 요약',
+      category: 'WEB_APP',
+      isPublic: false,
+      isDeleted: false,
+      techStacks: ['Vue'],
+    },
+  ])
+  mocks.deletePortfolioProfileImage.mockResolvedValue()
   mocks.updatePortfolioProfile.mockResolvedValue(profile)
   mocks.applyToRecruitment.mockResolvedValue({ applicationId: 1 })
   mocks.push.mockResolvedValue()
@@ -134,5 +135,25 @@ describe('RecruitmentApplyPage', () => {
 
     expect(mocks.applyToRecruitment).not.toHaveBeenCalled()
     expect(wrapper.get('.submit-error').text()).toContain('지원이 진행되지 않았습니다')
+  })
+
+  it('deletes a newly uploaded profile image when profile saving fails', async () => {
+    mocks.uploadPortfolioProfileImage.mockResolvedValueOnce({ fileId: 91 })
+    mocks.updatePortfolioProfile.mockRejectedValueOnce(new Error('save failed'))
+    const wrapper = mountPage()
+    await flushPromises()
+
+    wrapper.findComponent({ name: 'PortfolioProfileCard' }).vm.$emit('edit')
+    await flushPromises()
+    wrapper.findComponent({ name: 'PortfolioProfileForm' }).vm.$emit('submit', {
+      ...profile,
+      profileImageFile: new File(['image'], 'profile.png', { type: 'image/png' }),
+    })
+    await flushPromises()
+
+    expect(mocks.deletePortfolioProfileImage).toHaveBeenCalledWith(91)
+    expect(wrapper.findComponent({ name: 'PortfolioProfileForm' }).props('errorMessage')).toContain(
+      '프로필을 저장하지 못했습니다',
+    )
   })
 })

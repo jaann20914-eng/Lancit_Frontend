@@ -14,6 +14,21 @@ export async function getMyPortfolios(params = {}) {
   return mapPortfolioPageResponse(unwrapResponse(response))
 }
 
+export async function getAllMyPortfolios(params = {}) {
+  const size = 100
+  const content = []
+  let page = 1
+
+  while (true) {
+    const result = await getMyPortfolios({ ...params, page, size })
+    content.push(...result.content)
+    if (!result.hasNext && page >= result.totalPages) break
+    page += 1
+  }
+
+  return [...new Map(content.map((portfolio) => [portfolio.portfolioId, portfolio])).values()]
+}
+
 export async function getPublicPortfolios(params = {}) {
   const response = await httpClient.get('/portfolios/public', { params })
   return mapPortfolioPageResponse(unwrapResponse(response))
