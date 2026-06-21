@@ -9,17 +9,17 @@ function asList(value) {
 }
 
 export async function getCalendarCategories() {
-  const response = await httpClient.get('/api/calendar/categories')
+  const response = await httpClient.get('/calendar/categories')
   return asList(unwrapResponse(response))
 }
 
 export async function createCalendarCategory({ categoryName, color }) {
-  const response = await httpClient.post('/api/calendar/categories', { categoryName, color })
+  const response = await httpClient.post('/calendar/categories', { categoryName, color })
   return unwrapResponse(response)
 }
 
 export async function updateCalendarCategory(categoryId, { categoryName, color }) {
-  const response = await httpClient.put(`/api/calendar/categories/${categoryId}`, {
+  const response = await httpClient.put(`/calendar/categories/${categoryId}`, {
     categoryName,
     color,
   })
@@ -28,7 +28,7 @@ export async function updateCalendarCategory(categoryId, { categoryName, color }
 
 export async function deleteCalendarCategory(categoryId, moveToCategoryId = null) {
   const config = moveToCategoryId == null ? undefined : { params: { moveToCategoryId } }
-  const response = await httpClient.delete(`/api/calendar/categories/${categoryId}`, config)
+  const response = await httpClient.delete(`/calendar/categories/${categoryId}`, config)
   return unwrapResponse(response)
 }
 
@@ -43,23 +43,23 @@ export async function getCalendarTasks({ startDate, endDate, categoryId } = {}) 
     params.categoryId = categoryId
   }
 
-  const response = await httpClient.get('/api/calendar/tasks', { params })
+  const response = await httpClient.get('/calendar/tasks', { params })
   return asList(unwrapResponse(response))
 }
 
 export async function getCalendarHolidays(year) {
-  const response = await httpClient.get('/api/holidays', { params: { year } })
+  const response = await httpClient.get('/holidays', { params: { year } })
   return asList(unwrapResponse(response))
 }
 
 export async function createCalendarTask(task) {
-  const response = await httpClient.post('/api/calendar/tasks', task)
+  const response = await httpClient.post('/calendar/tasks', task)
   return unwrapResponse(response)
 }
 
 export async function parseCalendarTask(sourceText) {
   const response = await httpClient.post(
-    '/api/calendar/tasks/parse',
+    '/calendar/tasks/parse',
     { sourceText },
     { timeout: 30000 },
   )
@@ -67,11 +67,11 @@ export async function parseCalendarTask(sourceText) {
 }
 
 export async function updateCalendarTask(taskId, task) {
-  const response = await httpClient.put(`/api/calendar/tasks/${taskId}`, task)
+  const response = await httpClient.put(`/calendar/tasks/${taskId}`, task)
   return unwrapResponse(response)
 }
 
 export async function deleteCalendarTask(taskId) {
-  const response = await httpClient.delete(`/api/calendar/tasks/${taskId}`)
+  const response = await httpClient.delete(`/calendar/tasks/${taskId}`)
   return unwrapResponse(response)
 }

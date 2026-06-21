@@ -6,20 +6,20 @@ function unwrapResponse(response) {
 }
 
 export async function getCompanyApplications(recruitmentId, params = {}) {
-  const response = await httpClient.get(`/api/recruitments/${recruitmentId}/applications`, { params })
+  const response = await httpClient.get(`/recruitments/${recruitmentId}/applications`, { params })
   return mapApplicationPageResponse(unwrapResponse(response))
 }
 
 export async function getCompanyApplication(recruitmentId, applicationId) {
   const response = await httpClient.get(
-    `/api/recruitments/${recruitmentId}/applications/${applicationId}`,
+    `/recruitments/${recruitmentId}/applications/${applicationId}`,
   )
   return mapApplicationFromApi(unwrapResponse(response))
 }
 
 export async function updateCompanyApplicationStatus(recruitmentId, applicationId, status) {
   const response = await httpClient.patch(
-    `/api/recruitments/${recruitmentId}/applications/${applicationId}/status`,
+    `/recruitments/${recruitmentId}/applications/${applicationId}/status`,
     { status },
   )
   return mapApplicationFromApi(unwrapResponse(response))

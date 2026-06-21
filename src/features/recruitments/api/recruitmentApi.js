@@ -17,7 +17,7 @@ export async function getRecruitments({
   page = 1,
   size = 10,
 } = {}) {
-  const response = await httpClient.get('/api/recruitments', {
+  const response = await httpClient.get('/recruitments', {
     params: {
       tab,
       keyword: keyword || undefined,
@@ -33,17 +33,17 @@ export async function getRecruitments({
 }
 
 export async function getRecruitment(recruitmentId) {
-  const response = await httpClient.get(`/api/recruitments/${recruitmentId}`)
+  const response = await httpClient.get(`/recruitments/${recruitmentId}`)
   return mapRecruitmentFromApi(unwrapResponse(response))
 }
 
 export async function getRecruitmentFileUrl(fileId) {
   if (fileId === null || fileId === undefined) return ''
-  const response = await httpClient.get(`/api/files/${fileId}/url`)
+  const response = await httpClient.get(`/files/${fileId}/url`)
   return unwrapResponse(response) ?? ''
 }
 
 export async function toggleRecruitmentBookmark(recruitmentId) {
-  const response = await httpClient.post(`/api/recruitments/${recruitmentId}/bookmark`)
+  const response = await httpClient.post(`/recruitments/${recruitmentId}/bookmark`)
   return unwrapResponse(response)
 }
