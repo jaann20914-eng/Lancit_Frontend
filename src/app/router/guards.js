@@ -18,10 +18,10 @@ export function setupGuards(router) {
 
     // 개발용 임시 role 강제 설정
     if (to.path.startsWith('/company') && !authStore.role) {
-      authStore.role = 'company'
+      authStore.role = 'COMPANY'
     }
     if (to.path.startsWith('/freelancer') && !authStore.role) {
-      authStore.role = 'user'
+      authStore.role = 'USER'
     }
 
     next()

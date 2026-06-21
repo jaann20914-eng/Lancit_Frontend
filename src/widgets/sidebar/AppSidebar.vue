@@ -56,7 +56,7 @@
           </svg>
           계약관리
         </RouterLink>
-        <RouterLink to="/freelancer/proposals" class="nav-item" active-class="active">
+        <RouterLink to="/freelancer/applications" class="nav-item" active-class="active">
           <svg
             width="18"
             height="18"
@@ -81,7 +81,7 @@
             <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
             <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
-          공고 찾기
+          구인페이지
         </RouterLink>
         <RouterLink to="/freelancer/portfolio" class="nav-item" active-class="active">
           <svg
@@ -174,7 +174,7 @@
             <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
             <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
-          공고 관리
+          공고문
         </RouterLink>
       </template>
     </nav>
@@ -186,7 +186,13 @@
         class="profile-row"
       >
         <div class="profile-avatar">
+          <img
+            v-if="authStore.profileImageUrl"
+            :src="authStore.profileImageUrl"
+            class="profile-avatar-img"
+          />
           <svg
+            v-else
             width="16"
             height="16"
             viewBox="0 0 24 24"
@@ -231,8 +237,8 @@ import { useAuthStore } from '@/features/auth/model/authStore.js'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const isFreelancer = computed(() => authStore.role === 'user')
-const isCompany = computed(() => authStore.role === 'company')
+const isFreelancer = computed(() => authStore.role === 'USER')
+const isCompany = computed(() => authStore.role === 'COMPANY')
 
 function handleLogout() {
   authStore.logout()
@@ -350,6 +356,13 @@ function handleLogout() {
   justify-content: center;
   color: white;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .profile-info {

@@ -1,7 +1,9 @@
 <template>
   <div class="page">
+    <div v-if="isLoading" class="loading-state">불러오는 중...</div>
+
     <!-- 조회 모드 -->
-    <div v-if="!isEditing">
+    <div v-else-if="!isEditing">
       <div class="page-header">
         <div>
           <h1 class="page-title">마이페이지</h1>
@@ -25,7 +27,10 @@
 
       <div class="profile-card">
         <div class="avatar-wrap">
-          <div class="avatar">{{ nameInitial }}</div>
+          <div class="avatar">
+            <img v-if="profileImageUrl" :src="profileImageUrl" class="avatar-img" />
+            <span v-else>{{ nameInitial }}</span>
+          </div>
         </div>
         <p class="profile-name">{{ info.name }}</p>
 
@@ -40,7 +45,7 @@
           </div>
           <div class="info-row">
             <span class="info-label">연락처</span>
-            <span class="info-value">{{ info.phone }}</span>
+            <span class="info-value">{{ formatPhoneNumber(info.phone) }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">직종</span>
@@ -60,7 +65,7 @@
     </div>
 
     <!-- 수정 모드 -->
-    <div v-if="isEditing">
+    <div v-else>
       <div class="page-header">
         <div>
           <h1 class="page-title">마이페이지 수정</h1>
@@ -71,7 +76,11 @@
       <div class="profile-card">
         <div class="avatar-wrap">
           <div class="avatar">
-            <img v-if="previewUrl" :src="previewUrl" class="avatar-img" />
+            <img
+              v-if="previewUrl || profileImageUrl"
+              :src="previewUrl || profileImageUrl"
+              class="avatar-img"
+            />
             <span v-else>{{ nameInitial }}</span>
           </div>
         </div>
@@ -82,7 +91,7 @@
           style="display: none"
           @change="handleFileChange"
         />
-        <button class="btn-img-change" @click="triggerFileInput">
+        <button class="btn-img-change" @click="triggerFileInput" :disabled="isUploading">
           <svg
             width="14"
             height="14"
@@ -95,7 +104,7 @@
             <polyline points="17 8 12 3 7 8" />
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
-          프로필 이미지 변경
+          {{ isUploading ? '업로드 중...' : '프로필 이미지 변경' }}
         </button>
 
         <div class="form-group">
@@ -105,29 +114,19 @@
 
         <div class="form-group">
           <label class="form-label">이름</label>
-          <input
-            v-model="editForm.name"
-            type="text"
-            class="form-input"
-            placeholder="프리랜서 이름"
-          />
+          <input v-model="editForm.name" type="text" class="form-input" placeholder="이름" />
         </div>
 
         <div class="form-group">
           <label class="form-label">연락처</label>
-          <input
-            v-model="editForm.phone"
-            type="tel"
-            class="form-input"
-            placeholder="010-1234-5678"
-          />
+          <PhoneNumberInput v-model="editForm.phone" />
         </div>
 
         <div class="form-group">
           <label class="form-label">직종</label>
           <select v-model="editForm.jobCategory" class="form-input">
             <option v-for="opt in JOB_CATEGORY_OPTIONS" :key="opt.value" :value="opt.value">
-              {{ opt.label }}}
+              {{ opt.label }}
             </option>
           </select>
         </div>
@@ -143,9 +142,11 @@
           </div>
         </div>
 
+        <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
+
         <div class="btn-row">
-          <button class="btn-save" @click="handleSave" :disabled="isLoading">
-            {{ isLoading ? '저장 중...' : '저장' }}
+          <button class="btn-save" @click="handleSave" :disabled="isSaving">
+            {{ isSaving ? '저장 중...' : '저장' }}
           </button>
           <button class="btn-cancel" @click="cancelEdit">취소</button>
         </div>
@@ -155,42 +156,81 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
+import { getUserMe, updateUserMe, deleteUserMe } from '@/features/account/api/accountApi.js'
+import { uploadFile, getFileUrl } from '@/features/file/api/fileApi.js'
 import { JOB_CATEGORY_OPTIONS, jobCategoryLabel } from '@/shared/constants/jobCategory.js'
+import { formatPhoneNumber } from '@/shared/utils/phoneNumber.js'
+import PhoneNumberInput from '@/shared/components/form/PhoneNumberInput.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
+const isLoading = ref(true)
 const isEditing = ref(false)
-const isLoading = ref(false)
+const isSaving = ref(false)
+const isUploading = ref(false)
+const errorMsg = ref('')
+
 const fileInputRef = ref(null)
 const previewUrl = ref(null)
-const selectedFile = ref(null)
+const newProfileFileId = ref(null)
+const profileImageUrl = ref(null)
 
-// 임시 더미 데이터 (API 연동 시 교체)
 const info = reactive({
-  email: authStore.email || 'free@example.com',
-  name: '김프리',
-  phone: '010-1234-5678',
-  jobCategory: 'DESIGN',
+  email: '',
+  name: '',
+  phone: '',
+  jobCategory: '',
   pushable: false,
+  profileFileId: null,
 })
 
 const editForm = reactive({ ...info })
-const nameInitial = computed(() => info.name?.charAt(0) || '김')
+const nameInitial = computed(() => info.name?.charAt(0) || '?')
+
+async function fetchMe() {
+  isLoading.value = true
+  try {
+    const res = await getUserMe()
+    const data = res.data.data
+    Object.assign(info, {
+      email: data.email,
+      name: data.name,
+      phone: data.phone,
+      jobCategory: data.jobCategory,
+      pushable: data.pushable,
+      profileFileId: data.profileFileId,
+    })
+
+    if (info.profileFileId) {
+      const urlRes = await getFileUrl(info.profileFileId)
+      profileImageUrl.value = urlRes.data.data.url || urlRes.data.data
+    } else {
+      profileImageUrl.value = null
+    }
+
+    // 사이드바 등 다른 화면도 즉시 최신 프로필 이미지를 반영하도록 동기화
+    authStore.updateProfileImage(profileImageUrl.value)
+  } catch (err) {
+    errorMsg.value = '내 정보를 불러오지 못했습니다.'
+  } finally {
+    isLoading.value = false
+  }
+}
 
 function startEdit() {
   Object.assign(editForm, info)
   previewUrl.value = null
-  selectedFile.value = null
+  newProfileFileId.value = null
   isEditing.value = true
 }
 
 function cancelEdit() {
   previewUrl.value = null
-  selectedFile.value = null
+  newProfileFileId.value = null
   isEditing.value = false
 }
 
@@ -198,31 +238,50 @@ function triggerFileInput() {
   fileInputRef.value?.click()
 }
 
-function handleFileChange(e) {
+async function handleFileChange(e) {
   const file = e.target.files[0]
   if (!file) return
 
-  selectedFile.value = file
   previewUrl.value = URL.createObjectURL(file)
+  isUploading.value = true
+  errorMsg.value = ''
 
-  // TODO: 파일을 TEMP로 업로드 → fileId 받아서 저장 시 profileFileId로 전달
-  // const uploaded = await uploadFile(file, 'TEMP')
-}
-
-function togglePushable() {
-  info.pushable = !info.pushable
+  try {
+    // 1. TEMP로 업로드
+    const res = await uploadFile(file, 'TEMP', null)
+    const uploaded = res.data.data
+    newProfileFileId.value = Array.isArray(uploaded) ? uploaded[0].fileId : uploaded.fileId
+  } catch (err) {
+    errorMsg.value = '이미지 업로드에 실패했습니다.'
+    previewUrl.value = null
+  } finally {
+    isUploading.value = false
+  }
 }
 
 async function handleSave() {
-  isLoading.value = true
+  isSaving.value = true
+  errorMsg.value = ''
   try {
-    // TODO: await updateUser(editForm)
-    Object.assign(info, editForm)
+    const payload = { ...editForm }
+
+    // 이미지를 새로 업로드한 경우에만 profileFileId를 보냄.
+    // 새 이미지가 없으면 기존 profileFileId를 그대로 다시 보내면 안 됨 -
+    // 백엔드가 "새 이미지가 왔다"고 오해해서 기존 파일을 삭제 후 같은 ID로
+    // 승격을 시도하다가 실패함 (자기 자신을 지우고 자기 자신을 찾는 상황)
+    if (newProfileFileId.value) {
+      payload.profileFileId = newProfileFileId.value
+    } else {
+      delete payload.profileFileId
+    }
+
+    await updateUserMe(payload)
+    await fetchMe()
     isEditing.value = false
   } catch (err) {
-    alert('저장에 실패했습니다.')
+    errorMsg.value = err.response?.data?.message || '저장에 실패했습니다.'
   } finally {
-    isLoading.value = false
+    isSaving.value = false
   }
 }
 
@@ -231,19 +290,30 @@ function handleLogout() {
   router.push('/login')
 }
 
-function handleWithdraw() {
-  if (confirm('정말 탈퇴하시겠습니까?')) {
-    // TODO: await withdrawUser()
+async function handleWithdraw() {
+  if (!confirm('정말 탈퇴하시겠습니까?')) return
+  try {
+    await deleteUserMe()
     authStore.logout()
     router.push('/login')
+  } catch (err) {
+    alert(err.response?.data?.message || '탈퇴에 실패했습니다.')
   }
 }
+
+onMounted(fetchMe)
 </script>
 
 <style scoped>
 .page {
   padding: 32px;
   max-width: 100%;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 60px 0;
+  color: #9ca3af;
 }
 
 .page-header {
@@ -305,6 +375,13 @@ function handleWithdraw() {
   overflow: hidden;
 }
 
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .profile-name {
   font-size: 20px;
   font-weight: 600;
@@ -322,6 +399,11 @@ function handleWithdraw() {
   font-size: 13px;
   cursor: pointer;
   margin-top: -8px;
+}
+
+.btn-img-change:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .info-table {
@@ -389,13 +471,6 @@ function handleWithdraw() {
   left: 20px;
 }
 
-.avatar-img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
 .form-group {
   width: 100%;
   display: flex;
@@ -435,6 +510,13 @@ function handleWithdraw() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.error-msg {
+  width: 100%;
+  font-size: 13px;
+  color: #ef4444;
+  margin: 0;
 }
 
 .btn-row {

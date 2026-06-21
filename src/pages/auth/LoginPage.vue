@@ -1,7 +1,6 @@
 <template>
   <div class="login-wrap">
     <div class="login-box">
-
       <div class="login-icon">→</div>
       <h2 class="login-title">로그인</h2>
       <p class="login-sub">계정에 로그인하세요</p>
@@ -9,14 +8,14 @@
       <!-- 역할 탭 -->
       <div class="role-tabs">
         <button
-          :class="['role-tab', selectedRole === 'user' ? 'active' : '']"
-          @click="selectedRole = 'user'"
+          :class="['role-tab', selectedRole === 'USER' ? 'active' : '']"
+          @click="selectedRole = 'USER'"
         >
           프리랜서
         </button>
         <button
-          :class="['role-tab', selectedRole === 'company' ? 'active' : '']"
-          @click="selectedRole = 'company'"
+          :class="['role-tab', selectedRole === 'COMPANY' ? 'active' : '']"
+          @click="selectedRole = 'COMPANY'"
         >
           회사
         </button>
@@ -25,12 +24,7 @@
       <!-- 폼 -->
       <div class="form-group">
         <label class="form-label">이메일</label>
-        <input
-          v-model="email"
-          type="email"
-          class="form-input"
-          placeholder="이메일을 입력하세요"
-        />
+        <input v-model="email" type="email" class="form-input" placeholder="이메일을 입력하세요" />
       </div>
 
       <div class="form-group">
@@ -40,6 +34,7 @@
           type="password"
           class="form-input"
           placeholder="비밀번호를 입력하세요"
+          @keyup.enter="handleLogin"
         />
       </div>
 
@@ -50,10 +45,9 @@
       </button>
 
       <p class="login-footer">
-        계정이 없으신가요? <a href="/signup">회원가입</a>
-        · <a href="/password-reset">비밀번호 찾기</a>
+        계정이 없으신가요? <a href="/signup">회원가입</a> ·
+        <a href="/password-reset">비밀번호 찾기</a>
       </p>
-
     </div>
   </div>
 </template>
@@ -69,7 +63,7 @@ const authStore = useAuthStore()
 
 const email = ref('')
 const password = ref('')
-const selectedRole = ref('user')
+const selectedRole = ref('USER') // 'USER' | 'COMPANY' - 백엔드는 대문자만 허용
 const isLoading = ref(false)
 const errorMsg = ref('')
 
@@ -89,18 +83,18 @@ async function handleLogin() {
     authStore.login({
       accessToken: data.accessToken,
       email: data.email,
-      role: data.role
+      role: data.role, // 백엔드가 'USER' | 'COMPANY'로 반환
+      chatRoomIds: data.chatRoomIds,
+      profileImageUrl: data.profileImageUrl, // 백엔드 로그인 응답에 추가될 필드
     })
 
-    // 역할에 따라 대시보드로 이동
-    if (authStore.role === 'user') {
+    if (data.role === 'USER') {
       router.push('/freelancer/dashboard')
     } else {
       router.push('/company/dashboard')
     }
-
-  } catch {
-    errorMsg.value = '이메일 또는 비밀번호가 올바르지 않습니다.'
+  } catch (err) {
+    errorMsg.value = err.response?.data?.message || '이메일 또는 비밀번호가 올바르지 않습니다.'
   } finally {
     isLoading.value = false
   }
@@ -122,7 +116,7 @@ async function handleLogin() {
   padding: 40px;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -131,7 +125,7 @@ async function handleLogin() {
 .login-icon {
   width: 56px;
   height: 56px;
-  background: #1B2B4B;
+  background: #1b2b4b;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -150,14 +144,14 @@ async function handleLogin() {
 
 .login-sub {
   font-size: 13px;
-  color: #9CA3AF;
+  color: #9ca3af;
   margin-bottom: 24px;
 }
 
 .role-tabs {
   display: flex;
   width: 100%;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 20px;
@@ -169,14 +163,14 @@ async function handleLogin() {
   font-size: 14px;
   font-weight: 500;
   background: #fff;
-  color: #6B7280;
+  color: #6b7280;
   border: none;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .role-tab.active {
-  background: #1B2B4B;
+  background: #1b2b4b;
   color: #fff;
 }
 
@@ -189,7 +183,7 @@ async function handleLogin() {
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #4B5563;
+  color: #4b5563;
   margin-bottom: 6px;
 }
 
@@ -197,7 +191,7 @@ async function handleLogin() {
   width: 100%;
   height: 40px;
   padding: 0 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 14px;
   outline: none;
@@ -205,20 +199,20 @@ async function handleLogin() {
 }
 
 .form-input:focus {
-  border-color: #1B2B4B;
+  border-color: #1b2b4b;
 }
 
 .error-msg {
   width: 100%;
   font-size: 13px;
-  color: #EF4444;
+  color: #ef4444;
   margin-bottom: 12px;
 }
 
 .btn-login {
   width: 100%;
   height: 44px;
-  background: #1B2B4B;
+  background: #1b2b4b;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -230,7 +224,7 @@ async function handleLogin() {
 }
 
 .btn-login:hover:not(:disabled) {
-  background: #253A63;
+  background: #253a63;
 }
 
 .btn-login:disabled {
@@ -240,11 +234,11 @@ async function handleLogin() {
 
 .login-footer {
   font-size: 13px;
-  color: #6B7280;
+  color: #6b7280;
 }
 
 .login-footer a {
-  color: #1B2B4B;
+  color: #1b2b4b;
   text-decoration: none;
   font-weight: 500;
 }

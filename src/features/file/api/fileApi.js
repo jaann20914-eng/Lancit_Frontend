@@ -1,7 +1,7 @@
 import httpClient from '@/shared/api/httpClient.js'
 
-// 파일 업로드 (포트폴리오, 컨펌파일, 프로필 이미지 등 공통)
-// parentType: PROFILE | PORTFOLIO_BANNER | PORTFOLIO_FILE | CONTRACT | CHAT | TEMP
+// 파일 업로드 (프로필 이미지는 parentType=TEMP, parentId=null로 먼저 올림)
+// 저장(PUT /user(company)/me) 시점에 백엔드가 TEMP -> PROFILE 로 승격 처리
 export function uploadFile(file, parentType, parentId) {
   const formData = new FormData()
   formData.append('files', file)
@@ -15,7 +15,7 @@ export function uploadFile(file, parentType, parentId) {
 }
 
 // 파일 다운로드(Signed) URL 조회
-export function getDownloadUrl(fileId) {
+export function getFileUrl(fileId) {
   return httpClient.get(`/files/${fileId}/url`)
 }
 
