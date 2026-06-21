@@ -15,14 +15,15 @@ export function mapApplicationFromApi(dto) {
   if (!dto || typeof dto !== 'object') return null
 
   const profile = dto.portfolioProfile
-    ? {
+      ? {
         freelancerEmail: dto.portfolioProfile.freelancerEmail ?? '',
-        name: dto.portfolioProfile.name ?? '',
+        displayName: dto.portfolioProfile.displayName ?? dto.portfolioProfile.name ?? '',
         jobCategory: dto.portfolioProfile.jobCategory ?? null,
         jobCategoryLabel: getJobCategoryLabel(dto.portfolioProfile.jobCategory),
         profileFileId: dto.portfolioProfile.profileFileId ?? null,
         isPortfolioPublic: Boolean(dto.portfolioProfile.isPortfolioPublic),
         intro: dto.portfolioProfile.intro ?? '',
+        description: dto.portfolioProfile.description ?? '',
         techStacks: normalizeTechStacks(dto.portfolioProfile.techStacks),
       }
     : null
@@ -46,9 +47,14 @@ export function mapApplicationFromApi(dto) {
           portfolioId: portfolio.portfolioId ?? null,
           title: portfolio.title ?? '',
           summary: portfolio.summary ?? '',
+          content: portfolio.content ?? '',
           category: portfolio.category ?? '',
           bannerFileId: portfolio.bannerFileId ?? null,
           isPublic: Boolean(portfolio.isPublic),
+          workStartAt: portfolio.workStartAt ?? null,
+          workEndAt: portfolio.workEndAt ?? null,
+          createdAt: portfolio.createdAt ?? null,
+          updatedAt: portfolio.updatedAt ?? null,
         }))
       : [],
   }

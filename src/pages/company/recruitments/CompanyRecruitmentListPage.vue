@@ -81,80 +81,134 @@
       <div class="recruitment-list">
         <article v-for="item in recruitments" :key="item.recruitmentId" class="recruitment-card">
           <div class="card-main">
-            <div class="badge-row">
-              <span :class="['status-badge', item.statusMeta.className]">{{ item.statusMeta.label }}</span>
-              <span class="category-badge">{{ item.jobCategoryLabel }}</span>
-              <span class="category-badge light">{{ item.recruitmentCategoryLabel }}</span>
-              <span v-if="activeTab === 'ALL'" class="company-badge">
-                {{ item.companyName || item.companyEmail || '기업 정보 없음' }}
-              </span>
+            <div class="card-heading">
+              <div class="title-area">
+                <button type="button" class="title-button" @click="goToDetail(item.recruitmentId)">
+                  {{ item.title || '제목 없는 공고' }}
+                </button>
+                <div class="meta-row">
+                  <span class="meta-item">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h2a2 2 0 0 1 2 2v10M8 7h4M8 11h4M8 15h4M3 21h18" />
+                    </svg>
+                    {{ item.companyName || item.companyEmail || '기업 정보 없음' }}
+                  </span>
+                  <span class="meta-separator" aria-hidden="true">·</span>
+                  <span class="meta-item">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                      <circle cx="12" cy="10" r="2.5" />
+                    </svg>
+                    {{ item.workLocation || '위치 협의' }}
+                  </span>
+                  <span class="meta-separator" aria-hidden="true">·</span>
+                  <span class="meta-item">{{ item.jobCategoryLabel }}</span>
+                </div>
+              </div>
+
+              <div class="status-actions">
+                <template v-if="canManage(item) && item.canChangeStatus">
+                  <button
+                    v-for="statusOption in CARD_STATUS_OPTIONS"
+                    :key="statusOption.value"
+                    type="button"
+                    :class="[
+                      'status-choice',
+                      statusOption.className,
+                      { active: item.status === statusOption.value },
+                    ]"
+                    :aria-pressed="item.status === statusOption.value"
+                    :disabled="changingStatusId === item.recruitmentId"
+                    @click="handleStatusChange(item, statusOption.value)"
+                  >
+                    {{ statusOption.label }}
+                  </button>
+                </template>
+                <span v-else :class="['status-badge', item.statusMeta.className]">
+                  {{ item.statusMeta.label }}
+                </span>
+              </div>
             </div>
-            <button type="button" class="title-button" @click="goToDetail(item.recruitmentId)">
-              {{ item.title || '제목 없는 공고' }}
-            </button>
+
             <p class="summary">{{ item.summary || '등록된 요약이 없습니다.' }}</p>
 
-            <div v-if="item.techStacks.length" class="tech-stack-row">
-              <span v-for="techStack in item.techStacks" :key="techStack" class="tech-tag">{{ techStack }}</span>
-            </div>
-
-            <dl class="information-row">
-              <div>
-                <dt>예산</dt>
-                <dd>{{ formatBudget(item.budget) }}</dd>
+            <dl class="information-panel">
+              <div class="information-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <ellipse cx="12" cy="5" rx="7" ry="3" />
+                  <path d="M5 5v5c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 10v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5M5 15v4c0 1.7 3.1 3 7 3s7-1.3 7-3v-4" />
+                </svg>
+                <div>
+                  <dt>예산</dt>
+                  <dd>{{ formatBudget(item.budget) }}</dd>
+                </div>
               </div>
-              <div>
-                <dt>근무 위치</dt>
-                <dd>{{ item.workLocation || '협의' }}</dd>
+              <div class="information-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M16 3v4M8 3v4M3 10h18" />
+                </svg>
+                <div>
+                  <dt>예상 계약 기간</dt>
+                  <dd>{{ formatDateRange(item.contractStartAt, item.contractEndAt) }}</dd>
+                </div>
               </div>
-              <div>
-                <dt>모집 마감</dt>
-                <dd>{{ formatDate(item.recruitmentEndAt) }}</dd>
+              <div class="information-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+                <div>
+                  <dt>마감일</dt>
+                  <dd>{{ formatDate(item.recruitmentEndAt) }}</dd>
+                </div>
               </div>
-              <div>
-                <dt>지원자</dt>
-                <dd class="applicant-count">{{ item.applicantCount }}명</dd>
+              <div class="information-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="2.5" />
+                </svg>
+                <div>
+                  <dt>지원자</dt>
+                  <dd class="applicant-count">{{ item.applicantCount }}명</dd>
+                </div>
               </div>
             </dl>
-          </div>
 
-          <div class="card-actions">
-            <button type="button" class="action-button" @click="goToDetail(item.recruitmentId)">상세 보기</button>
-            <template v-if="canManage(item)">
-              <button
-                type="button"
-                class="action-button"
-                :disabled="!item.canEdit"
-                :title="item.canEdit ? '' : '지원자가 있는 공고는 수정할 수 없습니다.'"
-                @click="goToEdit(item)"
-              >
-                수정
-              </button>
-              <button type="button" class="action-button primary-outline" @click="goToApplicants(item)">
-                지원자 보기 ({{ item.applicantCount }})
-              </button>
-              <select
-                v-if="item.canChangeStatus"
-                class="action-select"
-                aria-label="공고 상태 변경"
-                :disabled="changingStatusId === item.recruitmentId"
-                @change="handleStatusChange(item, $event)"
-              >
-                <option value="">상태 변경</option>
-                <option v-if="item.status !== 'OPEN'" value="OPEN">모집중으로 변경</option>
-                <option v-if="item.status !== 'CLOSED'" value="CLOSED">마감으로 변경</option>
-                <option v-if="item.status !== 'CANCELLED'" value="CANCELLED">취소로 변경</option>
-              </select>
-              <button
-                type="button"
-                class="action-button danger"
-                :disabled="!item.canDelete || deletingId === item.recruitmentId"
-                :title="item.canDelete ? '' : '지원자가 있는 공고는 삭제할 수 없습니다.'"
-                @click="handleDelete(item)"
-              >
-                {{ deletingId === item.recruitmentId ? '삭제 중...' : '삭제' }}
-              </button>
-            </template>
+            <div class="card-footer">
+              <div v-if="item.techStacks.length" class="tech-stack-row">
+                <span v-for="techStack in item.techStacks" :key="techStack" class="tech-tag">
+                  {{ techStack }}
+                </span>
+              </div>
+              <p v-else class="tech-stack-empty">등록된 기술 스택이 없습니다.</p>
+
+              <div class="footer-actions">
+                <button type="button" class="detail-button" @click="goToDetail(item.recruitmentId)">
+                  상세 보기
+                </button>
+                <button
+                  v-if="canManage(item)"
+                  type="button"
+                  class="footer-button edit-button"
+                  :disabled="!item.canEdit"
+                  :title="item.canEdit ? '' : '지원자가 있는 공고는 수정할 수 없습니다.'"
+                  @click="goToEdit(item)"
+                >
+                  수정
+                </button>
+                <button
+                  v-if="canManage(item)"
+                  type="button"
+                  class="footer-button delete-button"
+                  :disabled="!item.canDelete || deletingId === item.recruitmentId"
+                  :title="item.canDelete ? '' : '지원자가 있는 공고는 삭제할 수 없습니다.'"
+                  @click="handleDelete(item)"
+                >
+                  {{ deletingId === item.recruitmentId ? '삭제 중...' : '삭제' }}
+                </button>
+              </div>
+            </div>
           </div>
         </article>
       </div>
@@ -172,6 +226,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
+import { getCompanyApplications } from '@/features/company/applicants/api/companyApplicationApi.js'
 import {
   deleteCompanyRecruitment,
   getAllRecruitments,
@@ -189,6 +244,11 @@ import {
 const SCOPE_TABS = [
   { value: 'MY', label: '내 공고' },
   { value: 'ALL', label: '전체 공고' },
+]
+const CARD_STATUS_OPTIONS = [
+  { value: 'OPEN', label: '모집중', className: 'status-choice-open' },
+  { value: 'CLOSED', label: '마감', className: 'status-choice-closed' },
+  { value: 'CANCELLED', label: '취소', className: 'status-choice-cancelled' },
 ]
 
 const route = useRoute()
@@ -235,6 +295,8 @@ async function loadRecruitments() {
     })
     if (requestId !== latestRequestId || requestedTab !== activeTab.value) return
     recruitments.value = data.content
+    await syncAcceptedRecruitmentStatuses(recruitments.value)
+    if (requestId !== latestRequestId || requestedTab !== activeTab.value) return
     Object.assign(pagination, {
       page: data.page,
       size: data.size,
@@ -250,6 +312,28 @@ async function loadRecruitments() {
   } finally {
     if (requestId === latestRequestId) isLoading.value = false
   }
+}
+
+async function syncAcceptedRecruitmentStatuses(items) {
+  const targets = items.filter(
+    (item) =>
+      canManage(item) &&
+      item.applicantCount > 0 &&
+      item.status !== 'CLOSED' &&
+      item.status !== 'CANCELLED',
+  )
+
+  await Promise.allSettled(
+    targets.map(async (item) => {
+      const applicationPage = await getCompanyApplications(item.recruitmentId, {
+        page: 1,
+        size: Math.min(Math.max(item.applicantCount, 10), 100),
+      })
+      if (!applicationPage.content.some((application) => application.status === 'ACCEPTED')) return
+      const updated = await updateCompanyRecruitmentStatus(item.recruitmentId, 'CLOSED')
+      Object.assign(item, updated)
+    }),
+  )
 }
 
 function changeScope(scope) {
@@ -288,10 +372,13 @@ function changePage(page) {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-async function handleStatusChange(item, event) {
-  const status = event.target.value
-  event.target.value = ''
-  if (!status || !canManage(item)) return
+function formatDateRange(startAt, endAt) {
+  if (!startAt && !endAt) return '미정'
+  return `${formatDate(startAt)} ~ ${formatDate(endAt)}`
+}
+
+async function handleStatusChange(item, status) {
+  if (!status || !canManage(item) || item.status === status) return
 
   const label = getRecruitmentStatusMeta(status).label
   if (!confirm(`'${item.title}' 공고를 '${label}' 상태로 변경하시겠습니까?`)) return
@@ -333,7 +420,7 @@ function isOwner(item) {
 }
 
 function canManage(item) {
-  return activeTab.value === 'MY' && isOwner(item)
+  return isOwner(item)
 }
 
 function goToCreate() {
@@ -353,14 +440,10 @@ function goToEdit(item) {
   router.push({ name: 'CompanyRecruitmentEdit', params: { recruitmentId: item.recruitmentId } })
 }
 
-function goToApplicants(item) {
-  if (!canManage(item)) return
-  router.push({ name: 'CompanyApplicantList', params: { recruitmentId: item.recruitmentId } })
-}
 </script>
 
 <style scoped>
-.page { width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px; color: #1f2937; }
+.page { width: 100%; max-width: 100%; margin: 0 auto; padding: 32px; color: #1f2937; }
 .page-header { margin-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .page-header h1 { margin: 0 0 6px; color: #1a233d; font-size: 24px; }
 .page-header p { margin: 0; color: #6b7280; font-size: 14px; }
@@ -382,31 +465,49 @@ function goToApplicants(item) {
 .search-button, .retry-button { height: 40px; padding: 0 16px; border: 1px solid #1a233d; border-radius: 6px; background: white; color: #1a233d; font-size: 13px; font-weight: 600; cursor: pointer; }
 .result-summary { margin-bottom: 10px; color: #6b7280; font-size: 13px; }
 .recruitment-list { display: grid; gap: 14px; }
-.recruitment-card { border: 1px solid #e5e7eb; border-radius: 12px; background: white; overflow: hidden; }
-.card-main { padding: 24px; }
-.badge-row { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 7px; }
-.status-badge, .category-badge, .company-badge, .tech-tag { min-height: 25px; padding: 0 9px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; }
+.recruitment-card { border: 1px solid #e5e7eb; border-radius: 12px; background: white; overflow: hidden; box-shadow: 0 2px 8px rgba(15,23,42,.05); transition: border-color .15s, box-shadow .15s; }
+.recruitment-card:hover { border-color: #d1d5db; box-shadow: 0 6px 18px rgba(15,23,42,.08); }
+.card-main { padding: 22px 24px 16px; }
+.card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.title-area { min-width: 0; }
+.status-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; flex: 0 0 auto; }
+.status-badge, .tech-tag { min-height: 25px; padding: 0 9px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; }
 .status-open { background: #dcfce7; color: #15803d; }
 .status-closed, .status-expired { background: #f3f4f6; color: #4b5563; }
 .status-cancelled, .status-unknown { background: #fee2e2; color: #991b1b; }
-.category-badge { background: #e8edf5; color: #1a233d; }
-.category-badge.light { background: #f3f4f6; color: #6b7280; }
-.company-badge { background: #fff7ed; color: #9a3412; }
-.title-button { padding: 0; border: 0; background: none; color: #1a233d; font-size: 19px; font-weight: 700; text-align: left; cursor: pointer; }
+.status-choice { min-height: 28px; padding: 0 11px; border: 1px solid transparent; border-radius: 999px; font-size: 11px; font-weight: 600; cursor: pointer; opacity: .55; transition: opacity .15s, box-shadow .15s, transform .15s; }
+.status-choice:hover { opacity: .85; transform: translateY(-1px); }
+.status-choice.active { opacity: 1; box-shadow: 0 0 0 2px rgba(26,35,61,.14); }
+.status-choice:disabled { cursor: wait; transform: none; }
+.status-choice-open { border-color: #bbf7d0; background: #dcfce7; color: #15803d; }
+.status-choice-closed { border-color: #d1d5db; background: #f3f4f6; color: #4b5563; }
+.status-choice-cancelled { border-color: #fecaca; background: #fee2e2; color: #991b1b; }
+.title-button { padding: 0; border: 0; background: none; color: #1a233d; font-size: 19px; font-weight: 700; line-height: 1.4; text-align: left; cursor: pointer; }
 .title-button:hover { text-decoration: underline; }
-.summary { margin: 7px 0 14px; color: #6b7280; font-size: 14px; line-height: 1.6; }
-.tech-stack-row { margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 6px; }
-.tech-tag { background: #f0f4f9; color: #4a6fa5; font-weight: 500; }
-.information-row { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-.information-row div { min-width: 0; }
-.information-row dt { margin-bottom: 4px; color: #9ca3af; font-size: 11px; }
-.information-row dd { margin: 0; color: #374151; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
-.information-row .applicant-count { color: #4a6fa5; }
-.card-actions { padding: 13px 18px; border-top: 1px solid #e5e7eb; background: #fafafa; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.action-button, .action-select { min-height: 34px; padding: 0 11px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #4b5563; font-size: 12px; cursor: pointer; }
-.action-button.primary-outline { border-color: #1a233d; color: #1a233d; font-weight: 600; }
-.action-button.danger { border-color: #fecaca; color: #dc2626; }
-.action-button:disabled, .action-select:disabled { opacity: .45; cursor: not-allowed; }
+.meta-row { margin-top: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #7c8799; font-size: 12px; }
+.meta-item { display: inline-flex; align-items: center; gap: 5px; }
+.meta-item svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.meta-separator { color: #cbd5e1; }
+.summary { margin: 14px 0 16px; color: #6b7280; font-size: 13px; line-height: 1.6; }
+.information-panel { margin: 0; padding: 13px 14px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fcfcfd; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.information-item { min-width: 0; padding: 0 14px; border-right: 1px solid #e5e7eb; display: flex; align-items: center; gap: 11px; }
+.information-item:first-child { padding-left: 0; }
+.information-item:last-child { padding-right: 0; border-right: 0; }
+.information-item > svg { width: 22px; height: 22px; fill: none; stroke: #64748b; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; flex: 0 0 auto; }
+.information-item div { min-width: 0; }
+.information-item dt { margin-bottom: 3px; color: #9ca3af; font-size: 10px; }
+.information-item dd { margin: 0; color: #374151; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.information-item .applicant-count { color: #4a6fa5; }
+.card-footer { min-height: 48px; padding-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.tech-stack-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.tech-tag { background: #eef1f6; color: #334155; font-weight: 500; }
+.tech-stack-empty { margin: 0; color: #9ca3af; font-size: 11px; }
+.footer-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.detail-button, .footer-button { min-height: 36px; padding: 0 14px; border-radius: 6px; background: white; font-size: 12px; font-weight: 600; cursor: pointer; }
+.detail-button { border: 1px solid #cbd5e1; color: #334155; }
+.edit-button { border: 1px solid #cbd5e1; color: #4b5563; }
+.delete-button { border: 1px solid #fecaca; color: #dc2626; }
+.footer-button:disabled { opacity: .45; cursor: not-allowed; }
 .state-card, .empty-state { min-height: 330px; padding: 40px; border: 1px solid #e5e7eb; border-radius: 12px; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .state-card { color: #6b7280; }
 .state-card p { margin: 14px 0 0; }
@@ -420,6 +521,6 @@ function goToApplicants(item) {
 .pagination button { height: 34px; padding: 0 13px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #374151; cursor: pointer; }
 .pagination button:disabled { opacity: .4; cursor: not-allowed; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 800px) { .page { padding: 24px 18px; } .page-header { align-items: center; } .information-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .search-row { flex-wrap: wrap; } .search-input { flex-basis: 100%; } }
-@media (max-width: 520px) { .page-header { align-items: flex-start; flex-direction: column; } .information-row { grid-template-columns: 1fr; } .card-actions { justify-content: stretch; } .action-button, .action-select { flex: 1; } }
+@media (max-width: 800px) { .page { padding: 24px 18px; } .page-header { align-items: center; } .information-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); } .information-item { padding: 12px; border-right: 0; border-bottom: 1px solid #e5e7eb; } .information-item:nth-child(odd) { padding-left: 0; border-right: 1px solid #e5e7eb; } .information-item:nth-child(even) { padding-right: 0; } .information-item:nth-last-child(-n + 2) { border-bottom: 0; } .search-row { flex-wrap: wrap; } .search-input { flex-basis: 100%; } .card-heading { flex-direction: column; } .status-actions { width: 100%; justify-content: flex-start; } }
+@media (max-width: 520px) { .page-header { align-items: flex-start; flex-direction: column; } .information-panel { grid-template-columns: 1fr; } .information-item, .information-item:nth-child(odd), .information-item:nth-child(even) { padding: 12px 0; border-right: 0; border-bottom: 1px solid #e5e7eb; } .information-item:first-child { padding-top: 0; } .information-item:last-child { padding-bottom: 0; border-bottom: 0; } .card-footer { align-items: stretch; flex-direction: column; } .footer-actions { display: grid; grid-template-columns: 1fr 1fr; } }
 </style>

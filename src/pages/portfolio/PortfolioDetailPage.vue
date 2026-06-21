@@ -37,7 +37,9 @@
       <div class="detail-heading">
         <div class="badge-row">
           <span class="category-badge">{{ categoryLabel }}</span>
-          <span :class="['visibility-badge', visibility.className]">{{ visibility.label }}</span>
+          <span v-if="!isCompanyView" :class="['visibility-badge', visibility.className]">
+            {{ visibility.label }}
+          </span>
         </div>
         <h1>{{ title }}</h1>
         <p class="summary">{{ summary }}</p>

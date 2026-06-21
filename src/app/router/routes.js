@@ -1,3 +1,12 @@
+import { useAuthStore } from '@/features/auth/model/authStore.js'
+
+function requireFreelancer() {
+  const authStore = useAuthStore()
+  if (!authStore.isLoggedIn) return { name: 'Login' }
+  if (!authStore.isFreelancer) return { name: 'Forbidden' }
+  return true
+}
+
 //라우트 목록
 const routes = [
   // ── Auth (로그인/회원가입) ──────────────────
@@ -25,6 +34,7 @@ const routes = [
       { path: 'contracts', name: 'ContractList', component: () => import('@/pages/contracts/ContractListPage.vue') },
       { path: 'contracts/:id', name: 'ContractDetail', component: () => import('@/pages/contracts/ContractDetailPage.vue') },
       { path: 'recruitments', name: 'RecruitmentList', component: () => import('@/pages/recruitments/RecruitmentListPage.vue') },
+      { path: 'recruitments/:recruitmentId/apply', name: 'RecruitmentApply', component: () => import('@/pages/recruitments/RecruitmentApplyPage.vue'), beforeEnter: requireFreelancer },
       { path: 'recruitments/:id', name: 'RecruitmentDetail', component: () => import('@/pages/recruitments/RecruitmentDetailPage.vue') },
       { path: 'recruitments/bookmarks', name: 'RecruitmentBookmark', component: () => import('@/pages/recruitments/RecruitmentBookmarkPage.vue') },
       { path: 'applications', name: 'MyApplicationList', component: () => import('@/pages/applications/MyApplicationListPage.vue') },
@@ -57,9 +67,7 @@ const routes = [
       { path: 'recruitments/new', name: 'CompanyRecruitmentCreate', component: () => import('@/pages/company/recruitments/CompanyRecruitmentEditorPage.vue') },
       { path: 'recruitments/:recruitmentId', name: 'CompanyRecruitmentDetail', component: () => import('@/pages/company/recruitments/CompanyRecruitmentDetailPage.vue') },
       { path: 'recruitments/:recruitmentId/edit', name: 'CompanyRecruitmentEdit', component: () => import('@/pages/company/recruitments/CompanyRecruitmentEditorPage.vue') },
-      { path: 'recruitments/:recruitmentId/applicants', name: 'CompanyApplicantList', component: () => import('@/pages/company/applicants/CompanyApplicantListPage.vue') },
       { path: 'recruitments/:recruitmentId/applicants/:applicationId', name: 'CompanyApplicantDetail', component: () => import('@/pages/company/applicants/CompanyApplicantDetailPage.vue') },
-      { path: 'applicants/:recruitmentId', redirect: to => ({ name: 'CompanyApplicantList', params: { recruitmentId: to.params.recruitmentId } }) },
       { path: 'applicants/:recruitmentId/:applicationId', redirect: to => ({ name: 'CompanyApplicantDetail', params: { recruitmentId: to.params.recruitmentId, applicationId: to.params.applicationId } }) },
       { path: 'talents', name: 'TalentSearch', component: () => import('@/pages/company/talents/TalentSearchPage.vue') },
       { path: 'talents/:id', name: 'TalentDetail', component: () => import('@/pages/company/talents/TalentDetailPage.vue') },
