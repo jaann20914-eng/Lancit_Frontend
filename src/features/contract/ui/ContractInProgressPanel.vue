@@ -1,0 +1,487 @@
+<template>
+  <div class="panel">
+    <div class="panel-header">
+      <p class="recruitment-title">{{ detail.recruitmentTitle || detail.recruitment_title }}</p>
+      <span :class="['status-badge', isPending ? 'badge-pending' : 'badge-inprogress']">
+        {{ isPending ? '완료 대기' : '진행중' }}
+      </span>
+    </div>
+
+    <!-- 파기 요청 배너 -->
+    <div v-if="cancelRequest" class="cancel-banner">
+      <p class="cancel-text">
+        {{
+          isMyCancelRequest
+            ? '파기를 요청했습니다. 상대방의 응답을 기다리는 중입니다.'
+            : '상대방이 계약 파기를 요청했습니다.'
+        }}
+      </p>
+      <button v-if="isOpponentCancelRequest" class="btn-danger" @click="handleCancelConfirm">
+        파기 확정하기
+      </button>
+    </div>
+
+    <!-- 드롭다운: 컨펌 파일 목록 / 계약서 -->
+    <div class="dropdown-tabs">
+      <button
+        :class="['dropdown-tab', activeView === 'confirm' ? 'active' : '']"
+        @click="activeView = 'confirm'"
+      >
+        컨펌 파일 목록
+      </button>
+      <button
+        :class="['dropdown-tab', activeView === 'document' ? 'active' : '']"
+        @click="activeView = 'document'"
+      >
+        계약서
+      </button>
+    </div>
+
+    <!-- 컨펌 파일 목록 뷰 -->
+    <div v-if="activeView === 'confirm'" class="panel-body">
+      <div class="section">
+        <div class="section-head">
+          <!-- <span class="section-title">컨펌 파일 목록</span> -->
+          <button v-if="isFreelancer && !isPending" class="btn-add" @click="triggerFileInput">
+            +
+          </button>
+        </div>
+
+        <input ref="fileInputRef" type="file" style="display: none" @change="handleFileSelect" />
+
+        <div v-if="confirmFiles.length === 0" class="empty-mini">업로드된 파일이 없습니다</div>
+
+        <div v-else class="file-list">
+          <div v-for="file in confirmFiles" :key="file.contractFileId" class="file-item">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            <span class="file-name">파일 #{{ file.fileId }}</span>
+            <span class="file-date">{{ formatDate(file.createdAt) }}</span>
+            <button
+              v-if="isFreelancer && !isPending"
+              class="btn-delete-file"
+              @click="handleDeleteFile(file.contractFileId)"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 계약서 뷰: PDF 다운로드 + 실제 계약서 내용 (전체 읽기전용) -->
+    <div v-else class="panel-body document-wrap">
+      <button v-if="pdfFile" class="btn-download-top" @click="handleDownloadPdf">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        계약서 PDF 다운로드
+      </button>
+
+      <ContractDocumentForm
+        :form="documentForm"
+        :consent="readonlyConsent"
+        :can-edit-company-fields="false"
+        :can-edit-freelancer-fields="false"
+        :can-edit-consent="false"
+      />
+    </div>
+
+    <!-- 하단 액션 -->
+    <div class="panel-footer">
+      <button v-if="isPending && !isFreelancer" class="btn-complete" @click="handleComplete">
+        계약 완료 확정
+      </button>
+      <button v-else-if="!cancelRequest" class="btn-cancel-request" @click="handleRequestCancel">
+        계약 파기 요청
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, toRef } from 'vue'
+import {
+  getConfirmFiles,
+  uploadConfirmFile,
+  deleteConfirmFile,
+  getPdfDownloadUrl,
+  completeContract,
+} from '@/features/contract/api/contractApi.js'
+import { useAuthStore } from '@/features/auth/model/authStore.js'
+import { useContractCancel } from '@/features/contract/model/useContractCancel.js'
+import { useContractDocumentForm } from '@/features/contract/model/useContractDocumentForm.js'
+import ContractDocumentForm from '@/features/contract/ui/ContractDocumentForm.vue'
+
+const props = defineProps({
+  detail: { type: Object, required: true },
+  isFreelancer: { type: Boolean, default: false },
+})
+
+const emit = defineEmits(['refresh'])
+
+const authStore = useAuthStore()
+const myEmail = computed(() => authStore.email)
+
+const activeView = ref('confirm')
+
+const contractId = computed(() => props.detail.contractId || props.detail.contract_id)
+const isPending = computed(() => props.detail.status === 'COMPLETED_PENDING')
+const document = computed(() => props.detail.document)
+const pdfFile = computed(() => props.detail.pdfFile)
+const confirmFiles = ref(props.detail.confirmFiles || [])
+
+// 계약서 내용을 ContractDocumentForm이 기대하는 form 형태로 변환 (전체 읽기전용으로 표시)
+const { form: documentForm } = useContractDocumentForm(document)
+
+// 동의서는 이미 발송 단계에서 전부 동의 완료된 상태이므로 전부 true로 고정 표시
+const readonlyConsent = {
+  basic: true,
+  unique: true,
+  sensitive: true,
+  thirdParty: true,
+  thirdPartyUnique: true,
+}
+
+const detailRef = toRef(props, 'detail')
+const {
+  cancelRequest,
+  isMyCancelRequest,
+  isOpponentCancelRequest,
+  handleRequestCancel,
+  handleCancelConfirm,
+} = useContractCancel(detailRef, emit)
+
+const fileInputRef = ref(null)
+
+function formatDate(dateStr) {
+  if (!dateStr) return '-'
+  return String(dateStr).slice(0, 10)
+}
+
+function formatMoney(amount) {
+  if (!amount) return '-'
+  return Number(amount).toLocaleString() + '원'
+}
+
+function triggerFileInput() {
+  fileInputRef.value?.click()
+}
+
+async function handleFileSelect(e) {
+  const file = e.target.files[0]
+  if (!file) return
+
+  try {
+    // TODO: 실제 파일 업로드 (POST /files/upload) 후 받은 fileId 사용
+    const mockFileId = Math.floor(Math.random() * 10000)
+    await uploadConfirmFile(contractId.value, mockFileId)
+    const res = await getConfirmFiles(contractId.value)
+    confirmFiles.value = res.data.data
+  } catch (err) {
+    alert(err.response?.data?.message || '파일 업로드에 실패했습니다.')
+  }
+}
+
+async function handleDeleteFile(contractFileId) {
+  if (!confirm('이 파일을 삭제하시겠습니까?')) return
+  try {
+    await deleteConfirmFile(contractId.value, contractFileId)
+    confirmFiles.value = confirmFiles.value.filter((f) => f.contractFileId !== contractFileId)
+  } catch (err) {
+    alert(err.response?.data?.message || '삭제에 실패했습니다.')
+  }
+}
+
+async function handleDownloadPdf() {
+  try {
+    const res = await getPdfDownloadUrl(contractId.value)
+    window.open(res.data.data.downloadUrl, '_blank')
+  } catch (err) {
+    alert(err.response?.data?.message || 'PDF 다운로드에 실패했습니다.')
+  }
+}
+
+async function handleComplete() {
+  if (!confirm('계약을 완료 처리하시겠습니까?')) return
+  try {
+    await completeContract(contractId.value)
+    emit('refresh')
+  } catch (err) {
+    alert(err.response?.data?.message || '완료 처리에 실패했습니다.')
+  }
+}
+</script>
+
+<style scoped>
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.panel-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.recruitment-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a233d;
+  margin: 0;
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-inprogress {
+  background: #dcfce7;
+  color: #15803d;
+}
+.badge-pending {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.cancel-banner {
+  padding: 12px 20px;
+  background: #fef2f2;
+  border-bottom: 1px solid #fee2e2;
+}
+
+.cancel-text {
+  font-size: 12px;
+  color: #991b1b;
+  margin: 0 0 8px;
+}
+
+.btn-danger {
+  width: 100%;
+  height: 36px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 드롭다운 탭 */
+.dropdown-tabs {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dropdown-tab {
+  flex: 1;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+
+.dropdown-tab.active {
+  color: #1a233d;
+  border-bottom-color: #1a233d;
+  font-weight: 600;
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.section {
+  padding: 14px 20px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a233d;
+}
+
+.btn-add {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1a233d;
+  color: white;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.empty-mini {
+  font-size: 12px;
+  color: #d1d5db;
+  text-align: center;
+  padding: 12px 0;
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #f9fafb;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #1a233d;
+}
+
+.file-name {
+  flex: 1;
+}
+.file-date {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.btn-delete-file {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.info-card {
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #6c757d;
+  margin: 0 0 6px;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+.info-row strong {
+  color: #1a233d;
+  font-weight: 500;
+}
+
+.btn-download {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  background: white;
+  color: #1a233d;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.document-wrap {
+  background: #f4f5f7;
+  padding: 16px 16px 0;
+}
+
+.btn-download-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  background: #1a233d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.btn-download-top:hover {
+  background: #253a63;
+}
+
+.panel-footer {
+  padding: 14px 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn-complete {
+  width: 100%;
+  height: 40px;
+  background: #15803d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-cancel-request {
+  width: 100%;
+  height: 36px;
+  background: white;
+  color: #ef4444;
+  border: 1px solid #fee2e2;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+</style>

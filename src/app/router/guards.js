@@ -16,7 +16,6 @@ export function setupGuards(router) {
     //  return next('/403')
     //}
 
-
     // 개발용 임시 role 강제 설정
     if (to.path.startsWith('/company') && !authStore.role) {
       authStore.role = 'company'

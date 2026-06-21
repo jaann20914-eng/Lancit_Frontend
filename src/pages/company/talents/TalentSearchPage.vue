@@ -17,6 +17,11 @@
 
     <!-- 검색 + 정렬 -->
     <div class="search-bar">
+      <select v-model="sortType" class="sort-select" @change="fetchList">
+        <option value="VIEW">조회순</option>
+        <option value="NAME">이름순</option>
+      </select>
+
       <div class="search-input-wrap">
         <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -31,10 +36,6 @@
       </div>
       <button class="btn-search" @click="handleSearch">검색</button>
 
-      <select v-model="sortType" class="sort-select" @change="fetchList">
-        <option value="VIEW">조회순</option>
-        <option value="NAME">이름순</option>
-      </select>
     </div>
 
     <!-- 목록 -->
@@ -214,7 +215,7 @@ onMounted(fetchList)
   gap: 0;
   border-bottom: 1px solid #E5E7EB;
   margin-bottom: 16px;
-  overflow-x: auto;
+  /* overflow-x: auto; */
   white-space: nowrap;
 }
 

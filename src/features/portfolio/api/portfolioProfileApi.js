@@ -9,13 +9,13 @@ function unwrapResponse(response) {
 }
 
 export async function getPortfolioProfile() {
-  const response = await httpClient.get('/api/portfolios/profile')
+  const response = await httpClient.get('/portfolios/profile')
   return mapPortfolioProfileFromApi(unwrapResponse(response))
 }
 
 export async function updatePortfolioProfile(form) {
   const response = await httpClient.put(
-    '/api/portfolios/profile',
+    '/portfolios/profile',
     mapPortfolioProfileFormToRequest(form),
   )
   return mapPortfolioProfileFromApi(unwrapResponse(response))
@@ -25,7 +25,7 @@ export async function uploadPortfolioProfileImage(file) {
   const formData = new FormData()
   formData.append('files', file)
 
-  const response = await httpClient.post('/api/files/upload', formData, {
+  const response = await httpClient.post('/files/upload', formData, {
     params: { parentType: 'TEMP' },
     headers: { 'Content-Type': 'multipart/form-data' },
   })
@@ -35,6 +35,6 @@ export async function uploadPortfolioProfileImage(file) {
 
 export async function getPortfolioProfileImageUrl(fileId) {
   if (fileId === null || fileId === undefined) return ''
-  const response = await httpClient.get(`/api/files/${fileId}/url`)
+  const response = await httpClient.get(`/files/${fileId}/url`)
   return unwrapResponse(response) ?? ''
 }

@@ -10,47 +10,47 @@ function unwrapResponse(response) {
 }
 
 export async function getMyRecruitments(params = {}) {
-  const response = await httpClient.get('/api/recruitments/my', { params })
+  const response = await httpClient.get('/recruitments/my', { params })
   return mapRecruitmentPageResponse(unwrapResponse(response))
 }
 
 export async function getAllRecruitments(params = {}) {
-  const response = await httpClient.get('/api/recruitments', { params })
+  const response = await httpClient.get('/recruitments', { params })
   return mapRecruitmentPageResponse(unwrapResponse(response))
 }
 
 export async function getCompanyRecruitment(recruitmentId) {
-  const response = await httpClient.get(`/api/recruitments/${recruitmentId}`)
+  const response = await httpClient.get(`/recruitments/${recruitmentId}`)
   return mapRecruitmentFromApi(unwrapResponse(response))
 }
 
 export async function createCompanyRecruitment(form) {
-  const response = await httpClient.post('/api/recruitments', mapRecruitmentFormToRequest(form))
+  const response = await httpClient.post('/recruitments', mapRecruitmentFormToRequest(form))
   return mapRecruitmentFromApi(unwrapResponse(response))
 }
 
 export async function updateCompanyRecruitment(recruitmentId, form) {
   const response = await httpClient.put(
-    `/api/recruitments/${recruitmentId}`,
+    `/recruitments/${recruitmentId}`,
     mapRecruitmentFormToRequest(form),
   )
   return mapRecruitmentFromApi(unwrapResponse(response))
 }
 
 export async function deleteCompanyRecruitment(recruitmentId) {
-  const response = await httpClient.delete(`/api/recruitments/${recruitmentId}`)
+  const response = await httpClient.delete(`/recruitments/${recruitmentId}`)
   return unwrapResponse(response)
 }
 
 export async function updateCompanyRecruitmentStatus(recruitmentId, status) {
-  const response = await httpClient.patch(`/api/recruitments/${recruitmentId}/status`, { status })
+  const response = await httpClient.patch(`/recruitments/${recruitmentId}/status`, { status })
   return mapRecruitmentFromApi(unwrapResponse(response))
 }
 
 export async function uploadRecruitmentImage(file) {
   const formData = new FormData()
   formData.append('files', file)
-  const response = await httpClient.post('/api/files/upload', formData, {
+  const response = await httpClient.post('/files/upload', formData, {
     params: { parentType: 'TEMP' },
     headers: { 'Content-Type': 'multipart/form-data' },
   })
@@ -60,6 +60,6 @@ export async function uploadRecruitmentImage(file) {
 
 export async function getFileUrl(fileId) {
   if (fileId === null || fileId === undefined) return null
-  const response = await httpClient.get(`/api/files/${fileId}/url`)
+  const response = await httpClient.get(`/files/${fileId}/url`)
   return unwrapResponse(response)
 }

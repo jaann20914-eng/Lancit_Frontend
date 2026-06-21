@@ -3,7 +3,7 @@
 // 이후 아래 주석 제거
 // 제안하기용: 내 활성화(OPEN) 공고만 조회
 // export function getMyActiveRecruitments({ page, size }) {
-//   return httpClient.get('/api/recruitments/my', {
+//   return httpClient.get('/recruitments/my', {
 //     params: { status: 'OPEN', page, size }
 //   })
 // }

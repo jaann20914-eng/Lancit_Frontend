@@ -4,24 +4,24 @@ import httpClient from '@/shared/api/httpClient.js'
 // 이후 아래 주석 풀기
 // // 인재 목록 조회 (tab: all | public | bookmark, sort: VIEW | NAME)
 // export function getTalentList({ tab, sort, keyword, page, size }) {
-//   return httpClient.get('/api/talents', {
+//   return httpClient.get('/talents', {
 //     params: { tab, sort, keyword, page, size }
 //   })
 // }
 
 // // 인재 찜 토글
 // export function toggleTalentBookmark(freelancerEmail) {
-//   return httpClient.post(`/api/talents/${freelancerEmail}/bookmark`)
+//   return httpClient.post(`/talents/${freelancerEmail}/bookmark`)
 // }
 
 // // 인재 프로필 카드 조회 (포트폴리오 프로필)
 // export function getTalentProfile(freelancerEmail) {
-//   return httpClient.get(`/api/talents/${freelancerEmail}/profile`)
+//   return httpClient.get(`/talents/${freelancerEmail}/profile`)
 // }
 
 // // 인재의 공개 포트폴리오 목록 조회
 // export function getTalentPublicPortfolios(freelancerEmail, { keyword, category, sort, page, size }) {
-//   return httpClient.get(`/api/portfolio/public/${freelancerEmail}`, {
+//   return httpClient.get(`/portfolio/public/${freelancerEmail}`, {
 //     params: { keyword, category, sort, page, size }
 //   })
 // }
