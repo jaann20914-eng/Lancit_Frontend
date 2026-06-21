@@ -34,7 +34,7 @@ const routes = [
   {
     path: '/freelancer',
     component: () => import('@/layouts/FreelancerLayout.vue'),
-    meta: { requiresAuth: true, role: 'user' },
+    meta: { requiresAuth: true, role: 'USER' },
     children: [
       {
         path: 'dashboard',
@@ -44,7 +44,7 @@ const routes = [
       {
         path: 'account',
         name: 'AccountProfile',
-        component: () => import('@/pages/account/AccountProfilePage.vue'),
+        component: () => import('@/pages/account/AccountProfilePAge.vue'),
       },
       {
         path: 'calendar',
@@ -130,7 +130,7 @@ const routes = [
   {
     path: '/company',
     component: () => import('@/layouts/CompanyLayout.vue'),
-    meta: { requiresAuth: true, role: 'company' },
+    meta: { requiresAuth: true, role: 'COMPANY' },
     children: [
       {
         path: 'dashboard',

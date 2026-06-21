@@ -1,7 +1,9 @@
 <template>
   <div class="page">
+    <div v-if="isLoading" class="loading-state">불러오는 중...</div>
+
     <!-- 조회 모드 -->
-    <div v-if="!isEditing">
+    <div v-else-if="!isEditing">
       <div class="page-header">
         <div>
           <h1 class="page-title">마이페이지</h1>
@@ -24,13 +26,14 @@
       </div>
 
       <div class="profile-card">
-        <!-- 아바타 -->
         <div class="avatar-wrap">
-          <div class="avatar">{{ nameInitial }}</div>
+          <div class="avatar">
+            <img v-if="profileImageUrl" :src="profileImageUrl" class="avatar-img" />
+            <span v-else>{{ nameInitial }}</span>
+          </div>
         </div>
         <p class="profile-name">{{ info.name }}</p>
 
-        <!-- 정보 테이블 -->
         <div class="info-table">
           <div class="info-row">
             <span class="info-label">이메일</span>
@@ -46,7 +49,7 @@
           </div>
           <div class="info-row">
             <span class="info-label">연락처</span>
-            <span class="info-value">{{ info.phone }}</span>
+            <span class="info-value">{{ formatPhoneNumber(info.phone) }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">업종</span>
@@ -57,6 +60,12 @@
             <div class="toggle readonly" :class="{ on: info.pushable }">
               <div class="toggle-thumb"></div>
             </div>
+          </div>
+          <div class="info-row">
+            <span class="info-label">사업자번호</span>
+            <span class="info-value">{{
+              formatBusinessNumber(info.businessNumber) || '미등록'
+            }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">사업자 인증</span>
@@ -72,7 +81,7 @@
     </div>
 
     <!-- 수정 모드 -->
-    <div v-if="isEditing">
+    <div v-else>
       <div class="page-header">
         <div>
           <h1 class="page-title">마이페이지 수정</h1>
@@ -81,10 +90,13 @@
       </div>
 
       <div class="profile-card">
-        <!-- 프로필 이미지 변경 -->
         <div class="avatar-wrap">
           <div class="avatar">
-            <img v-if="previewUrl" :src="previewUrl" class="avatar-img" />
+            <img
+              v-if="previewUrl || profileImageUrl"
+              :src="previewUrl || profileImageUrl"
+              class="avatar-img"
+            />
             <span v-else>{{ nameInitial }}</span>
           </div>
         </div>
@@ -95,7 +107,7 @@
           style="display: none"
           @change="handleFileChange"
         />
-        <button class="btn-img-change" @click="triggerFileInput">
+        <button class="btn-img-change" @click="triggerFileInput" :disabled="isUploading">
           <svg
             width="14"
             height="14"
@@ -108,10 +120,9 @@
             <polyline points="17 8 12 3 7 8" />
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
-          프로필 이미지 변경
+          {{ isUploading ? '업로드 중...' : '프로필 이미지 변경' }}
         </button>
 
-        <!-- 이메일 (수정 불가) -->
         <div class="form-group">
           <label class="form-label">이메일</label>
           <p class="form-static">{{ info.email }}</p>
@@ -129,22 +140,12 @@
 
         <div class="form-group">
           <label class="form-label">이름</label>
-          <input
-            v-model="editForm.name"
-            type="text"
-            class="form-input"
-            placeholder="회사측 가입자명"
-          />
+          <input v-model="editForm.name" type="text" class="form-input" placeholder="담당자명" />
         </div>
 
         <div class="form-group">
           <label class="form-label">연락처</label>
-          <input
-            v-model="editForm.phone"
-            type="tel"
-            class="form-input"
-            placeholder="010-1234-5678"
-          />
+          <PhoneNumberInput v-model="editForm.phone" />
         </div>
 
         <div class="form-group">
@@ -167,60 +168,140 @@
           </div>
         </div>
 
-        <!-- 사업자 번호 인증 -->
-        <button class="btn-outline" @click="verifyBusiness">사업자 번호 인증하기</button>
+        <div class="business-verify-row">
+          <div class="business-status">
+            <span class="form-label">사업자번호</span>
+            <span v-if="editForm.businessNumberVerified" class="verified-badge">
+              ✓ {{ formatBusinessNumber(editForm.businessNumber) }} 인증완료
+            </span>
+            <span v-else class="unverified-text">아직 인증되지 않았습니다</span>
+          </div>
+          <button class="btn-outline" @click="showBusinessModal = true">
+            {{ editForm.businessNumberVerified ? '재인증' : '인증하기' }}
+          </button>
+        </div>
+
+        <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
 
         <div class="btn-row">
-          <button class="btn-save" @click="handleSave" :disabled="isLoading">
-            {{ isLoading ? '저장 중...' : '저장' }}
+          <button class="btn-save" @click="handleSave" :disabled="isSaving">
+            {{ isSaving ? '저장 중...' : '저장' }}
           </button>
           <button class="btn-cancel" @click="cancelEdit">취소</button>
         </div>
       </div>
     </div>
+
+    <!-- 사업자번호 인증 모달 -->
+    <BusinessVerifyModal
+      v-if="showBusinessModal"
+      :initial-value="editForm.businessNumber"
+      @close="showBusinessModal = false"
+      @verified="handleBusinessVerified"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
+import {
+  getCompanyMe,
+  updateCompanyMe,
+  deleteCompanyMe,
+} from '@/features/account/api/accountApi.js'
+import { uploadFile, getFileUrl } from '@/features/file/api/fileApi.js'
 import { JOB_CATEGORY_OPTIONS, jobCategoryLabel } from '@/shared/constants/jobCategory.js'
+import { formatBusinessNumber } from '@/shared/utils/businessNumber.js'
+import { formatPhoneNumber } from '@/shared/utils/phoneNumber.js'
+import PhoneNumberInput from '@/shared/components/form/PhoneNumberInput.vue'
+import BusinessVerifyModal from '@/features/auth/ui/BusinessVerifyModal.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
+const isLoading = ref(true)
 const isEditing = ref(false)
-const isLoading = ref(false)
+const isSaving = ref(false)
+const isUploading = ref(false)
+const errorMsg = ref('')
+const showBusinessModal = ref(false)
+
 const fileInputRef = ref(null)
 const previewUrl = ref(null)
-const selectedFile = ref(null)
+const newProfileFileId = ref(null)
+const profileImageUrl = ref(null)
 
-// 임시 더미 데이터 (API 연동 시 교체)
 const info = reactive({
-  email: authStore.email || 'company@example.com',
-  name: '회사측가입자명',
-  companyName: '회사이름',
-  phone: '010-1234-5678',
-  jobCategory: 'DESIGN',
+  email: '',
+  name: '',
+  companyName: '',
+  phone: '',
+  jobCategory: '',
   pushable: false,
-  businessNumberVerified: true,
+  businessNumber: '',
+  businessNumberVerified: false,
+  profileFileId: null,
 })
 
 const editForm = reactive({ ...info })
+const nameInitial = computed(() => info.companyName?.charAt(0) || '?')
 
-const nameInitial = computed(() => info.name?.charAt(0) || '회')
+function handleBusinessVerified({ businessNumber, verified }) {
+  editForm.businessNumber = businessNumber
+  editForm.businessNumberVerified = verified
+  // 성공했을 때만 모달을 닫음(모달 쪽에서 success 메시지 보여준 뒤 emit).
+  // 실패 시에는 모달 안에서 에러 메시지를 사용자가 확인할 수 있도록
+  // 모달이 스스로 닫지 않는 한 열린 채로 둠
+  if (verified) {
+    showBusinessModal.value = false
+  }
+}
+
+async function fetchMe() {
+  isLoading.value = true
+  try {
+    const res = await getCompanyMe()
+    const data = res.data.data
+    Object.assign(info, {
+      email: data.email,
+      name: data.name,
+      companyName: data.companyName,
+      phone: data.phone,
+      jobCategory: data.jobCategory,
+      pushable: data.pushable,
+      businessNumber: data.businessNumber,
+      businessNumberVerified: data.businessNumberVerified,
+      profileFileId: data.profileFileId,
+    })
+
+    if (info.profileFileId) {
+      const urlRes = await getFileUrl(info.profileFileId)
+      profileImageUrl.value = urlRes.data.data.url || urlRes.data.data
+    } else {
+      profileImageUrl.value = null
+    }
+
+    // 사이드바 등 다른 화면도 즉시 최신 프로필 이미지를 반영하도록 동기화
+    authStore.updateProfileImage(profileImageUrl.value)
+  } catch (err) {
+    errorMsg.value = '내 정보를 불러오지 못했습니다.'
+  } finally {
+    isLoading.value = false
+  }
+}
 
 function startEdit() {
   Object.assign(editForm, info)
   previewUrl.value = null
-  selectedFile.value = null
+  newProfileFileId.value = null
   isEditing.value = true
 }
 
 function cancelEdit() {
   previewUrl.value = null
-  selectedFile.value = null
+  newProfileFileId.value = null
   isEditing.value = false
 }
 
@@ -228,36 +309,50 @@ function triggerFileInput() {
   fileInputRef.value?.click()
 }
 
-function handleFileChange(e) {
+async function handleFileChange(e) {
   const file = e.target.files[0]
   if (!file) return
 
-  selectedFile.value = file
   previewUrl.value = URL.createObjectURL(file)
+  isUploading.value = true
+  errorMsg.value = ''
 
-  // TODO: 파일을 TEMP로 업로드 → fileId 받아서 저장 시 profileFileId로 전달
-  // const uploaded = await uploadFile(file, 'TEMP')
-}
-
-function verifyBusiness() {
-  // TODO: 사업자번호 인증 API 연동
-  alert('사업자번호 인증 기능은 추후 연동됩니다.')
-}
-
-function togglePushable() {
-  info.pushable = !info.pushable
+  try {
+    const res = await uploadFile(file, 'TEMP', null)
+    const uploaded = res.data.data
+    newProfileFileId.value = Array.isArray(uploaded) ? uploaded[0].fileId : uploaded.fileId
+  } catch (err) {
+    errorMsg.value = '이미지 업로드에 실패했습니다.'
+    previewUrl.value = null
+  } finally {
+    isUploading.value = false
+  }
 }
 
 async function handleSave() {
-  isLoading.value = true
+  isSaving.value = true
+  errorMsg.value = ''
   try {
-    // TODO: await updateCompany(editForm)
-    Object.assign(info, editForm)
+    const payload = { ...editForm }
+
+    // Company UPDATE XML도 User와 동일하게 <if test="profileFileId != null"> 로 수정됨.
+    // 새 이미지를 업로드한 경우에만 profileFileId를 보내야 함.
+    // 기존 값을 그대로 다시 보내면, 서비스 로직이 "새 이미지가 왔다"고 오해해서
+    // 기존 파일을 삭제한 뒤 같은 ID로 승격을 시도하다가 실패함
+    // (자기 자신을 지우고 자기 자신을 찾는 상황 - User에서 실제로 발생했던 버그와 동일)
+    if (newProfileFileId.value) {
+      payload.profileFileId = newProfileFileId.value
+    } else {
+      delete payload.profileFileId
+    }
+
+    await updateCompanyMe(payload)
+    await fetchMe()
     isEditing.value = false
   } catch (err) {
-    alert('저장에 실패했습니다.')
+    errorMsg.value = err.response?.data?.message || '저장에 실패했습니다.'
   } finally {
-    isLoading.value = false
+    isSaving.value = false
   }
 }
 
@@ -266,19 +361,30 @@ function handleLogout() {
   router.push('/login')
 }
 
-function handleWithdraw() {
-  if (confirm('정말 탈퇴하시겠습니까?')) {
-    // TODO: await withdrawCompany()
+async function handleWithdraw() {
+  if (!confirm('정말 탈퇴하시겠습니까?')) return
+  try {
+    await deleteCompanyMe()
     authStore.logout()
     router.push('/login')
+  } catch (err) {
+    alert(err.response?.data?.message || '탈퇴에 실패했습니다.')
   }
 }
+
+onMounted(fetchMe)
 </script>
 
 <style scoped>
 .page {
   padding: 32px;
   max-width: 100%;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 60px 0;
+  color: #9ca3af;
 }
 
 .page-header {
@@ -326,10 +432,6 @@ function handleWithdraw() {
   gap: 16px;
 }
 
-.avatar-wrap {
-  position: relative;
-}
-
 .avatar {
   width: 72px;
   height: 72px;
@@ -342,6 +444,13 @@ function handleWithdraw() {
   font-weight: 600;
   color: #6b7280;
   overflow: hidden;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .profile-name {
@@ -363,7 +472,11 @@ function handleWithdraw() {
   margin-top: -8px;
 }
 
-/* 정보 테이블 */
+.btn-img-change:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .info-table {
   width: 100%;
   display: flex;
@@ -397,7 +510,6 @@ function handleWithdraw() {
   font-weight: 500;
 }
 
-/* 토글 */
 .toggle {
   width: 40px;
   height: 22px;
@@ -430,30 +542,6 @@ function handleWithdraw() {
   left: 20px;
 }
 
-.avatar-img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.btn-outline {
-  width: 100%;
-  height: 40px;
-  background: white;
-  color: #1a233d;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-outline:hover {
-  background: #f3f4f6;
-}
-
-/* 폼 */
 .form-group {
   width: 100%;
   display: flex;
@@ -493,6 +581,64 @@ function handleWithdraw() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.business-verify-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.business-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.verified-badge {
+  font-size: 12.5px;
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.unverified-text {
+  font-size: 12.5px;
+  color: #9ca3af;
+}
+
+.business-verify-row .btn-outline {
+  width: auto;
+  padding: 0 16px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.btn-outline {
+  width: 100%;
+  height: 40px;
+  background: white;
+  color: #1a233d;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-outline:hover {
+  background: #f3f4f6;
+}
+
+.error-msg {
+  width: 100%;
+  font-size: 13px;
+  color: #ef4444;
+  margin: 0;
 }
 
 .btn-row {

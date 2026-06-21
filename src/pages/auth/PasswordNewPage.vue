@@ -1,12 +1,16 @@
 <template>
   <div class="reset-wrap">
     <div class="reset-box">
-
       <div class="reset-icon">
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <path d="M20 14V10a6 6 0 10-12 0v4" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-          <rect x="4" y="14" width="20" height="14" rx="3" stroke="white" stroke-width="2.5"/>
-          <circle cx="14" cy="21" r="2" fill="white"/>
+          <path
+            d="M20 14V10a6 6 0 10-12 0v4"
+            stroke="white"
+            stroke-width="2.5"
+            stroke-linecap="round"
+          />
+          <rect x="4" y="14" width="20" height="14" rx="3" stroke="white" stroke-width="2.5" />
+          <circle cx="14" cy="21" r="2" fill="white" />
         </svg>
       </div>
 
@@ -42,10 +46,7 @@
         {{ isLoading ? '재설정 중...' : '비밀번호 재설정' }}
       </button>
 
-      <p class="footer-link">
-        로그인 페이지로 돌아가기 <a href="/login">로그인</a>
-      </p>
-
+      <p class="footer-link">로그인 페이지로 돌아가기 <a href="/login">로그인</a></p>
     </div>
   </div>
 </template>
@@ -53,11 +54,13 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { resetPassword } from '@/features/auth/api/authApi.js'
 
 const router = useRouter()
 const route = useRoute()
 
 const email = route.query.email || ''
+const role = route.query.role || 'USER'
 const newPassword = ref('')
 const newPasswordConfirm = ref('')
 const isLoading = ref(false)
@@ -80,11 +83,11 @@ async function handleReset() {
   isLoading.value = true
 
   try {
-    // TODO: await resetPassword(email, newPassword.value)
+    await resetPassword(email, newPassword.value, role)
     successMsg.value = '비밀번호가 재설정되었습니다.'
     setTimeout(() => router.push('/login'), 1500)
   } catch (err) {
-    errorMsg.value = '비밀번호 재설정에 실패했습니다.'
+    errorMsg.value = err.response?.data?.message || '비밀번호 재설정에 실패했습니다.'
   } finally {
     isLoading.value = false
   }
@@ -107,8 +110,10 @@ async function handleReset() {
   padding: 32px 24px;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
-  border: 1px solid rgba(26,35,61,0.10);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(26, 35, 61, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -118,7 +123,7 @@ async function handleReset() {
 .reset-icon {
   width: 64px;
   height: 64px;
-  background: #1A233D;
+  background: #1a233d;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -128,7 +133,7 @@ async function handleReset() {
 .reset-title {
   font-size: 24px;
   font-weight: 500;
-  color: #1A233D;
+  color: #1a233d;
   margin: 0;
 }
 
@@ -142,30 +147,30 @@ async function handleReset() {
 .form-label {
   font-size: 14px;
   font-weight: 500;
-  color: #1A233D;
+  color: #1a233d;
 }
 
 .form-input {
-  box-sizing: border-box;
-
   width: 100%;
   height: 36px;
   padding: 4px 12px;
-  border: 1px solid rgba(26,35,61,0.10);
+  border: 1px solid rgba(26, 35, 61, 0.1);
   border-radius: 6px;
   font-size: 14px;
-  color: #1A233D;
+  color: #1a233d;
   outline: none;
   background: white;
   transition: border-color 0.15s;
 }
 
-.form-input:focus { border-color: #1A233D; }
+.form-input:focus {
+  border-color: #1a233d;
+}
 
 .btn-primary {
   width: 100%;
   height: 44px;
-  background: #1A233D;
+  background: #1a233d;
   color: white;
   border: none;
   border-radius: 6px;
@@ -175,11 +180,33 @@ async function handleReset() {
   transition: background 0.15s;
 }
 
-.btn-primary:hover:not(:disabled) { background: #253A63; }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary:hover:not(:disabled) {
+  background: #253a63;
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
-.footer-link { font-size: 14px; color: #6C757D; }
-.footer-link a { color: #1A233D; text-decoration: none; font-weight: 500; }
-.error-msg { font-size: 13px; color: #EF4444; margin: 0; width: 100%; }
-.success-msg { font-size: 13px; color: #22C55E; margin: 0; width: 100%; }
+.footer-link {
+  font-size: 14px;
+  color: #6c757d;
+}
+.footer-link a {
+  color: #1a233d;
+  text-decoration: none;
+  font-weight: 500;
+}
+.error-msg {
+  font-size: 13px;
+  color: #ef4444;
+  margin: 0;
+  width: 100%;
+}
+.success-msg {
+  font-size: 13px;
+  color: #22c55e;
+  margin: 0;
+  width: 100%;
+}
 </style>
