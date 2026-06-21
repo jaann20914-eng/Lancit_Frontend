@@ -437,7 +437,7 @@ function getRecruitmentError(error, fallback) {
 </script>
 
 <style scoped>
-.page { width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px; color: #1f2937; }
+.page { width: 100%; max-width: 100%; margin: 0 auto; padding: 32px; color: #1f2937; }
 .page-header { margin-bottom: 24px; }
 .page-header h1 { margin: 0 0 6px; color: #1a233d; font-size: 24px; }
 .page-header p { margin: 0; color: #6b7280; font-size: 14px; }
