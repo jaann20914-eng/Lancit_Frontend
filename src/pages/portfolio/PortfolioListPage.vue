@@ -413,7 +413,7 @@ function getRequestError(error, fallback) {
 <style scoped>
 .page {
   width: 100%;
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 32px;
 }
@@ -626,6 +626,12 @@ function getRequestError(error, fallback) {
   }
 }
 
+@media (max-width: 800px) {
+  .page {
+    padding: 24px 18px;
+  }
+}
+
 @media (max-width: 700px) {
   .portfolio-grid {
     grid-template-columns: 1fr;
@@ -633,10 +639,6 @@ function getRequestError(error, fallback) {
 }
 
 @media (max-width: 600px) {
-  .page {
-    padding: 24px 18px;
-  }
-
   .page-header {
     align-items: stretch;
     flex-direction: column;
