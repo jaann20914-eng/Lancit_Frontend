@@ -13,7 +13,7 @@
         <ContractWaitingPanel
           v-if="detail.status === 'WAITING'"
           :detail="detail"
-          :is-freelancer="isFreelancer"
+          :is-company="isCompany"
           @refresh="fetchDetail"
         />
 
@@ -66,6 +66,7 @@ const authStore = useAuthStore()
 
 const contractId = route.params.id
 const isFreelancer = computed(() => authStore.role === 'user')
+const isCompany = computed(() => authStore.role === 'company')
 
 const detail = ref(null)
 const isLoading = ref(false)
