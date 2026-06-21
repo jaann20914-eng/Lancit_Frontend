@@ -206,10 +206,10 @@
               <button
                 type="button"
                 class="apply-button"
-                :disabled="item.isApplied || !item.canApply"
-                @click="goToApply(item.recruitmentId)"
+                :disabled="!item.isApplied && !item.canApply"
+                @click="handleApplicationAction(item)"
               >
-                {{ item.isApplied ? '지원 완료' : item.canApply ? '지원하기' : '지원 불가' }}
+                {{ item.isApplied ? '지원서 보기' : item.canApply ? '지원하기' : '지원 불가' }}
               </button>
             </div>
             </div>
@@ -402,8 +402,14 @@ function goToDetail(recruitmentId) {
   router.push({ name: 'RecruitmentDetail', params: { id: recruitmentId } })
 }
 
-function goToApply(recruitmentId) {
-  router.push({ name: 'RecruitmentApply', params: { recruitmentId } })
+function handleApplicationAction(item) {
+  if (item.isApplied) {
+    router.push({ name: 'ApplicationDetail', params: { id: item.recruitmentId } })
+    return
+  }
+  if (item.canApply) {
+    router.push({ name: 'RecruitmentApply', params: { recruitmentId: item.recruitmentId } })
+  }
 }
 
 function formatDateRange(startAt, endAt) {

@@ -3,6 +3,7 @@
     <div class="top-actions">
       <button type="button" class="back-button" @click="goToList">← 공고 목록</button>
       <div v-if="recruitment && isOwner" class="management-actions">
+        <button type="button" class="copy-button" @click="goToCopy">재등록</button>
         <button
           type="button"
           class="edit-button"
@@ -374,6 +375,11 @@ function goToEdit() {
   router.push({ name: 'CompanyRecruitmentEdit', params: { recruitmentId: recruitmentId() } })
 }
 
+function goToCopy() {
+  if (!isOwner.value) return
+  router.push({ name: 'CompanyRecruitmentCreate', query: { copyFrom: recruitmentId() } })
+}
+
 function goToApplicationDetail(applicationId) {
   if (!isOwner.value) return
   router.push({
@@ -387,7 +393,7 @@ function goToApplicationDetail(applicationId) {
 .page { width: 100%; max-width: 1000px; margin: 0 auto; padding: 32px; color: #1f2937; }
 .top-actions { margin-bottom: 18px; display: flex; justify-content: space-between; gap: 14px; }
 .management-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.back-button, .edit-button, .delete-button, .retry-button { min-height: 38px; padding: 0 13px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #4b5563; font-size: 13px; cursor: pointer; }
+.back-button, .copy-button, .edit-button, .delete-button, .retry-button { min-height: 38px; padding: 0 13px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #4b5563; font-size: 13px; cursor: pointer; }
 .delete-button { border-color: #fecaca !important; color: #dc2626 !important; }
 .edit-button:disabled, .delete-button:disabled { opacity: .45; cursor: not-allowed; }
 .status-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
