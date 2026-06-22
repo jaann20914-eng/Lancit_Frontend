@@ -166,6 +166,7 @@ import {
   getPortfolioFileUrl,
 } from '@/features/portfolio/api/portfolioApi.js'
 import {
+  deletePortfolioProfileImage,
   getPortfolioProfile,
   getPortfolioProfileImageUrl,
   uploadPortfolioProfileImage,
@@ -254,14 +255,19 @@ async function handleProfileSave(form) {
   profileSuccessMessage.value = ''
 
   try {
+    let uploadedFileId = null
     let profileFileId = form.profileFileId
     if (form.profileImageFile) {
       const uploadedFile = await uploadPortfolioProfileImage(form.profileImageFile)
       if (!uploadedFile?.fileId) throw new Error('Invalid profile image upload response')
-      profileFileId = uploadedFile.fileId
+      uploadedFileId = uploadedFile.fileId
+      profileFileId = uploadedFileId
     }
 
-    const updatedProfile = await updatePortfolioProfile({ ...form, profileFileId })
+    const updatedProfile = await updateProfileWithTempImageCleanup(
+      { ...form, profileFileId },
+      uploadedFileId,
+    )
     if (!updatedProfile) throw new Error('Invalid portfolio profile response')
     profile.value = updatedProfile
     await loadProfileImage(updatedProfile.profileFileId)
@@ -274,6 +280,25 @@ async function handleProfileSave(form) {
     )
   } finally {
     isProfileSaving.value = false
+  }
+}
+
+async function updateProfileWithTempImageCleanup(payload, uploadedFileId) {
+  try {
+    return await updatePortfolioProfile(payload)
+  } catch (error) {
+    await cleanupUploadedProfileImage(uploadedFileId)
+    throw error
+  }
+}
+
+async function cleanupUploadedProfileImage(uploadedFileId) {
+  if (uploadedFileId === null || uploadedFileId === undefined) return
+
+  try {
+    await deletePortfolioProfileImage(uploadedFileId)
+  } catch (error) {
+    console.warn('프로필 이미지 TEMP 파일 정리에 실패했습니다.', error)
   }
 }
 
