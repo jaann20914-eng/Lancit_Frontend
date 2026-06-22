@@ -56,7 +56,7 @@
           </svg>
           계약관리
         </RouterLink>
-        <RouterLink to="/freelancer/applications" class="nav-item" active-class="active">
+        <RouterLink to="/freelancer/proposals" class="nav-item" active-class="active">
           <svg
             width="18"
             height="18"
