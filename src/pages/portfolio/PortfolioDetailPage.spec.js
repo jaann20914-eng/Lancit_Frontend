@@ -11,6 +11,10 @@ const mocks = vi.hoisted(() => ({
     query: { from: 'applicant', recruitmentId: '2', applicationId: '3' },
   },
   router: { push: vi.fn() },
+  authStore: {
+    email: 'company@lancit.com',
+    isFreelancer: false,
+  },
   getCompanyApplicationPortfolio: vi.fn(),
   getCompanyApplicationPortfolioFileDownloadUrl: vi.fn(),
   getCompanyApplicationPortfolioFileUrl: vi.fn(),
@@ -23,6 +27,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('vue-router', () => ({
   useRoute: () => mocks.route,
   useRouter: () => mocks.router,
+}))
+
+vi.mock('@/features/auth/model/authStore.js', () => ({
+  useAuthStore: () => mocks.authStore,
 }))
 
 vi.mock('@/features/applications/api/applicationApi.js', () => ({
@@ -42,6 +50,15 @@ vi.mock('@/features/portfolio/api/portfolioApi.js', () => ({
 describe('PortfolioDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.assign(mocks.route, {
+      name: 'TalentPortfolioDetail',
+      params: { id: '9' },
+      query: { from: 'applicant', recruitmentId: '2', applicationId: '3' },
+    })
+    Object.assign(mocks.authStore, {
+      email: 'company@lancit.com',
+      isFreelancer: false,
+    })
     mocks.getCompanyApplicationPortfolio.mockResolvedValue({
       portfolio: {
         portfolioId: 9,
@@ -78,5 +95,60 @@ describe('PortfolioDetailPage', () => {
       91,
     )
     expect(anchorClick).toHaveBeenCalledOnce()
+  })
+
+  it('본인 포트폴리오에만 수정과 삭제 버튼을 표시한다', async () => {
+    Object.assign(mocks.route, {
+      name: 'PortfolioDetail',
+      params: { id: '9' },
+      query: {},
+    })
+    Object.assign(mocks.authStore, {
+      email: 'OWNER@LANCIT.COM',
+      isFreelancer: true,
+    })
+    mocks.getPortfolioDetail.mockResolvedValue({
+      portfolio: {
+        portfolioId: 9,
+        email: 'owner@lancit.com',
+        title: '내 프로젝트',
+        category: 'WEB_APP',
+      },
+      files: [],
+    })
+
+    const wrapper = mount(PortfolioDetailPage)
+    await flushPromises()
+
+    expect(wrapper.find('.edit-button').exists()).toBe(true)
+    expect(wrapper.find('.delete-button').exists()).toBe(true)
+  })
+
+  it('타인의 공개 포트폴리오에는 관리 버튼을 표시하지 않는다', async () => {
+    Object.assign(mocks.route, {
+      name: 'PortfolioDetail',
+      params: { id: '9' },
+      query: {},
+    })
+    Object.assign(mocks.authStore, {
+      email: 'viewer@lancit.com',
+      isFreelancer: true,
+    })
+    mocks.getPortfolioDetail.mockResolvedValue({
+      portfolio: {
+        portfolioId: 9,
+        email: 'owner@lancit.com',
+        title: '공개 프로젝트',
+        category: 'WEB_APP',
+        isPublic: true,
+      },
+      files: [],
+    })
+
+    const wrapper = mount(PortfolioDetailPage)
+    await flushPromises()
+
+    expect(wrapper.find('.management-actions').exists()).toBe(false)
+    expect(mocks.deletePortfolio).not.toHaveBeenCalled()
   })
 })

@@ -125,7 +125,6 @@ async function handleSubmit(payload) {
 
 async function savePortfolioFiles(portfolioId, payload) {
   const uploadedFileIds = []
-  const previousBannerFileId = payload.removedBannerFileId ?? payload.bannerFileId
   let portfolioUpdated = false
 
   try {
@@ -158,12 +157,9 @@ async function savePortfolioFiles(portfolioId, payload) {
     await updatePortfolio(portfolioId, payload)
     portfolioUpdated = true
 
-    const fileIdsToDelete = [
-      ...(Array.isArray(payload.removedFileIds) ? payload.removedFileIds : []),
-      ...(previousBannerFileId && (payload.bannerFile || payload.removedBannerFileId)
-        ? [previousBannerFileId]
-        : []),
-    ]
+    // 기존 배너는 PortfolioService.update()가 스냅샷 참조 여부까지 확인해 정리합니다.
+    // 프론트에서는 사용자가 제거한 결과물 파일만 별도로 삭제합니다.
+    const fileIdsToDelete = Array.isArray(payload.removedFileIds) ? payload.removedFileIds : []
     await Promise.all(fileIdsToDelete.map((fileId) => deletePortfolioFile(fileId)))
   } catch (error) {
     if (!portfolioUpdated) await cleanupUploadedFiles(uploadedFileIds)

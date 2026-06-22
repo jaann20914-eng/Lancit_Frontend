@@ -13,8 +13,7 @@
       </div>
       -->
 
-      <!-- 회사도 이 페이지 보는 경우가 있어서 수정&삭제 버튼 보이는 분기 점 추가 -->
-      <div v-if="portfolio && !isCompanyView" class="management-actions">
+      <div v-if="portfolio && isOwner" class="management-actions">
         <button type="button" class="edit-button" @click="goToEdit">수정</button>
         <button type="button" class="delete-button" :disabled="isDeleting" @click="handleDelete">
           {{ isDeleting ? '삭제 중...' : '삭제' }}
@@ -92,6 +91,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/features/auth/model/authStore.js'
 import {
   getCompanyApplicationPortfolio,
   getCompanyApplicationPortfolioFileDownloadUrl,
@@ -106,6 +106,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const portfolio = ref(null)
 const files = ref([])
@@ -148,6 +149,11 @@ const period = computed(() => {
 
 const isCompanyView = computed(() => route.name === 'TalentPortfolioDetail')
 const isApplicationView = computed(() => route.query.from === 'applicant')
+const isOwner = computed(
+  () =>
+    authStore.isFreelancer &&
+    normalizeEmail(authStore.email) === normalizeEmail(portfolio.value?.email),
+)
 
 onMounted(loadPortfolio)
 
@@ -258,10 +264,12 @@ function goToList() {
   }
 }
 function goToEdit() {
+  if (!isOwner.value) return
   router.push({ name: 'PortfolioEditor', params: { id: route.params.id } })
 }
 
 async function handleDelete() {
+  if (!isOwner.value) return
   if (!confirm(`'${title.value}'을(를) 삭제하시겠습니까?`)) return
 
   isDeleting.value = true
@@ -273,6 +281,10 @@ async function handleDelete() {
   } finally {
     isDeleting.value = false
   }
+}
+
+function normalizeEmail(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : ''
 }
 
 function getRequestError(error, fallback) {
