@@ -58,7 +58,9 @@ describe('dashboardMapper', () => {
     })
     expect(result.panels[1].items[0].to).toBe('/freelancer/contracts/12')
     expect(result.panels[2].items[0].to).toBe('/freelancer/applications/21')
+    expect(result.panels[3].type).toBe('portfolio')
     expect(result.panels[3].items[0]).toMatchObject({
+      portfolio: expect.objectContaining({ portfolioId: 41 }),
       subtitle: '웹/앱 · 프로젝트 소개',
       trailing: '공개',
       to: '/freelancer/portfolio/41',

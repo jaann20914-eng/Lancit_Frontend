@@ -78,6 +78,8 @@
 <script setup>
 import DashboardPanel from './DashboardPanel.vue'
 
+defineEmits(['retry'])
+
 defineProps({
   summaryItems: {
     type: Array,
@@ -97,7 +99,6 @@ defineProps({
   },
 })
 
-defineEmits(['retry'])
 </script>
 
 <style scoped>

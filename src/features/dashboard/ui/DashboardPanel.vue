@@ -10,34 +10,50 @@
       </RouterLink>
     </header>
 
-    <div v-if="panel.items.length" class="panel-list">
-      <RouterLink
-        v-for="item in panel.items"
-        :key="item.key || `${panel.title}-${item.title}`"
-        :to="item.to || panel.to"
-        class="panel-item"
-      >
-        <div class="item-main">
-          <div class="item-title-row">
-            <strong>{{ item.title }}</strong>
-            <span
-              v-if="item.badge"
-              :class="['item-badge', `item-badge--${item.badgeTone || 'blue'}`]"
-            >
-              {{ item.badge }}
-            </span>
+    <div
+      v-if="panel.items.length"
+      :class="['panel-list', { 'portfolio-grid': panel.type === 'portfolio' }]"
+    >
+      <template v-if="panel.type === 'portfolio'">
+        <PortfolioCard
+          v-for="item in panel.items"
+          :key="item.portfolio.portfolioId"
+          :portfolio="item.portfolio"
+          :banner-url="item.bannerUrl"
+          readonly
+          @view="goToPortfolio"
+        />
+      </template>
+
+      <template v-else>
+        <RouterLink
+          v-for="item in panel.items"
+          :key="item.key || `${panel.title}-${item.title}`"
+          :to="item.to || panel.to"
+          class="panel-item"
+        >
+          <div class="item-main">
+            <div class="item-title-row">
+              <strong>{{ item.title }}</strong>
+              <span
+                v-if="item.badge"
+                :class="['item-badge', `item-badge--${item.badgeTone || 'blue'}`]"
+              >
+                {{ item.badge }}
+              </span>
+            </div>
+            <p v-if="item.subtitle" class="item-subtitle">{{ item.subtitle }}</p>
+            <p v-if="item.meta" class="item-meta">
+              <svg v-if="item.metaIcon === 'calendar'" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="16" rx="2" />
+                <path d="M16 3v4M8 3v4M3 10h18" />
+              </svg>
+              {{ item.meta }}
+            </p>
           </div>
-          <p v-if="item.subtitle" class="item-subtitle">{{ item.subtitle }}</p>
-          <p v-if="item.meta" class="item-meta">
-            <svg v-if="item.metaIcon === 'calendar'" viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="5" width="18" height="16" rx="2" />
-              <path d="M16 3v4M8 3v4M3 10h18" />
-            </svg>
-            {{ item.meta }}
-          </p>
-        </div>
-        <span v-if="item.trailing" class="item-trailing">{{ item.trailing }}</span>
-      </RouterLink>
+          <span v-if="item.trailing" class="item-trailing">{{ item.trailing }}</span>
+        </RouterLink>
+      </template>
     </div>
 
     <div v-else class="panel-empty">
@@ -47,12 +63,21 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router'
+import PortfolioCard from '@/features/portfolio/ui/PortfolioCard.vue'
+
+const router = useRouter()
+
 defineProps({
   panel: {
     type: Object,
     required: true,
   },
 })
+
+function goToPortfolio(portfolio) {
+  router.push({ name: 'PortfolioDetail', params: { id: portfolio.portfolioId } })
+}
 </script>
 
 <style scoped>
@@ -112,6 +137,12 @@ defineProps({
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.portfolio-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: grid;
+  gap: 16px;
 }
 
 .panel-item {
@@ -254,6 +285,10 @@ defineProps({
 
   .panel-list {
     padding: 18px 12px;
+  }
+
+  .portfolio-grid {
+    grid-template-columns: 1fr;
   }
 
   .panel-item {

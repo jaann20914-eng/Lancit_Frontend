@@ -109,6 +109,8 @@ function mapFreelancerPortfolio(item) {
 
   return {
     key: `portfolio-${item.portfolioId}`,
+    portfolio: item,
+    bannerUrl: item.bannerImageUrl || item.bannerUrl || '',
     title: item.title || '제목 없는 포트폴리오',
     subtitle: subtitle || '등록된 소개가 없습니다.',
     meta: `최근 수정: ${formatDate(item.updatedAt)}`,
@@ -225,6 +227,7 @@ export function mapFreelancerDashboardToView(data = {}) {
       {
         title: '포트폴리오',
         to: '/freelancer/portfolio',
+        type: 'portfolio',
         wide: true,
         items: asList(data.recentPortfolios).map(mapFreelancerPortfolio),
         emptyMessage: '등록한 포트폴리오가 없습니다.',
