@@ -17,12 +17,12 @@
         <button
           type="button"
           class="apply-button"
-          :disabled="recruitment.isApplied || !recruitment.canApply"
-          @click="goToApply"
+          :disabled="!recruitment.isApplied && !recruitment.canApply"
+          @click="handleApplicationAction"
         >
           {{
             recruitment.isApplied
-              ? '지원 완료'
+              ? '지원서 보기'
               : recruitment.canApply
                 ? '지원하기'
                 : '지원 불가'
@@ -202,8 +202,15 @@ function goToList() {
   router.push({ name: 'RecruitmentList' })
 }
 
-function goToApply() {
-  if (!recruitment.value?.canApply || recruitment.value.isApplied) return
+function handleApplicationAction() {
+  if (recruitment.value?.isApplied) {
+    router.push({
+      name: 'ApplicationDetail',
+      params: { id: recruitment.value.recruitmentId },
+    })
+    return
+  }
+  if (!recruitment.value?.canApply) return
   router.push({
     name: 'RecruitmentApply',
     params: { recruitmentId: recruitment.value.recruitmentId },

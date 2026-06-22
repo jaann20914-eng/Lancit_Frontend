@@ -80,12 +80,12 @@ const routes = [
       {
         path: 'recruitments/bookmarks',
         name: 'RecruitmentBookmark',
-        component: () => import('@/pages/recruitments/RecruitmentBookmarkPage.vue'),
+        redirect: { name: 'RecruitmentList', query: { tab: 'BOOKMARKED' } },
       },
       {
         path: 'applications',
         name: 'MyApplicationList',
-        component: () => import('@/pages/applications/MyApplicationListPage.vue'),
+        redirect: { name: 'RecruitmentList', query: { tab: 'APPLIED' } },
       },
       {
         path: 'applications/:id',

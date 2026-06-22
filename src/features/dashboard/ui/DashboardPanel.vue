@@ -10,7 +10,10 @@
       </RouterLink>
     </header>
 
-    <div v-if="panel.items.length" :class="['panel-list', { 'portfolio-grid': panel.type === 'portfolio' }]">
+    <div
+      v-if="panel.items.length"
+      :class="['panel-list', { 'portfolio-grid': panel.type === 'portfolio' }]"
+    >
       <template v-if="panel.type === 'portfolio'">
         <PortfolioCard
           v-for="item in panel.items"
@@ -25,14 +28,17 @@
       <template v-else>
         <RouterLink
           v-for="item in panel.items"
-          :key="`${panel.title}-${item.title}`"
+          :key="item.key || `${panel.title}-${item.title}`"
           :to="item.to || panel.to"
           class="panel-item"
         >
           <div class="item-main">
             <div class="item-title-row">
               <strong>{{ item.title }}</strong>
-              <span v-if="item.badge" :class="['item-badge', `item-badge--${item.badgeTone || 'blue'}`]">
+              <span
+                v-if="item.badge"
+                :class="['item-badge', `item-badge--${item.badgeTone || 'blue'}`]"
+              >
                 {{ item.badge }}
               </span>
             </div>
@@ -152,7 +158,9 @@ function goToPortfolio(portfolio) {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .panel-item:hover {
@@ -217,6 +225,12 @@ function goToPortfolio(portfolio) {
   color: #c2410c;
   border-color: #fed7aa;
   background: #ffedd5;
+}
+
+.item-badge--gray {
+  color: #4b5563;
+  border-color: #d1d5db;
+  background: #f3f4f6;
 }
 
 .item-subtitle,

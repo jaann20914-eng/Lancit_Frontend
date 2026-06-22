@@ -13,8 +13,7 @@
       </div>
       -->
 
-      <!-- 회사도 이 페이지 보는 경우가 있어서 수정&삭제 버튼 보이는 분기 점 추가 -->
-      <div v-if="portfolio && !isCompanyView" class="management-actions">
+      <div v-if="portfolio && isOwner" class="management-actions">
         <button type="button" class="edit-button" @click="goToEdit">수정</button>
         <button type="button" class="delete-button" :disabled="isDeleting" @click="handleDelete">
           {{ isDeleting ? '삭제 중...' : '삭제' }}
@@ -34,6 +33,10 @@
     </div>
 
     <article v-else-if="portfolio" class="detail-card">
+      <div v-if="bannerUrl" class="detail-banner">
+        <img :src="bannerUrl" :alt="`${title} 배너`" />
+      </div>
+
       <div class="detail-heading">
         <div class="badge-row">
           <span class="category-badge">{{ categoryLabel }}</span>
@@ -63,7 +66,23 @@
 
       <section v-if="files.length" class="detail-section">
         <h2>첨부파일</h2>
-        <p class="files-note">{{ files.length }}개의 첨부파일이 등록되어 있습니다.</p>
+        <ul class="file-list">
+          <li v-for="file in files" :key="file.fileId">
+            <div class="file-information">
+              <strong>{{ file.oriName || '첨부파일' }}</strong>
+              <span>{{ formatFileSize(file.fileSize) }}</span>
+            </div>
+            <button
+              type="button"
+              class="download-button"
+              :disabled="downloadingFileId === file.fileId"
+              @click="downloadFile(file)"
+            >
+              {{ downloadingFileId === file.fileId ? '준비 중...' : '다운로드' }}
+            </button>
+          </li>
+        </ul>
+        <p v-if="fileErrorMessage" class="file-error" role="alert">{{ fileErrorMessage }}</p>
       </section>
     </article>
   </div>
@@ -72,16 +91,31 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { deletePortfolio, getPortfolioDetail } from '@/features/portfolio/api/portfolioApi.js'
+import { useAuthStore } from '@/features/auth/model/authStore.js'
+import {
+  getCompanyApplicationPortfolio,
+  getCompanyApplicationPortfolioFileDownloadUrl,
+  getCompanyApplicationPortfolioFileUrl,
+} from '@/features/applications/api/applicationApi.js'
+import {
+  deletePortfolio,
+  getPortfolioDetail,
+  getPortfolioFileDownloadUrl,
+  getPortfolioFileUrl,
+} from '@/features/portfolio/api/portfolioApi.js'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const portfolio = ref(null)
 const files = ref([])
+const bannerUrl = ref('')
 const isLoading = ref(true)
 const isDeleting = ref(false)
+const downloadingFileId = ref(null)
 const errorMessage = ref('')
+const fileErrorMessage = ref('')
 
 const CATEGORY_LABELS = {
   WEB_APP: '웹/앱',
@@ -113,22 +147,87 @@ const period = computed(() => {
   return `${formatDate(startDate) || '시작일 미정'} - ${formatDate(endDate) || '진행 중'}`
 })
 
+const isCompanyView = computed(() => route.name === 'TalentPortfolioDetail')
+const isApplicationView = computed(() => route.query.from === 'applicant')
+const isOwner = computed(
+  () =>
+    authStore.isFreelancer &&
+    normalizeEmail(authStore.email) === normalizeEmail(portfolio.value?.email),
+)
+
 onMounted(loadPortfolio)
 
 async function loadPortfolio() {
   isLoading.value = true
   errorMessage.value = ''
+  fileErrorMessage.value = ''
+  bannerUrl.value = ''
 
   try {
-    const data = await getPortfolioDetail(route.params.id)
+    const data = isApplicationView.value
+      ? await getCompanyApplicationPortfolio(
+          route.query.recruitmentId,
+          route.query.applicationId,
+          route.params.id,
+        )
+      : await getPortfolioDetail(route.params.id)
     if (!data.portfolio) throw new Error('Invalid portfolio response')
     portfolio.value = data.portfolio
-    files.value = data.files
+    files.value = Array.isArray(data.files) ? data.files : []
+    await loadBanner()
   } catch (error) {
+    portfolio.value = null
     files.value = []
     errorMessage.value = getRequestError(error, '프로젝트를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
   } finally {
     isLoading.value = false
+  }
+}
+
+async function loadBanner() {
+  const fileId = portfolio.value?.bannerFileId
+  if (fileId === null || fileId === undefined) return
+
+  try {
+    bannerUrl.value = isApplicationView.value
+      ? await getCompanyApplicationPortfolioFileUrl(
+          route.query.recruitmentId,
+          route.query.applicationId,
+          route.params.id,
+          fileId,
+        )
+      : await getPortfolioFileUrl(fileId)
+  } catch {
+    bannerUrl.value = ''
+  }
+}
+
+async function downloadFile(file) {
+  downloadingFileId.value = file.fileId
+  fileErrorMessage.value = ''
+
+  try {
+    const url = isApplicationView.value
+      ? await getCompanyApplicationPortfolioFileDownloadUrl(
+          route.query.recruitmentId,
+          route.query.applicationId,
+          route.params.id,
+          file.fileId,
+        )
+      : await getPortfolioFileDownloadUrl(file.fileId)
+    if (!url) throw new Error('Invalid portfolio file URL')
+
+    const link = document.createElement('a')
+    link.href = url
+    link.rel = 'noopener'
+    link.click()
+  } catch (error) {
+    fileErrorMessage.value = getRequestError(
+      error,
+      '첨부파일을 다운로드하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    )
+  } finally {
+    downloadingFileId.value = null
   }
 }
 
@@ -137,22 +236,17 @@ function formatDate(value) {
   return String(value).slice(0, 10).replaceAll('-', '.')
 }
 
-// function goToList() {
-//   router.push({ name: 'PortfolioList' })
-// }
+function formatFileSize(size) {
+  const bytes = Number(size) || 0
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
-// 이 포트폴리오 디테일 페이지를 사용하는 경우 3
-// 1. 프리랜서 본인이 포트폴리오 페이지에서 보는경우
-// 1.5. 프리랜서페이지에서 더 필요하다면 분기점 더 쪼개서 추가해주세요!! 
-// 2. 회사 → 지원자 포트폴리오
-// 3. 회사 → 인재찾기 공개 포폴
-// 회사 권한으로 들어온 페이지인지 (route name 기준)
-const isCompanyView = computed(() => route.name === 'TalentPortfolioDetail')
 function goToList() {
   const from = route.query.from
 
   if (from === 'applicant') {
-    // 2번 경우 : 지원자 목록의 특정 지원 상세로 복귀
     router.push({
       name: 'CompanyApplicantDetail',
       params: {
@@ -161,24 +255,21 @@ function goToList() {
       }
     })
   } else if (from === 'talent') {
-    // 3번 경우 : 인재찾기 상세로 복귀
     router.push({
       name: 'TalentDetail',
       params: { id: route.query.freelancerEmail }
     })
   } else {
-    // 1번경우 : 프리랜서 본인 - 기본 목록
     router.push({ name: 'PortfolioList' })
   }
 }
-
-
-
 function goToEdit() {
+  if (!isOwner.value) return
   router.push({ name: 'PortfolioEditor', params: { id: route.params.id } })
 }
 
 async function handleDelete() {
+  if (!isOwner.value) return
   if (!confirm(`'${title.value}'을(를) 삭제하시겠습니까?`)) return
 
   isDeleting.value = true
@@ -190,6 +281,10 @@ async function handleDelete() {
   } finally {
     isDeleting.value = false
   }
+}
+
+function normalizeEmail(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : ''
 }
 
 function getRequestError(error, fallback) {
@@ -255,6 +350,20 @@ function getRequestError(error, fallback) {
 
 .detail-card {
   overflow: hidden;
+}
+
+.detail-banner {
+  width: 100%;
+  max-height: 360px;
+  overflow: hidden;
+  background: #e8edf5;
+}
+
+.detail-banner img {
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  display: block;
 }
 
 .detail-heading,
@@ -354,12 +463,75 @@ function getRequestError(error, fallback) {
   font-size: 16px;
 }
 
-.content,
-.files-note {
+.content {
   margin: 0;
   color: #4b5563;
   font-size: 14px;
   line-height: 1.8;
+}
+
+.file-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.file-list li {
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.file-information {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-information strong {
+  overflow: hidden;
+  color: #374151;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-information span {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.download-button {
+  min-width: 78px;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.download-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.file-error {
+  margin: 10px 0 0;
+  color: #b91c1c;
+  font-size: 12px;
 }
 
 .content {
