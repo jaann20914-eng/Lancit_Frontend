@@ -89,7 +89,6 @@ import {
 } from '@/features/company/applicants/api/companyApplicationApi.js'
 import {
   getCompanyRecruitment,
-  updateCompanyRecruitmentStatus,
 } from '@/features/company/recruitments/api/companyRecruitmentApi.js'
 import { getCompanyApiError } from '@/features/company/recruitments/api/companyRecruitmentError.js'
 import { formatDateTime } from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
@@ -136,7 +135,6 @@ async function loadApplication() {
     const data = await getCompanyApplication(recruitmentId(), applicationId())
     if (!data) throw new Error('Invalid application response')
     application.value = data
-    if (data.status === 'ACCEPTED') await ensureRecruitmentClosed().catch(() => null)
     await loadSubmittedAssetUrls(data)
   } catch (error) {
     application.value = null
@@ -195,12 +193,12 @@ async function handleDecision(status) {
 
     if (status === 'ACCEPTED') {
       try {
-        await ensureRecruitmentClosed()
+        await getCompanyRecruitment(recruitmentId())
       } catch (error) {
         alert(
           getCompanyApiError(
             error,
-            '지원 수락은 완료되었지만 공고를 마감하지 못했습니다. 공고 상세에서 상태를 확인해주세요.',
+            '지원 수락은 완료되었지만 갱신된 공고 상태를 확인하지 못했습니다. 공고 상세에서 상태를 확인해주세요.',
           ),
         )
       }
@@ -210,13 +208,6 @@ async function handleDecision(status) {
   } finally {
     isUpdating.value = false
   }
-}
-
-async function ensureRecruitmentClosed() {
-  const relatedRecruitment = await getCompanyRecruitment(recruitmentId())
-  if (!relatedRecruitment || relatedRecruitment.status === 'CLOSED') return
-  if (relatedRecruitment.status === 'CANCELLED') return
-  await updateCompanyRecruitmentStatus(recruitmentId(), 'CLOSED')
 }
 
 function goToRecruitment() {

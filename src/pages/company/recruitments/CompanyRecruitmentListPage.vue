@@ -234,7 +234,6 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
-import { getCompanyApplications } from '@/features/company/applicants/api/companyApplicationApi.js'
 import {
   deleteCompanyRecruitment,
   getAllRecruitments,
@@ -303,8 +302,6 @@ async function loadRecruitments() {
     })
     if (requestId !== latestRequestId || requestedTab !== activeTab.value) return
     recruitments.value = data.content
-    await syncAcceptedRecruitmentStatuses(recruitments.value)
-    if (requestId !== latestRequestId || requestedTab !== activeTab.value) return
     Object.assign(pagination, {
       page: data.page,
       size: data.size,
@@ -320,28 +317,6 @@ async function loadRecruitments() {
   } finally {
     if (requestId === latestRequestId) isLoading.value = false
   }
-}
-
-async function syncAcceptedRecruitmentStatuses(items) {
-  const targets = items.filter(
-    (item) =>
-      canManage(item) &&
-      item.applicantCount > 0 &&
-      item.status !== 'CLOSED' &&
-      item.status !== 'CANCELLED',
-  )
-
-  await Promise.allSettled(
-    targets.map(async (item) => {
-      const applicationPage = await getCompanyApplications(item.recruitmentId, {
-        page: 1,
-        size: Math.min(Math.max(item.applicantCount, 10), 100),
-      })
-      if (!applicationPage.content.some((application) => application.status === 'ACCEPTED')) return
-      const updated = await updateCompanyRecruitmentStatus(item.recruitmentId, 'CLOSED')
-      Object.assign(item, updated)
-    }),
-  )
 }
 
 function changeScope(scope) {

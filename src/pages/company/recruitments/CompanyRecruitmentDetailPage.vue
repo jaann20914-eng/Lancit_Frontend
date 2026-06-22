@@ -289,17 +289,6 @@ async function loadApplications() {
       hasNext: pageData.hasNext,
       hasPrev: pageData.hasPrev,
     })
-    if (
-      pageData.content.some((application) => application.status === 'ACCEPTED') &&
-      recruitment.value?.status !== 'CLOSED' &&
-      recruitment.value?.status !== 'CANCELLED'
-    ) {
-      try {
-        recruitment.value = await updateCompanyRecruitmentStatus(recruitmentId(), 'CLOSED')
-      } catch {
-        // 지원자 목록은 유지하고, 상태 변경은 지원자 상세에서 다시 동기화합니다.
-      }
-    }
   } catch (error) {
     applications.value = []
     applicationsError.value = getCompanyApiError(
