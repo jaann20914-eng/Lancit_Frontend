@@ -5,7 +5,6 @@
       <span class="status-badge badge-cancelled">파기됨</span>
     </div>
 
-    <!-- 드롭다운: 컨펌 파일 목록 / 계약서 -->
     <div class="dropdown-tabs">
       <button
         :class="['dropdown-tab', activeView === 'confirm' ? 'active' : '']"
@@ -21,13 +20,10 @@
       </button>
     </div>
 
-    <!-- 컨펌 파일 목록 뷰: 조회/다운로드만 가능, 업로드 불가 -->
     <div v-if="activeView === 'confirm'" class="panel-body">
       <div class="section">
-        <!-- <span class="section-title">컨펌 파일 목록</span> -->
-
+        <span class="section-title">컨펌 파일 목록</span>
         <div v-if="!confirmFiles.length" class="empty-mini">업로드된 파일이 없습니다</div>
-
         <div v-else class="file-list">
           <div v-for="file in confirmFiles" :key="file.contractFileId" class="file-item">
             <svg
@@ -41,28 +37,15 @@
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            <span class="file-name">파일 #{{ file.fileId }}</span>
+            <span class="file-name" @click="handleDownloadFile(file.fileId, file.oriName)">
+              {{ file.oriName || `파일_${file.fileId}` }}
+            </span>
             <span class="file-date">{{ formatDate(file.createdAt) }}</span>
-            <button class="btn-download-file" @click="handleDownloadConfirmFile(file)">
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 계약서 뷰: 파기된 계약은 계약서 내용 자체를 보여주지 않음 -->
     <div v-else class="panel-body">
       <div class="cancelled-body">
         <svg
@@ -86,14 +69,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { getDownloadUrl } from '@/features/file/api/fileApi.js'
+import { getFileDownloadUrl } from '@/features/contract/api/contractApi.js'
 
 const props = defineProps({
   detail: { type: Object, required: true },
 })
 
 const activeView = ref('confirm')
-
 const confirmFiles = computed(() => props.detail.confirmFiles || [])
 
 function formatDate(dateStr) {
@@ -101,13 +83,19 @@ function formatDate(dateStr) {
   return String(dateStr).slice(0, 10)
 }
 
-// 파기된 계약은 업로드/삭제 불가, 다운로드만 가능
-async function handleDownloadConfirmFile(file) {
+async function handleDownloadFile(fileId, oriName) {
   try {
-    const res = await getDownloadUrl(file.fileId)
-    window.open(res.data.data.downloadUrl, '_blank')
+    const response = await getFileDownloadUrl(fileId)
+    const blobUrl = URL.createObjectURL(response.data)
+    const a = window.document.createElement('a')
+    a.href = blobUrl
+    a.download = oriName || `파일_${fileId}`
+    window.document.body.appendChild(a)
+    a.click()
+    window.document.body.removeChild(a)
+    URL.revokeObjectURL(blobUrl)
   } catch (err) {
-    alert(err.response?.data?.message || '파일 다운로드에 실패했습니다.')
+    alert('파일 다운로드에 실패했습니다.')
   }
 }
 </script>
@@ -118,7 +106,6 @@ async function handleDownloadConfirmFile(file) {
   flex-direction: column;
   height: 100%;
 }
-
 .panel-header {
   padding: 18px 20px;
   border-bottom: 1px solid #e5e7eb;
@@ -126,14 +113,12 @@ async function handleDownloadConfirmFile(file) {
   align-items: center;
   justify-content: space-between;
 }
-
 .recruitment-title {
   font-size: 15px;
   font-weight: 600;
   color: #1a233d;
   margin: 0;
 }
-
 .status-badge {
   padding: 4px 10px;
   border-radius: 999px;
@@ -145,12 +130,10 @@ async function handleDownloadConfirmFile(file) {
   color: #991b1b;
 }
 
-/* 드롭다운 탭 */
 .dropdown-tabs {
   display: flex;
   border-bottom: 1px solid #e5e7eb;
 }
-
 .dropdown-tab {
   flex: 1;
   padding: 10px;
@@ -163,7 +146,6 @@ async function handleDownloadConfirmFile(file) {
   margin-bottom: -1px;
   cursor: pointer;
 }
-
 .dropdown-tab.active {
   color: #1a233d;
   border-bottom-color: #1a233d;
@@ -174,7 +156,6 @@ async function handleDownloadConfirmFile(file) {
   flex: 1;
   overflow-y: auto;
 }
-
 .section {
   padding: 14px 20px;
 }
@@ -185,7 +166,6 @@ async function handleDownloadConfirmFile(file) {
   display: block;
   margin-bottom: 10px;
 }
-
 .empty-mini {
   font-size: 12px;
   color: #d1d5db;
@@ -198,7 +178,6 @@ async function handleDownloadConfirmFile(file) {
   flex-direction: column;
   gap: 6px;
 }
-
 .file-item {
   display: flex;
   align-items: center;
@@ -209,35 +188,16 @@ async function handleDownloadConfirmFile(file) {
   font-size: 12px;
   color: #1a233d;
 }
-
 .file-name {
   flex: 1;
+  cursor: pointer;
+  text-decoration: underline;
 }
 .file-date {
   color: #9ca3af;
   font-size: 11px;
 }
 
-.btn-download-file {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 5px;
-  color: #1a233d;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.btn-download-file:hover {
-  background: #e8edf5;
-  border-color: #1a233d;
-}
-
-/* 파기된 계약 - 계약서 탭 안내 */
 .cancelled-body {
   flex: 1;
   display: flex;
@@ -248,14 +208,12 @@ async function handleDownloadConfirmFile(file) {
   gap: 8px;
   padding: 60px 24px;
 }
-
 .cancelled-text {
   font-size: 14px;
   font-weight: 600;
   color: #1a233d;
   margin: 0;
 }
-
 .cancelled-sub {
   font-size: 12px;
   color: #9ca3af;

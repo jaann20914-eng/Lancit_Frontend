@@ -1,13 +1,11 @@
 <template>
   <div class="doc-page">
-    <!-- ════════════ 표제 ════════════ -->
     <div class="doc-title-row">
       <div class="logo-area">Logo</div>
       <div class="doc-title">프리랜서 근로계약서</div>
       <div class="logo-area"></div>
     </div>
 
-    <!-- ════════════ 서두 (회사명/성명 모두 회사가 작성) ════════════ -->
     <div class="preamble">
       <input
         v-model="form.partyA"
@@ -29,7 +27,6 @@
       (이하 '을'이라 함)는(은) 다음과 같이 근로 계약을 체결하고 이를 성실히 이행할 것을 약정한다.
     </div>
 
-    <!-- ════════════ 제1조 계약기간 ════════════ -->
     <div class="article">
       <div class="article-title">제 1 조 【계약기간】</div>
       <div class="clause-text">
@@ -56,7 +53,6 @@
       </div>
     </div>
 
-    <!-- ════════════ 제2조 근무 장소 및 업무내용 ════════════ -->
     <div class="article">
       <div class="article-title">제 2 조 【근무 장소 및 업무내용】</div>
       <div class="clause">
@@ -94,7 +90,6 @@
       </div>
     </div>
 
-    <!-- ════════════ 제3조 근로시간 및 휴게시간 ════════════ -->
     <div class="article">
       <div class="article-title">제 3 조 【근로시간 및 휴게시간】</div>
       <div class="clause">
@@ -162,7 +157,6 @@
                 :disabled="!canEditCompanyFields"
               />
               <span class="break-time-label">부터</span>
-
               <input
                 v-model="form.breakTimeEnd"
                 type="time"
@@ -199,7 +193,6 @@
       </div>
     </div>
 
-    <!-- ════════════ 제4조 휴일 및 휴가 (고정 조항) ════════════ -->
     <div class="article">
       <div class="article-title">제 4 조 【휴일 및 휴가】</div>
       <div class="clause">
@@ -223,21 +216,13 @@
       </div>
     </div>
 
-    <!-- ════════════ 제5조 계약금액 (전부 회사 입력) ════════════ -->
     <div class="article">
       <div class="article-title">제 5 조 【계약금액】</div>
       <div class="clause">
         <span class="clause-num">①</span>
         <span class="clause-text"
           >계약금액은 근로계약기간동안 월급제를 원칙으로 하며, 월정급여액
-          <input
-            v-model.number="form.monthlyWage"
-            type="number"
-            min="0"
-            class="val val-md no-spinner"
-            :class="{ 'val-error': isFieldEmpty('monthlyWage', true) }"
-            :disabled="!canEditCompanyFields"
-          />
+          <input :value="formatAmount(form.monthlyWage)" readonly />
           원으로 한다.
         </span>
       </div>
@@ -248,42 +233,44 @@
     </div>
 
     <div class="salary-card-list">
-      <!-- 기본급: 필수 -->
       <div class="salary-card">
         <div class="salary-card-head">
           <span class="salary-item-name">기 본 급</span>
           <span class="salary-amount-wrap">
             <input
-              v-model.number="form.basePay"
-              type="number"
-              min="0"
+              :value="formatAmount(form.basePay)"
+              type="text"
               class="val-amount no-spinner"
               :class="{ 'val-error': isFieldEmpty('basePay', true) }"
               :disabled="!canEditCompanyFields"
+              @input="form.basePay = parseAmount($event.target.value)"
             />
             원
           </span>
         </div>
         <div class="salary-card-sub">
-          <span class="salary-sub-label">산출기준</span>
+          <span class="salary-sub-label"> 월 소정근로시간 </span>
           <input
-            v-model="form.basePayBasis"
-            type="time"
-            class="val-table"
-            :class="{ 'val-error': isFieldEmpty('basePayBasis', true) }"
+            v-model.number="form.basePayBasisHour"
+            type="number"
+            min="0"
+            class="val-amount no-spinner"
+            :class="{ 'val-error': basePayBasisMissing && canEditCompanyFields }"
             :disabled="!canEditCompanyFields"
           />
+
+          시간
         </div>
       </div>
 
-      <!-- 연장근로수당: 선택 -->
       <div class="salary-card">
         <div class="salary-card-head">
           <span class="salary-item-name">연장근로수당</span>
           <span class="salary-amount-wrap">
             <input
-              v-model.number="form.overtimePay"
-              type="number"
+              :value="formatAmount(form.overtimePay)"
+              @input="form.overtimePay = parseAmount($event.target.value)"
+              type="text"
               min="0"
               class="val-amount no-spinner"
               :disabled="!canEditCompanyFields"
@@ -292,24 +279,27 @@
           </span>
         </div>
         <div class="salary-card-sub">
-          <span class="salary-sub-label">산출기준</span>
+          <span class="salary-sub-label"> 연장근로시간 </span>
+
           <input
-            v-model="form.overtimePayBasis"
-            type="time"
-            class="val-table"
+            v-model.number="form.overtimePayBasisHour"
+            type="number"
+            min="0"
+            class="val-amount no-spinner"
             :disabled="!canEditCompanyFields"
           />
+          시간
         </div>
       </div>
 
-      <!-- 휴일근로수당: 선택 -->
       <div class="salary-card">
         <div class="salary-card-head">
           <span class="salary-item-name">휴일근로수당</span>
           <span class="salary-amount-wrap">
             <input
-              v-model.number="form.holidayPay"
-              type="number"
+              :value="formatAmount(form.holidayPay)"
+              @input="form.holidayPay = parseAmount($event.target.value)"
+              type="text"
               min="0"
               class="val-amount no-spinner"
               :disabled="!canEditCompanyFields"
@@ -318,24 +308,28 @@
           </span>
         </div>
         <div class="salary-card-sub">
-          <span class="salary-sub-label">산출기준</span>
+          <span class="salary-sub-label"> 휴일근로시간 </span>
+
           <input
-            v-model="form.holidayPayBasis"
-            type="time"
-            class="val-table"
+            v-model.number="form.holidayPayBasisHour"
+            type="number"
+            min="0"
+            class="val-amount no-spinner"
             :disabled="!canEditCompanyFields"
           />
+
+          시간
         </div>
       </div>
 
-      <!-- 식대: 선택 -->
       <div class="salary-card">
         <div class="salary-card-head">
           <span class="salary-item-name">식 대</span>
           <span class="salary-amount-wrap">
             <input
-              v-model.number="form.mealAllowance"
-              type="number"
+              :value="formatAmount(form.mealAllowance)"
+              @input="form.mealAllowance = parseAmount($event.target.value)"
+              type="text"
               min="0"
               class="val-amount no-spinner"
               :disabled="!canEditCompanyFields"
@@ -348,19 +342,11 @@
         </div>
       </div>
 
-      <!-- 합계: 필수 -->
       <div class="salary-card salary-card-total">
         <div class="salary-card-head">
           <span class="salary-item-name">합 계</span>
           <span class="salary-amount-wrap">
-            <input
-              v-model.number="form.totalWage"
-              type="number"
-              min="0"
-              class="val-amount no-spinner"
-              :class="{ 'val-error': isFieldEmpty('totalWage', true) }"
-              :disabled="!canEditCompanyFields"
-            />
+            <input :value="formatAmount(form.totalWage)" readonly />
             원
           </span>
         </div>
@@ -412,7 +398,6 @@
       </div>
     </div>
 
-    <!-- ════════════ 제6~10조 (고정 조항) ════════════ -->
     <div class="article">
       <div class="article-title">제 6 조 【퇴직급여】</div>
       <div>
@@ -503,7 +488,6 @@
       계약서를 2부 작성, 서명날인한 후 각 1부씩 보관함.
     </div>
 
-    <!-- ════════════ 서명 날짜 (회사 입력) ════════════ -->
     <div class="sign-date-row">
       <input
         v-model="form.contractWrittenAt"
@@ -514,10 +498,6 @@
       />
     </div>
 
-    <!-- ════════════ 서명 테이블 (제10조 아래)
-         회 사(갑) 칸 = 회사가 작성
-         프리랜서(을) 칸 = 프리랜서가 작성 (성명/생년월일/주소/서명 전부)
-    ════════════ -->
     <table class="sig-table">
       <tbody>
         <tr>
@@ -531,7 +511,6 @@
               :class="{ 'val-error': isFieldEmpty('representativeName', true) }"
               :disabled="!canEditCompanyFields"
             />
-            &#160;&#160;(서명/인)
           </td>
         </tr>
         <tr>
@@ -563,7 +542,7 @@
           <td>
             <SignaturePad
               label=""
-              v-model="form.representativeSignFileIds"
+              v-model="form.representativeSignFileId"
               :editable="canEditCompanyFields"
               :warning="companySignatureMissing && canEditCompanyFields"
               compact
@@ -581,7 +560,6 @@
               :class="{ 'val-error': isFieldEmpty('partyB', false) }"
               :disabled="!canEditFreelancerFields"
             />
-            &#160;&#160;(서명/인)
           </td>
         </tr>
         <tr>
@@ -609,13 +587,16 @@
           </td>
         </tr>
         <tr>
-          <th class="label-col">프리랜서 서명</th>
+          <th class="label-col">
+            프리랜서<br />
+            서명
+          </th>
           <td>
             <SignaturePad
               label=""
-              v-model="form.freelancerSignFileIds"
+              v-model="form.contractSignFileId"
               :editable="canEditFreelancerFields"
-              :warning="freelancerSignatureTableMissing && canEditFreelancerFields"
+              :warning="contractSignatureMissing && canEditFreelancerFields"
               compact
             />
           </td>
@@ -625,7 +606,6 @@
 
     <hr class="divider" />
 
-    <!-- ════════════ 교부확인서 (프리랜서 작성) ════════════ -->
     <div class="confirm-title">근로계약서 교부 확인서</div>
     <div class="confirm-text">
       본인은 근로기준법 제17조 제2항에 따라 본 계약서와 같은 내용의 근로계약서를 받았음을
@@ -645,9 +625,9 @@
       </span>
       <SignaturePad
         label=""
-        v-model="form.confirmSignFileIds"
+        v-model="form.confirmSignFileId"
         :editable="canEditFreelancerFields"
-        :warning="isSignatureMissing('confirmSignFileIds') && canEditFreelancerFields"
+        :warning="!form.confirmSignFileId && canEditFreelancerFields"
         compact
       />
     </div>
@@ -657,10 +637,6 @@
 
     <hr class="divider" />
 
-    <!-- ════════════ 개인정보 동의서
-         항상 표시 (회사/프리랜서 모두 볼 수 있음)
-         입력/수정 권한은 프리랜서에게만(canEditConsent), 회사는 읽기전용으로 항상 노출
-    ════════════ -->
     <div class="privacy-title">개인정보 수집·이용·제공 동의서</div>
 
     <div class="privacy-section">
@@ -756,9 +732,9 @@
       </span>
       <SignaturePad
         label=""
-        v-model="form.privacySignFileIds"
+        v-model="form.privacySignFileId"
         :editable="canEditFreelancerFields"
-        :warning="isSignatureMissing('privacySignFileIds') && canEditFreelancerFields"
+        :warning="!form.privacySignFileId && canEditFreelancerFields"
         compact
       />
     </div>
@@ -769,7 +745,7 @@
 </template>
 
 <script setup>
-import { defineComponent, h, computed } from 'vue'
+import { defineComponent, h, computed, watchEffect, ref, watch } from 'vue'
 import SignaturePad from '@/features/contract/ui/SignaturePad.vue'
 
 const props = defineProps({
@@ -791,9 +767,34 @@ const WEEKDAYS = [
 ]
 
 const todayStr = new Date().toISOString().slice(0, 10)
+const calculatedTotal = computed(() => {
+  return (
+    Number(props.form.basePay || 0) +
+    Number(props.form.overtimePay || 0) +
+    Number(props.form.holidayPay || 0) +
+    Number(props.form.mealAllowance || 0)
+  )
+})
+watch(calculatedTotal, (value) => {
+  props.form.monthlyWage = value
+  props.form.totalWage = value
+})
+function formatAmount(value) {
+  return Number(value || 0).toLocaleString()
+}
 
-// 0원을 "미입력"으로 취급해야 하는 금액 필드 목록 (월정급여액/기본급/합계)
-const AMOUNT_FIELDS = ['monthlyWage', 'basePay', 'totalWage']
+function parseAmount(value) {
+  return Number(String(value).replaceAll(',', '')) || 0
+}
+
+const AMOUNT_FIELDS = [
+  'monthlyWage',
+  'basePay',
+  'overtimePay',
+  'holidayPay',
+  'mealAllowance',
+  'totalWage',
+]
 
 function handleStartDateChange() {
   if (props.form.contractEndDate && props.form.contractEndDate < props.form.contractStartDate) {
@@ -808,7 +809,6 @@ const isOvernightShift = computed(() => {
   return end <= start
 })
 
-// 서명테이블의 성명(partyB)과 교부확인서/동의서에 직접 타이핑한 성명이 다르면 불일치
 const nameMismatch = computed(() => {
   const base = (props.form.partyB || '').trim()
   return {
@@ -821,11 +821,6 @@ const nameMismatch = computed(() => {
 
 const hasAnyMismatch = computed(() => nameMismatch.value.confirm || nameMismatch.value.privacy)
 
-// ════════════════════════════════════════════════
-// 필수 입력값 검증
-// ════════════════════════════════════════════════
-
-// 회사 필수 항목 - partyB(성명)는 프리랜서 항목이므로 제외
 const COMPANY_REQUIRED_FIELDS = [
   'partyA',
   'representativeName',
@@ -836,14 +831,12 @@ const COMPANY_REQUIRED_FIELDS = [
   'workDescription',
   'workStartTime',
   'workEndTime',
-  'monthlyWage',
+
   'basePay',
-  'basePayBasis',
-  'totalWage',
+
   'contractWrittenAt',
 ]
 
-// 프리랜서 필수 항목 - partyB(성명) 포함
 const FREELANCER_REQUIRED_FIELDS = [
   'partyB',
   'freelancerBirthDate',
@@ -859,11 +852,14 @@ function isEmptyValue(val) {
   return false
 }
 
-// 금액 필드 전용: 0원은 "아직 입력 안 함"으로 간주 (0원짜리 계약은 실질적으로 미입력)
 function isEmptyAmount(val) {
   if (val === null || val === undefined) return true
   return Number(val) <= 0
 }
+
+const basePayBasisMissing = computed(() => {
+  return props.form.basePayBasisHour == null || props.form.basePayBasisHour <= 0
+})
 
 const missingCompanyFields = computed(() =>
   COMPANY_REQUIRED_FIELDS.filter((key) =>
@@ -875,6 +871,7 @@ const missingFreelancerFields = computed(() =>
   FREELANCER_REQUIRED_FIELDS.filter((key) => isEmptyValue(props.form[key])),
 )
 
+// workDaysArr 기준으로 변경
 const workDaysMissing = computed(
   () => !props.form.workDaysArr || props.form.workDaysArr.length === 0,
 )
@@ -883,32 +880,15 @@ const breakTimeMissing = computed(
   () => isEmptyValue(props.form.breakTimeStart) || isEmptyValue(props.form.breakTimeEnd),
 )
 
-const companySignatureMissing = computed(
-  () => !props.form.representativeSignFileIds || props.form.representativeSignFileIds.length === 0,
-)
+const companySignatureMissing = computed(() => !props.form.representativeSignFileId)
 
-const freelancerSignatureTableMissing = computed(
-  () => !props.form.freelancerSignFileIds || props.form.freelancerSignFileIds.length === 0,
-)
+const contractSignatureMissing = computed(() => !props.form.contractSignFileId)
 
 const freelancerSignatureMissing = computed(() => {
   const f = props.form
-  return (
-    freelancerSignatureTableMissing.value ||
-    !f.confirmSignFileIds ||
-    f.confirmSignFileIds.length === 0 ||
-    !f.privacySignFileIds ||
-    f.privacySignFileIds.length === 0
-  )
+  return !f.contractSignFileId || !f.confirmSignFileId || !f.privacySignFileId
 })
 
-// 특정 서명 배열 필드(confirmSignFileIds, privacySignFileIds 등)가 비어있는지 확인하는 범용 헬퍼
-function isSignatureMissing(fieldKey) {
-  const arr = props.form[fieldKey]
-  return !arr || arr.length === 0
-}
-
-// 개인정보 동의 5개 항목이 모두 "동의(true)"인지
 const consentIncomplete = computed(() => {
   const c = props.consent
   return (
@@ -926,7 +906,8 @@ const hasMissingRequired = computed(() => {
       missingCompanyFields.value.length > 0 ||
       workDaysMissing.value ||
       breakTimeMissing.value ||
-      companySignatureMissing.value
+      companySignatureMissing.value ||
+      basePayBasisMissing.value
     )
   }
   if (props.canEditFreelancerFields) {
@@ -939,8 +920,14 @@ const hasMissingRequired = computed(() => {
   return false
 })
 
-// fieldKey가 비어있고, 현재 그 필드를 채울 차례(company/freelancer)일 때만 경고
+const formTick = ref(0)
+watchEffect(() => {
+  JSON.stringify(props.form)
+  formTick.value++
+})
+
 function isFieldEmpty(fieldKey, isCompanyField) {
+  formTick.value // 반응성 트리거
   const editable = isCompanyField ? props.canEditCompanyFields : props.canEditFreelancerFields
   if (!editable) return false
   if (AMOUNT_FIELDS.includes(fieldKey)) {
@@ -951,10 +938,6 @@ function isFieldEmpty(fieldKey, isCompanyField) {
 
 defineExpose({ hasAnyMismatch, hasMissingRequired })
 
-// 동의 라디오
-// - "동의(true)"를 누르면 그 즉시 경고(노란 박스) 사라짐
-// - "동의하지 않음" 또는 미선택 상태는 경고 유지
-// - editable=false(회사 차례 등)일 때도 현재 값은 항상 그대로 보여주되, 라디오 자체는 비활성화
 const ConsentRadio = defineComponent({
   props: {
     modelValue: { type: Boolean, default: null },
@@ -966,8 +949,6 @@ const ConsentRadio = defineComponent({
   setup(props, { emit }) {
     return () => {
       const isAgreed = props.modelValue === true
-      // 경고(노란 박스)는 입력 가능한(=프리랜서 차례인) 경우에만 표시
-      // 회사가 보는 화면에서는 동의 여부 내용만 보이고 경고 스타일은 적용하지 않음
       const showWarning = !isAgreed && props.editable
 
       return h('div', { class: ['consent-row', showWarning ? 'consent-row-warning' : ''] }, [
@@ -999,7 +980,6 @@ const ConsentRadio = defineComponent({
 </script>
 
 <style scoped>
-/* ════════ PDF 템플릿과 동일한 레이아웃 ════════ */
 .doc-page {
   font-family: 'NanumGothic', 'Noto Sans KR', sans-serif;
   font-size: 12px;
@@ -1111,7 +1091,6 @@ input.val {
 .article {
   margin-bottom: 16px;
 }
-
 .article-title {
   font-weight: bold;
   font-size: 13px;
@@ -1123,7 +1102,6 @@ input.val {
   gap: 4px;
   margin-bottom: 3px;
 }
-
 .clause-num {
   min-width: 18px;
 }
@@ -1152,7 +1130,8 @@ input.val {
 
 .sig-table th,
 .sig-table td {
-  border: 1px solid #000;
+  /* border: 1px solid #000; */
+  background: #fafafa;
   padding: 4px 2px;
   text-align: center;
   font-size: 10px;
@@ -1161,7 +1140,7 @@ input.val {
 }
 
 .sig-table th {
-  background: #f0f0f0;
+  background: #e0e0e0;
   font-weight: normal;
 }
 
@@ -1174,15 +1153,16 @@ input.val {
 
 .work-table-vertical th,
 .work-table-vertical td {
-  border: 1px solid #000;
+  /* border: 1px solid #000; */
   padding: 8px 10px;
   font-size: 11px;
   vertical-align: middle;
+  background: #fafafa;
 }
 
 .work-table-vertical th {
   width: 90px;
-  background: #f0f0f0;
+  background: #e0e0e0;
   font-weight: normal;
   text-align: center;
 }
@@ -1205,15 +1185,14 @@ input.val {
   gap: 6px;
   margin: 8px 0 14px;
 }
-
 .salary-card {
-  border: 1px solid #000;
+  /* border: 1px solid #000; */
   border-radius: 4px;
   padding: 8px 10px;
+  background: #fafafa;
 }
-
 .salary-card-total {
-  background: #f0f0f0;
+  background: #e0e0e0;
 }
 
 .salary-card-head {
@@ -1229,7 +1208,6 @@ input.val {
   font-weight: 600;
   flex-shrink: 0;
 }
-
 .salary-amount-wrap {
   display: flex;
   align-items: center;
@@ -1266,7 +1244,6 @@ input.val {
   color: #666;
   flex-shrink: 0;
 }
-
 .salary-note {
   font-size: 10px;
   color: #92400e;
@@ -1337,7 +1314,6 @@ input.val {
   color: #92400e;
   margin: -8px 0 8px;
 }
-
 .break-time-label {
   font-size: 11px;
   color: #666;
@@ -1377,7 +1353,6 @@ input.val {
   text-align: center;
   margin: 20px 0 16px;
 }
-
 .sign-date-input {
   font-size: 14px;
   letter-spacing: 2px;
@@ -1403,7 +1378,6 @@ input.val {
   line-height: 1.8;
   margin-bottom: 24px;
 }
-
 .sig-line {
   text-align: right;
   margin-top: 8px;

@@ -1,7 +1,5 @@
 import { reactive, watch } from 'vue'
 
-// ContractDocumentForm.vue가 기대하는 형태로 document를 변환하는 공통 로직
-// NegotiatingPanel(작성용) / InProgressPanel(읽기전용) 양쪽에서 재사용
 export function useContractDocumentForm(documentRef) {
   const form = reactive({
     contractStartDate: '',
@@ -15,11 +13,11 @@ export function useContractDocumentForm(documentRef) {
     breakTimeEnd: '',
     monthlyWage: 0,
     basePay: 0,
-    basePayBasis: '',
     overtimePay: 0,
-    overtimePayBasis: '',
     holidayPay: 0,
-    holidayPayBasis: '',
+    basePayBasisHour: null,
+    overtimePayBasisHour: null,
+    holidayPayBasisHour: null,
     mealAllowance: 0,
     totalWage: 0,
     contractWrittenAt: '',
@@ -31,10 +29,10 @@ export function useContractDocumentForm(documentRef) {
     freelancerAddress: '',
     confirmSignerName: '',
     privacySignerName: '',
-    representativeSignFileIds: [],
-    freelancerSignFileIds: [],
-    confirmSignFileIds: [],
-    privacySignFileIds: [],
+    representativeSignFileId: null,
+    contractSignFileId: null,
+    confirmSignFileId: null,
+    privacySignFileId: null,
   })
 
   function extractSignatureList(doc, prefix) {
@@ -53,6 +51,15 @@ export function useContractDocumentForm(documentRef) {
     return result
   }
 
+  function minutesToTime(minutes) {
+    if (minutes == null) return ''
+
+    const h = String(Math.floor(minutes / 60)).padStart(2, '0')
+    const m = String(minutes % 60).padStart(2, '0')
+
+    return `${h}:${m}`
+  }
+
   function loadDocumentIntoForm() {
     const doc = documentRef.value
     if (!doc) return
@@ -61,10 +68,10 @@ export function useContractDocumentForm(documentRef) {
       'workDaysArr',
       'breakTimeStart',
       'breakTimeEnd',
-      'representativeSignFileIds',
-      'freelancerSignFileIds',
-      'confirmSignFileIds',
-      'privacySignFileIds',
+      'basePayBasisHour',
+      'basePayBasisMinute',
+      'overtimePayBasis',
+      'holidayPayBasis',
     ]
 
     Object.keys(form).forEach((key) => {
@@ -84,13 +91,31 @@ export function useContractDocumentForm(documentRef) {
     form.breakTimeStart = doc.breakTimeStart || doc.breakTime || ''
     form.breakTimeEnd = doc.breakTimeEnd || ''
 
-    form.representativeSignFileIds = extractSignatureList(doc, 'representativeSignFileId')
-    form.freelancerSignFileIds = extractSignatureList(doc, 'freelancerSignFileId')
-    form.confirmSignFileIds = extractSignatureList(doc, 'confirmSignFileId')
-    form.privacySignFileIds = extractSignatureList(doc, 'privacySignFileId')
+    form.basePayBasisHour =
+      doc.basePayBasisMinutes == null ? null : Math.floor(doc.basePayBasisMinutes / 60)
+
+    form.overtimePayBasisHour =
+      doc.overtimePayBasisMinutes == null ? null : Math.floor(doc.overtimePayBasisMinutes / 60)
+
+    form.holidayPayBasisHour =
+      doc.holidayPayBasisMinutes == null ? null : Math.floor(doc.holidayPayBasisMinutes / 60)
+
+    console.log(documentRef.value)
+    console.log(form.representativeSignFileId)
+    console.log(form.representativeSignFileIds)
   }
 
-  watch(documentRef, loadDocumentIntoForm, { immediate: true, deep: true })
+  watch(
+    documentRef,
+    (newVal) => {
+      console.log('documentRef 변경됨', newVal)
+      loadDocumentIntoForm()
+    },
+    {
+      immediate: true,
+      deep: true,
+    },
+  )
 
   return { form }
 }

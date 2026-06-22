@@ -17,7 +17,6 @@
 
     <ChatMessageInput :disabled="!canChat" @send="handleSend" @send-file="handleSendFile" />
 
-    <!-- 수정 모달 -->
     <div v-if="editingMessage" class="edit-modal-overlay" @click.self="cancelEdit">
       <div class="edit-modal">
         <h4 class="edit-modal-title">메시지 수정</h4>
@@ -32,15 +31,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { Client } from '@stomp/stompjs'
+import SockJS from 'sockjs-client'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
+import { getMessages, deleteMessage, updateMessage } from '@/features/chat/api/chatApi.js'
+import { uploadFile } from '@/features/contract/api/contractApi.js'
 import ChatMessageList from '@/features/chat/ui/ChatMessageList.vue'
 import ChatMessageInput from '@/features/chat/ui/ChatMessageInput.vue'
 
 const props = defineProps({
   contractId: { type: [Number, String], required: true },
   chatRoomId: { type: [Number, String], default: null },
-  canChat: { type: Boolean, default: true }, // CANCELLED 상태 등에서 false
+  canChat: { type: Boolean, default: true },
 })
 
 const authStore = useAuthStore()
@@ -51,130 +54,128 @@ const isLoading = ref(false)
 const isLoadingMore = ref(false)
 const editingMessage = ref(null)
 const editContent = ref('')
+const cursor = ref(null)
+const hasMore = ref(true)
 
-// ════════════════════════════════════════════
-// 더미 데이터 (백엔드 연동 전 화면 확인용)
-// "나"는 항상 현재 로그인한 계정(currentUserEmail) 기준으로 잡아야
-// 좌우 정렬이 실제 로그인 상태와 일치함
-// ════════════════════════════════════════════
-function buildMockMessages() {
-  const me = currentUserEmail.value || 'jane@example.com'
-  const opponent = me === 'company@example.com' ? 'jane@example.com' : 'company@example.com'
+let stompClient = null
 
-  const base = new Date('2026-06-10T14:08:00')
-  const addMin = (min) => new Date(base.getTime() + min * 60000).toISOString()
-
-  return [
-    {
-      messageId: 1,
-      senderEmail: opponent,
-      messageType: 'TEXT',
-      message: '재밌 보내기 재밌 보내기 재밌 재밌\n재밌재밌',
-      isDeleted: false,
-      isUpdated: false,
-      createdAt: addMin(0),
-    },
-    {
-      messageId: 2,
-      senderEmail: me,
-      messageType: 'FILE',
-      fileId: 201,
-      fileName: '파일 이름.pdf',
-      fileSize: '2.40MB',
-      isDeleted: false,
-      isUpdated: false,
-      createdAt: addMin(2),
-    },
-    {
-      messageId: 3,
-      senderEmail: me,
-      messageType: 'TEXT',
-      message: '재밌 보내기 재밌 보내기 재밌 재밌\n재밌재밌재밌 재밌재밌',
-      isDeleted: false,
-      isUpdated: false,
-      createdAt: addMin(2),
-    },
-    {
-      messageId: 4,
-      senderEmail: opponent,
-      messageType: 'TEXT',
-      message: '(삭제된 메세지입니다)',
-      isDeleted: true,
-      isUpdated: false,
-      createdAt: addMin(3),
-    },
-    {
-      messageId: 5,
-      senderEmail: me,
-      messageType: 'TEXT',
-      message: '재밌 보내기 재밌 보내기 재밌 재밌',
-      isDeleted: false,
-      isUpdated: true,
-      createdAt: addMin(61),
-    },
-  ]
-}
-
+// ─── REST: 메시지 목록 조회 ───────────────────────────────
 async function fetchMessages() {
+  if (!props.contractId) return
   isLoading.value = true
   try {
-    // TODO: 백엔드 연동 시 getMessages(contractId) 로 교체
-    await new Promise((r) => setTimeout(r, 300))
-    messages.value = buildMockMessages()
+    const res = await getMessages(props.contractId, { size: 30 })
+    const list = res.data.data || []
+    messages.value = list
+    if (list.length > 0) {
+      cursor.value = list[0].messageId // 가장 오래된 메시지 ID
+    }
+    hasMore.value = list.length >= 30
+  } catch (err) {
+    console.error('메시지 조회 실패', err)
   } finally {
     isLoading.value = false
   }
 }
 
-// currentUserEmail이 늦게 채워지는 경우(authStore 초기화 타이밍) 대비
-watch(currentUserEmail, (val) => {
-  if (val && messages.value.length === 0) {
-    fetchMessages()
-  }
-})
-
 async function handleLoadMore() {
-  if (isLoadingMore.value) return
-  // TODO: 백엔드 연동 시 cursor 기반 이전 메시지 추가 로드
+  if (isLoadingMore.value || !hasMore.value || cursor.value == null) return
+  isLoadingMore.value = true
+  try {
+    const res = await getMessages(props.contractId, { cursor: cursor.value, size: 30 })
+    const list = res.data.data || []
+    if (list.length === 0) {
+      hasMore.value = false
+      return
+    }
+    messages.value = [...list, ...messages.value]
+    cursor.value = list[0].messageId // 더 이전 메시지 ID로 갱신
+    hasMore.value = list.length >= 30
+  } catch (err) {
+    console.error('이전 메시지 조회 실패', err)
+  } finally {
+    isLoadingMore.value = false
+  }
 }
 
+// ─── STOMP 연결 ───────────────────────────────────────────
+function connectStomp() {
+  const token = localStorage.getItem('accessToken')
+  if (!token || !props.chatRoomId) return
+  console.log('token:', token)
+  console.log('chatRoomId:', props.chatRoomId)
+
+  stompClient = new Client({
+    brokerURL: `ws://localhost:8080/ws-native`,
+    connectHeaders: {
+      Authorization: `Bearer ${token}`,
+    },
+    reconnectDelay: 3000,
+    onConnect: () => {
+      stompClient.subscribe(`/sub/chat/${props.chatRoomId}`, (frame) => {
+        const msg = JSON.parse(frame.body)
+        handleIncomingMessage(msg)
+      })
+    },
+    onStompError: (frame) => {
+      console.error('STOMP 에러', frame)
+    },
+  })
+
+  stompClient.activate()
+}
+
+function disconnectStomp() {
+  if (stompClient) {
+    stompClient.deactivate()
+    stompClient = null
+  }
+}
+
+// ─── 실시간 메시지 수신 처리 ──────────────────────────────
+function handleIncomingMessage(msg) {
+  const idx = messages.value.findIndex((m) => m.messageId === msg.messageId)
+  if (idx !== -1) {
+    // 수정/삭제 브로드캐스트
+    messages.value[idx] = msg
+  } else {
+    // 새 메시지
+    messages.value.push(msg)
+  }
+}
+
+// ─── STOMP: 텍스트 메시지 전송 ───────────────────────────
 async function handleSend(content) {
-  // TODO: 백엔드 연동 시 STOMP sendChatMessage(chatRoomId, content) 로 교체
-  const newMsg = {
-    messageId: Date.now(),
-    senderEmail: currentUserEmail.value,
-    messageType: 'TEXT',
-    message: content,
-    isDeleted: false,
-    isUpdated: false,
-    createdAt: new Date().toISOString(),
-  }
-  messages.value.push(newMsg)
+  if (!stompClient?.connected) return
+  stompClient.publish({
+    destination: '/pub/api/chat/send',
+    body: JSON.stringify({
+      chatRoomId: Number(props.chatRoomId),
+      content,
+    }),
+  })
 }
 
+// ─── STOMP: 파일 메시지 전송 ─────────────────────────────
 async function handleSendFile(file) {
-  // TODO: 백엔드 연동 시 파일 업로드 후 STOMP sendChatFile(chatRoomId, fileId) 로 교체
-  const newMsg = {
-    messageId: Date.now(),
-    senderEmail: currentUserEmail.value,
-    messageType: 'FILE',
-    fileId: Math.floor(Math.random() * 100000),
-    fileName: file.name,
-    fileSize: formatFileSize(file.size),
-    isDeleted: false,
-    isUpdated: false,
-    createdAt: new Date().toISOString(),
+  try {
+    const uploadRes = await uploadFile(file)
+    const fileId = uploadRes.data.data[0].fileId
+
+    if (!stompClient?.connected) return
+    stompClient.publish({
+      destination: '/pub/api/chat/file',
+      body: JSON.stringify({
+        chatRoomId: Number(props.chatRoomId),
+        fileId,
+      }),
+    })
+  } catch (err) {
+    alert('파일 업로드에 실패했습니다.')
   }
-  messages.value.push(newMsg)
 }
 
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + 'B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB'
-  return (bytes / (1024 * 1024)).toFixed(2) + 'MB'
-}
-
-// 텍스트 메시지만 수정 가능 (파일 메시지는 수정 UI 자체를 ChatMessageItem에서 막음)
+// ─── REST: 메시지 수정 ────────────────────────────────────
 function handleEditRequest(message) {
   if (message.messageType !== 'TEXT') return
   editingMessage.value = message
@@ -188,25 +189,49 @@ function cancelEdit() {
 
 async function confirmEdit() {
   if (!editContent.value.trim()) return
-  // TODO: 백엔드 연동 시 updateMessage(contractId, messageId, content) 로 교체
-  const target = messages.value.find((m) => m.messageId === editingMessage.value.messageId)
-  if (target) {
-    target.message = editContent.value.trim()
-    target.isUpdated = true
+  try {
+    await updateMessage(props.contractId, editingMessage.value.messageId, editContent.value.trim())
+    // 브로드캐스트로 실시간 반영되므로 로컬 업데이트 불필요
+  } catch (err) {
+    alert(err.response?.data?.message || '수정에 실패했습니다.')
   }
   cancelEdit()
 }
 
+// ─── REST: 메시지 삭제 ────────────────────────────────────
 async function handleDelete(message) {
   if (!confirm('이 메시지를 삭제하시겠습니까?')) return
-  // TODO: 백엔드 연동 시 deleteMessage(contractId, messageId) 로 교체
-  const target = messages.value.find((m) => m.messageId === message.messageId)
-  if (target) {
-    target.isDeleted = true
+  try {
+    await deleteMessage(props.contractId, message.messageId)
+    // 브로드캐스트로 실시간 반영되므로 로컬 업데이트 불필요
+  } catch (err) {
+    alert(err.response?.data?.message || '삭제에 실패했습니다.')
   }
 }
 
-onMounted(fetchMessages)
+// ─── 라이프사이클 ─────────────────────────────────────────
+onMounted(async () => {
+  await fetchMessages()
+  connectStomp()
+})
+
+onUnmounted(() => {
+  disconnectStomp()
+})
+
+watch(
+  () => props.chatRoomId,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      disconnectStomp()
+      messages.value = []
+      cursor.value = null
+      hasMore.value = true
+      fetchMessages()
+      connectStomp()
+    }
+  },
+)
 </script>
 
 <style scoped>
@@ -236,7 +261,6 @@ onMounted(fetchMessages)
   color: #d1d5db;
 }
 
-/* 수정 모달 */
 .edit-modal-overlay {
   position: fixed;
   inset: 0;

@@ -37,7 +37,6 @@ const emit = defineEmits(['edit', 'delete', 'load-more'])
 
 const scrollContainer = ref(null)
 
-// 날짜별로 메시지 그룹핑 (PDF 와이어프레임처럼 "2026-06-10" 구분선)
 const groupedMessages = computed(() => {
   const groups = []
   let currentDate = null
@@ -61,11 +60,13 @@ function formatDateLabel(dateStr) {
   return String(dateStr).slice(0, 10)
 }
 
+let prevScrollHeight = 0
+
 function handleScroll() {
   const el = scrollContainer.value
   if (!el) return
-  // 위로 스크롤이 거의 끝까지 도달하면 이전 메시지 더 불러오기
   if (el.scrollTop < 40) {
+    prevScrollHeight = el.scrollHeight // ✅ 스크롤 높이 저장
     emit('load-more')
   }
 }
@@ -77,12 +78,38 @@ function scrollToBottom() {
   })
 }
 
-// 메시지가 처음 로드되거나 새 메시지가 추가되면 맨 아래로 스크롤
+// ✅ 이전 메시지 추가 후 스크롤 위치 유지
+function maintainScrollPosition() {
+  nextTick(() => {
+    const el = scrollContainer.value
+    if (el && prevScrollHeight) {
+      el.scrollTop = el.scrollHeight - prevScrollHeight
+      prevScrollHeight = 0
+    }
+  })
+}
+
+let prevMessageCount = 0
+
 watch(
   () => props.messages.length,
   (newLen, oldLen) => {
-    if (oldLen === 0 || newLen > oldLen) {
+    if (oldLen === 0) {
+      // 최초 로드: 맨 아래로
       scrollToBottom()
+    } else if (newLen > oldLen) {
+      const addedAtFront =
+        props.messages[0]?.messageId !== undefined &&
+        oldLen > 0 &&
+        props.isLoadingMore === false &&
+        prevScrollHeight > 0
+      if (prevScrollHeight > 0) {
+        // 이전 메시지 추가: 스크롤 위치 유지
+        maintainScrollPosition()
+      } else {
+        // 새 메시지 추가: 맨 아래로
+        scrollToBottom()
+      }
     }
   },
 )

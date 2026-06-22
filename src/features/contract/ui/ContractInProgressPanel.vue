@@ -64,7 +64,9 @@
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            <span class="file-name">파일 #{{ file.fileId }}</span>
+            <span class="file-name" @click="handleDownloadFile(file.fileId, file.oriName)">
+              {{ file.oriName || `파일_${file.fileId}` }}
+            </span>
             <span class="file-date">{{ formatDate(file.createdAt) }}</span>
             <button
               v-if="isFreelancer && !isPending"
@@ -123,8 +125,10 @@ import {
   getConfirmFiles,
   uploadConfirmFile,
   deleteConfirmFile,
-  getPdfDownloadUrl,
   completeContract,
+  downloadContractPdf,
+  uploadFile,
+  getFileDownloadUrl,
 } from '@/features/contract/api/contractApi.js'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
 import { useContractCancel } from '@/features/contract/model/useContractCancel.js'
@@ -191,13 +195,33 @@ async function handleFileSelect(e) {
   if (!file) return
 
   try {
-    // TODO: 실제 파일 업로드 (POST /files/upload) 후 받은 fileId 사용
-    const mockFileId = Math.floor(Math.random() * 10000)
-    await uploadConfirmFile(contractId.value, mockFileId)
+    const uploadRes = await uploadFile(file)
+    const fileId = uploadRes.data.data[0].fileId
+
+    await uploadConfirmFile(contractId.value, fileId)
+
     const res = await getConfirmFiles(contractId.value)
     confirmFiles.value = res.data.data
   } catch (err) {
     alert(err.response?.data?.message || '파일 업로드에 실패했습니다.')
+  } finally {
+    fileInputRef.value.value = ''
+  }
+}
+
+async function handleDownloadFile(fileId, oriName) {
+  try {
+    const response = await getFileDownloadUrl(fileId)
+    const blobUrl = URL.createObjectURL(response.data)
+    const a = window.document.createElement('a')
+    a.href = blobUrl
+    a.download = oriName || `파일_${fileId}`
+    window.document.body.appendChild(a)
+    a.click()
+    window.document.body.removeChild(a)
+    URL.revokeObjectURL(blobUrl)
+  } catch (err) {
+    alert('파일 다운로드에 실패했습니다.')
   }
 }
 
@@ -213,10 +237,17 @@ async function handleDeleteFile(contractFileId) {
 
 async function handleDownloadPdf() {
   try {
-    const res = await getPdfDownloadUrl(contractId.value)
-    window.open(res.data.data.downloadUrl, '_blank')
+    const response = await downloadContractPdf(contractId.value)
+    const blobUrl = URL.createObjectURL(response.data)
+    const el = window.document.createElement('a')
+    el.href = blobUrl
+    el.download = '근로계약서.pdf'
+    window.document.body.appendChild(el)
+    el.click()
+    window.document.body.removeChild(el)
+    URL.revokeObjectURL(blobUrl)
   } catch (err) {
-    alert(err.response?.data?.message || 'PDF 다운로드에 실패했습니다.')
+    alert('PDF 다운로드에 실패했습니다.')
   }
 }
 
@@ -378,6 +409,8 @@ async function handleComplete() {
 
 .file-name {
   flex: 1;
+  cursor: pointer;
+  text-decoration: underline;
 }
 .file-date {
   color: #9ca3af;
