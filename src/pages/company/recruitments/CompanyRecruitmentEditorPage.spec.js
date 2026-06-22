@@ -94,4 +94,29 @@ describe('CompanyRecruitmentEditorPage copy flow', () => {
     expect(mocks.deleteRecruitmentImage).toHaveBeenCalledWith(55)
     expect(wrapper.get('.submit-error').text()).toContain('공고를 저장하지 못했습니다')
   })
+
+  it('검증 실패 시 첫 오류 입력란에 포커스하고 오류를 접근성 속성으로 연결한다', async () => {
+    mocks.getCompanyRecruitmentCopySource.mockResolvedValueOnce({
+      ...copySource,
+      title: '',
+      summary: '',
+      content: '',
+      jobCategory: '',
+      recruitmentCategory: '',
+    })
+    const wrapper = mount(CompanyRecruitmentEditorPage, { attachTo: document.body })
+    await flushPromises()
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    const titleInput = wrapper.get('#recruitment-title')
+    const titleError = wrapper.get('#recruitment-title-error')
+    expect(document.activeElement).toBe(titleInput.element)
+    expect(titleInput.attributes('aria-invalid')).toBe('true')
+    expect(titleInput.attributes('aria-describedby')).toBe('recruitment-title-error')
+    expect(titleError.attributes('role')).toBe('alert')
+
+    wrapper.unmount()
+  })
 })

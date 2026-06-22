@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PortfolioForm from './PortfolioForm.vue'
 
@@ -89,5 +89,21 @@ describe('PortfolioForm file fields', () => {
       bannerFileId: null,
       removedBannerFileId: 21,
     })
+  })
+
+  it('검증 실패 시 첫 오류 입력란에 포커스하고 오류를 접근성 속성으로 연결한다', async () => {
+    const wrapper = mount(PortfolioForm, { attachTo: document.body })
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    const titleInput = wrapper.get('#portfolio-title')
+    const titleError = wrapper.get('#portfolio-title-error')
+    expect(document.activeElement).toBe(titleInput.element)
+    expect(titleInput.attributes('aria-invalid')).toBe('true')
+    expect(titleInput.attributes('aria-describedby')).toBe('portfolio-title-error')
+    expect(titleError.attributes('role')).toBe('alert')
+
+    wrapper.unmount()
   })
 })

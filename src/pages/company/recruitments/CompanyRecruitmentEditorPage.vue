@@ -15,7 +15,7 @@
       <button type="button" class="retry-button" @click="loadInitialValue">다시 시도</button>
     </div>
 
-    <form v-else class="editor-form" @submit.prevent="handleSubmit">
+    <form v-else ref="editorForm" class="editor-form" @submit.prevent="handleSubmit">
       <div v-if="submitError" class="submit-error" role="alert">{{ submitError }}</div>
       <p v-if="isCopy" class="copy-notice">
         기존 공고의 내용만 복사했습니다. 모집 기간과 이미지는 새로 설정해주세요.
@@ -32,8 +32,8 @@
             <label for="recruitment-title">공고 제목 <span class="required">*</span></label>
             <span>{{ form.title.length }}/255</span>
           </div>
-          <input id="recruitment-title" v-model="form.title" maxlength="255" class="form-control" :class="{ invalid: errors.title }" placeholder="예: 쇼핑몰 웹 서비스 개발자를 찾습니다" />
-          <p v-if="errors.title" class="form-error">{{ errors.title }}</p>
+          <input id="recruitment-title" v-model="form.title" maxlength="255" class="form-control" :class="{ invalid: errors.title }" :aria-invalid="Boolean(errors.title)" :aria-describedby="errors.title ? 'recruitment-title-error' : undefined" placeholder="예: 쇼핑몰 웹 서비스 개발자를 찾습니다" />
+          <p v-if="errors.title" id="recruitment-title-error" class="form-error" role="alert">{{ errors.title }}</p>
         </div>
 
         <div class="form-group full">
@@ -41,26 +41,26 @@
             <label for="recruitment-summary">한 줄 요약 <span class="required">*</span></label>
             <span>{{ form.summary.length }}/100</span>
           </div>
-          <input id="recruitment-summary" v-model="form.summary" maxlength="100" class="form-control" :class="{ invalid: errors.summary }" placeholder="공고의 핵심을 간단히 소개해주세요" />
-          <p v-if="errors.summary" class="form-error">{{ errors.summary }}</p>
+          <input id="recruitment-summary" v-model="form.summary" maxlength="100" class="form-control" :class="{ invalid: errors.summary }" :aria-invalid="Boolean(errors.summary)" :aria-describedby="errors.summary ? 'recruitment-summary-error' : undefined" placeholder="공고의 핵심을 간단히 소개해주세요" />
+          <p v-if="errors.summary" id="recruitment-summary-error" class="form-error" role="alert">{{ errors.summary }}</p>
         </div>
 
         <div class="form-grid">
           <div class="form-group">
             <label for="job-category">직무 카테고리 <span class="required">*</span></label>
-            <select id="job-category" v-model="form.jobCategory" class="form-control" :class="{ invalid: errors.jobCategory }">
+            <select id="job-category" v-model="form.jobCategory" class="form-control" :class="{ invalid: errors.jobCategory }" :aria-invalid="Boolean(errors.jobCategory)" :aria-describedby="errors.jobCategory ? 'job-category-error' : undefined">
               <option value="">직무를 선택하세요</option>
               <option v-for="option in JOB_CATEGORY_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
             </select>
-            <p v-if="errors.jobCategory" class="form-error">{{ errors.jobCategory }}</p>
+            <p v-if="errors.jobCategory" id="job-category-error" class="form-error" role="alert">{{ errors.jobCategory }}</p>
           </div>
           <div class="form-group">
             <label for="recruitment-category">공고 카테고리 <span class="required">*</span></label>
-            <select id="recruitment-category" v-model="form.recruitmentCategory" class="form-control" :class="{ invalid: errors.recruitmentCategory }">
+            <select id="recruitment-category" v-model="form.recruitmentCategory" class="form-control" :class="{ invalid: errors.recruitmentCategory }" :aria-invalid="Boolean(errors.recruitmentCategory)" :aria-describedby="errors.recruitmentCategory ? 'recruitment-category-error' : undefined">
               <option value="">분야를 선택하세요</option>
               <option v-for="option in RECRUITMENT_CATEGORY_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
             </select>
-            <p v-if="errors.recruitmentCategory" class="form-error">{{ errors.recruitmentCategory }}</p>
+            <p v-if="errors.recruitmentCategory" id="recruitment-category-error" class="form-error" role="alert">{{ errors.recruitmentCategory }}</p>
           </div>
         </div>
       </section>
@@ -69,8 +69,8 @@
         <div class="section-heading"><h2>상세 내용</h2><p>업무 범위와 기대 결과를 구체적으로 작성해주세요.</p></div>
         <div class="form-group full">
           <label for="recruitment-content">공고 내용 <span class="required">*</span></label>
-          <textarea id="recruitment-content" v-model="form.content" rows="9" class="form-control textarea" :class="{ invalid: errors.content }" placeholder="프로젝트 소개, 주요 업무, 기대 결과를 작성해주세요"></textarea>
-          <p v-if="errors.content" class="form-error">{{ errors.content }}</p>
+          <textarea id="recruitment-content" v-model="form.content" rows="9" class="form-control textarea" :class="{ invalid: errors.content }" :aria-invalid="Boolean(errors.content)" :aria-describedby="errors.content ? 'recruitment-content-error' : undefined" placeholder="프로젝트 소개, 주요 업무, 기대 결과를 작성해주세요"></textarea>
+          <p v-if="errors.content" id="recruitment-content-error" class="form-error" role="alert">{{ errors.content }}</p>
         </div>
         <div class="form-group full">
           <label for="requirements">요구사항</label>
@@ -78,8 +78,8 @@
         </div>
         <div class="form-group full">
           <label for="tech-stacks">기술 스택</label>
-          <input id="tech-stacks" v-model="form.techStacks" class="form-control" :class="{ invalid: errors.techStacks }" placeholder="Vue, JavaScript, Figma (쉼표로 구분)" />
-          <p v-if="errors.techStacks" class="form-error">{{ errors.techStacks }}</p>
+          <input id="tech-stacks" v-model="form.techStacks" class="form-control" :class="{ invalid: errors.techStacks }" :aria-invalid="Boolean(errors.techStacks)" :aria-describedby="errors.techStacks ? 'tech-stacks-error' : undefined" placeholder="Vue, JavaScript, Figma (쉼표로 구분)" />
+          <p v-if="errors.techStacks" id="tech-stacks-error" class="form-error" role="alert">{{ errors.techStacks }}</p>
           <p v-else class="form-help">각 태그는 50자 이하이며 쉼표로 구분해 전송됩니다.</p>
         </div>
       </section>
@@ -89,8 +89,8 @@
         <div class="form-grid">
           <div class="form-group">
             <label for="budget">예상 예산</label>
-            <div class="input-suffix"><input id="budget" v-model.number="form.budget" type="number" min="0" step="1" class="form-control" :class="{ invalid: errors.budget }" /><span>원</span></div>
-            <p v-if="errors.budget" class="form-error">{{ errors.budget }}</p>
+            <div class="input-suffix"><input id="budget" v-model.number="form.budget" type="number" min="0" step="1" class="form-control" :class="{ invalid: errors.budget }" :aria-invalid="Boolean(errors.budget)" :aria-describedby="errors.budget ? 'budget-error' : undefined" /><span>원</span></div>
+            <p v-if="errors.budget" id="budget-error" class="form-error" role="alert">{{ errors.budget }}</p>
           </div>
           <div class="form-group">
             <label for="work-location">근무 위치</label>
@@ -99,16 +99,16 @@
         </div>
 
         <div class="form-grid">
-          <div class="form-group"><label for="recruitment-start">모집 시작일</label><input id="recruitment-start" v-model="form.recruitmentStartAt" type="date" class="form-control" :class="{ invalid: errors.recruitmentPeriod }" /></div>
-          <div class="form-group"><label for="recruitment-end">모집 마감일</label><input id="recruitment-end" v-model="form.recruitmentEndAt" type="date" :min="minimumDeadline" class="form-control" :class="{ invalid: errors.recruitmentPeriod || errors.deadline }" /></div>
+          <div class="form-group"><label for="recruitment-start">모집 시작일</label><input id="recruitment-start" v-model="form.recruitmentStartAt" type="date" class="form-control" :class="{ invalid: errors.recruitmentPeriod }" :aria-invalid="Boolean(errors.recruitmentPeriod)" :aria-describedby="errors.recruitmentPeriod ? 'recruitment-period-error' : undefined" /></div>
+          <div class="form-group"><label for="recruitment-end">모집 마감일</label><input id="recruitment-end" v-model="form.recruitmentEndAt" type="date" :min="minimumDeadline" class="form-control" :class="{ invalid: errors.recruitmentPeriod || errors.deadline }" :aria-invalid="Boolean(errors.recruitmentPeriod || errors.deadline)" :aria-describedby="errors.recruitmentPeriod || errors.deadline ? 'recruitment-period-error' : undefined" /></div>
         </div>
-        <p v-if="errors.deadline || errors.recruitmentPeriod" class="form-error period-error">{{ errors.deadline || errors.recruitmentPeriod }}</p>
+        <p v-if="errors.deadline || errors.recruitmentPeriod" id="recruitment-period-error" class="form-error period-error" role="alert">{{ errors.deadline || errors.recruitmentPeriod }}</p>
 
         <div class="form-grid contract-dates">
-          <div class="form-group"><label for="contract-start">예상 계약 시작일</label><input id="contract-start" v-model="form.contractStartAt" type="date" class="form-control" :class="{ invalid: errors.contractPeriod }" /></div>
-          <div class="form-group"><label for="contract-end">예상 계약 종료일</label><input id="contract-end" v-model="form.contractEndAt" type="date" class="form-control" :class="{ invalid: errors.contractPeriod }" /></div>
+          <div class="form-group"><label for="contract-start">예상 계약 시작일</label><input id="contract-start" v-model="form.contractStartAt" type="date" class="form-control" :class="{ invalid: errors.contractPeriod }" :aria-invalid="Boolean(errors.contractPeriod)" :aria-describedby="errors.contractPeriod ? 'contract-period-error' : undefined" /></div>
+          <div class="form-group"><label for="contract-end">예상 계약 종료일</label><input id="contract-end" v-model="form.contractEndAt" type="date" class="form-control" :class="{ invalid: errors.contractPeriod }" :aria-invalid="Boolean(errors.contractPeriod)" :aria-describedby="errors.contractPeriod ? 'contract-period-error' : undefined" /></div>
         </div>
-        <p v-if="errors.contractPeriod" class="form-error period-error">{{ errors.contractPeriod }}</p>
+        <p v-if="errors.contractPeriod" id="contract-period-error" class="form-error period-error" role="alert">{{ errors.contractPeriod }}</p>
       </section>
 
       <section class="form-section">
@@ -120,10 +120,10 @@
           </button>
         </div>
         <label class="file-control">
-          <input ref="imageInput" type="file" accept="image/*" @change="handleImageChange" />
+          <input id="recruitment-image" ref="imageInput" type="file" accept="image/*" :aria-invalid="Boolean(errors.image)" :aria-describedby="errors.image ? 'recruitment-image-error' : undefined" @change="handleImageChange" />
           <span>{{ selectedImageName || (form.imageFileId ? '이미지 변경' : '이미지 선택') }}</span>
         </label>
-        <p v-if="errors.image" class="form-error">{{ errors.image }}</p>
+        <p v-if="errors.image" id="recruitment-image-error" class="form-error" role="alert">{{ errors.image }}</p>
       </section>
 
       <div class="form-actions">
@@ -137,7 +137,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   createCompanyRecruitment,
@@ -171,6 +171,7 @@ const selectedImageName = ref('')
 const selectedImagePreviewUrl = ref('')
 const existingImageUrl = ref('')
 const imageInput = ref(null)
+const editorForm = ref(null)
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 
@@ -329,7 +330,11 @@ function revokeSelectedImagePreview() {
 }
 
 async function handleSubmit() {
-  if (!validateForm()) return
+  if (!validateForm()) {
+    await nextTick()
+    focusFirstInvalidField()
+    return
+  }
   isSubmitting.value = true
   submitError.value = ''
   const previousImageFileId = form.imageFileId
@@ -370,6 +375,25 @@ async function handleSubmit() {
     isUploading.value = false
     isSubmitting.value = false
   }
+}
+
+function focusFirstInvalidField() {
+  const errorFieldMap = [
+    ['title', 'recruitment-title'],
+    ['summary', 'recruitment-summary'],
+    ['jobCategory', 'job-category'],
+    ['recruitmentCategory', 'recruitment-category'],
+    ['content', 'recruitment-content'],
+    ['techStacks', 'tech-stacks'],
+    ['budget', 'budget'],
+    ['recruitmentPeriod', 'recruitment-start'],
+    ['deadline', 'recruitment-end'],
+    ['contractPeriod', 'contract-start'],
+    ['image', 'recruitment-image'],
+  ]
+  const firstInvalidField = errorFieldMap.find(([errorKey]) => errors[errorKey])
+  if (!firstInvalidField) return
+  editorForm.value?.querySelector(`#${firstInvalidField[1]}`)?.focus()
 }
 
 function handleCancel() {

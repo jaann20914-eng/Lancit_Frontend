@@ -1,5 +1,5 @@
 <template>
-  <form class="portfolio-form" @submit.prevent="handleSubmit">
+  <form ref="portfolioForm" class="portfolio-form" @submit.prevent="handleSubmit">
     <div v-if="errorMessage" class="submit-error" role="alert">{{ errorMessage }}</div>
 
     <div class="form-group">
@@ -14,6 +14,8 @@
           ref="bannerInput"
           type="file"
           accept="image/*"
+          :aria-invalid="Boolean(errors.banner)"
+          :aria-describedby="errors.banner ? 'portfolio-banner-error' : undefined"
           @change="handleBannerChange"
         />
         <img v-if="bannerPreviewUrl" :src="bannerPreviewUrl" alt="선택한 배너 이미지 미리보기" />
@@ -40,7 +42,9 @@
         <span>등록된 배너 이미지</span>
         <button type="button" @click="removeExistingBanner">배너 삭제</button>
       </div>
-      <p v-if="errors.banner" class="form-error">{{ errors.banner }}</p>
+      <p v-if="errors.banner" id="portfolio-banner-error" class="form-error" role="alert">
+        {{ errors.banner }}
+      </p>
     </div>
 
     <div class="form-group">
@@ -51,9 +55,13 @@
         type="text"
         class="form-input"
         :class="{ invalid: errors.title }"
+        :aria-invalid="Boolean(errors.title)"
+        :aria-describedby="errors.title ? 'portfolio-title-error' : undefined"
         placeholder="프로젝트 제목을 입력하세요"
       />
-      <p v-if="errors.title" class="form-error">{{ errors.title }}</p>
+      <p v-if="errors.title" id="portfolio-title-error" class="form-error" role="alert">
+        {{ errors.title }}
+      </p>
     </div>
 
     <div class="form-group">
@@ -68,9 +76,13 @@
         maxlength="30"
         class="form-input"
         :class="{ invalid: errors.summary }"
+        :aria-invalid="Boolean(errors.summary)"
+        :aria-describedby="errors.summary ? 'portfolio-summary-error' : undefined"
         placeholder="프로젝트를 한 문장으로 소개해주세요"
       />
-      <p v-if="errors.summary" class="form-error">{{ errors.summary }}</p>
+      <p v-if="errors.summary" id="portfolio-summary-error" class="form-error" role="alert">
+        {{ errors.summary }}
+      </p>
       <p v-else class="form-help">핵심 내용을 30자 이내로 작성해주세요.</p>
     </div>
 
@@ -95,13 +107,17 @@
         v-model="form.category"
         class="form-input"
         :class="{ invalid: errors.category }"
+        :aria-invalid="Boolean(errors.category)"
+        :aria-describedby="errors.category ? 'portfolio-category-error' : undefined"
       >
         <option value="">카테고리를 선택하세요</option>
         <option v-for="category in categories" :key="category.value" :value="category.value">
           {{ category.label }}
         </option>
       </select>
-      <p v-if="errors.category" class="form-error">{{ errors.category }}</p>
+      <p v-if="errors.category" id="portfolio-category-error" class="form-error" role="alert">
+        {{ errors.category }}
+      </p>
     </div>
 
     <div class="date-row">
@@ -112,6 +128,8 @@
           v-model="form.workStartAt"
           type="date"
           class="form-input"
+          :aria-invalid="Boolean(errors.period)"
+          :aria-describedby="errors.period ? 'portfolio-period-error' : undefined"
         />
       </div>
       <div class="form-group">
@@ -122,10 +140,19 @@
           type="date"
           class="form-input"
           :class="{ invalid: errors.period }"
+          :aria-invalid="Boolean(errors.period)"
+          :aria-describedby="errors.period ? 'portfolio-period-error' : undefined"
         />
       </div>
     </div>
-    <p v-if="errors.period" class="form-error period-error">{{ errors.period }}</p>
+    <p
+      v-if="errors.period"
+      id="portfolio-period-error"
+      class="form-error period-error"
+      role="alert"
+    >
+      {{ errors.period }}
+    </p>
 
     <div class="form-group result-file-group">
       <label for="portfolio-files" class="form-label">결과물 파일</label>
@@ -135,6 +162,8 @@
           ref="resultFileInput"
           type="file"
           multiple
+          :aria-invalid="Boolean(errors.files)"
+          :aria-describedby="errors.files ? 'portfolio-files-error' : undefined"
           @change="handleResultFilesChange"
         />
         <span class="upload-icon" aria-hidden="true">
@@ -169,7 +198,9 @@
           </button>
         </li>
       </ul>
-      <p v-if="errors.files" class="form-error">{{ errors.files }}</p>
+      <p v-if="errors.files" id="portfolio-files-error" class="form-error" role="alert">
+        {{ errors.files }}
+      </p>
     </div>
 
     <label class="visibility-control">
@@ -192,7 +223,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { toDateInput } from '@/features/portfolio/api/portfolioMapper.js'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -242,6 +273,7 @@ const selectedResultFiles = ref([])
 const removedExistingFileIds = ref([])
 const removedBannerFileId = ref(null)
 const localBannerUrl = ref('')
+const portfolioForm = ref(null)
 
 const bannerPreviewUrl = computed(
   () => localBannerUrl.value || (removedBannerFileId.value === null ? props.initialBannerUrl : ''),
@@ -400,7 +432,7 @@ function formatFileSize(size) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function handleSubmit() {
+async function handleSubmit() {
   clearErrors()
 
   const title = form.title.trim()
@@ -414,7 +446,11 @@ function handleSubmit() {
     errors.period = '종료일은 시작일보다 빠를 수 없습니다.'
   }
 
-  if (Object.keys(errors).length) return
+  if (Object.keys(errors).length) {
+    await nextTick()
+    focusFirstInvalidField()
+    return
+  }
 
   emit('submit', {
     title,
@@ -430,6 +466,20 @@ function handleSubmit() {
     resultFiles: [...selectedResultFiles.value],
     removedFileIds: [...removedExistingFileIds.value],
   })
+}
+
+function focusFirstInvalidField() {
+  const errorFieldMap = [
+    ['banner', 'portfolio-banner'],
+    ['title', 'portfolio-title'],
+    ['summary', 'portfolio-summary'],
+    ['category', 'portfolio-category'],
+    ['period', 'portfolio-start-date'],
+    ['files', 'portfolio-files'],
+  ]
+  const firstInvalidField = errorFieldMap.find(([errorKey]) => errors[errorKey])
+  if (!firstInvalidField) return
+  portfolioForm.value?.querySelector(`#${firstInvalidField[1]}`)?.focus()
 }
 
 onBeforeUnmount(revokeLocalBannerUrl)
