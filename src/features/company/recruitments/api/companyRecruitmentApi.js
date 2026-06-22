@@ -24,6 +24,11 @@ export async function getCompanyRecruitment(recruitmentId) {
   return mapRecruitmentFromApi(unwrapResponse(response))
 }
 
+export async function getCompanyRecruitmentCopySource(recruitmentId) {
+  const response = await httpClient.get(`/recruitments/${recruitmentId}/copy-source`)
+  return mapRecruitmentFromApi(unwrapResponse(response))
+}
+
 export async function createCompanyRecruitment(form) {
   const response = await httpClient.post('/recruitments', mapRecruitmentFormToRequest(form))
   return mapRecruitmentFromApi(unwrapResponse(response))
@@ -55,7 +60,12 @@ export async function uploadRecruitmentImage(file) {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
   const files = unwrapResponse(response)
-  return Array.isArray(files) ? files[0] ?? null : null
+  return Array.isArray(files) ? (files[0] ?? null) : null
+}
+
+export async function deleteRecruitmentImage(fileId) {
+  if (fileId === null || fileId === undefined) return
+  await httpClient.delete(`/files/${fileId}`)
 }
 
 export async function getFileUrl(fileId) {

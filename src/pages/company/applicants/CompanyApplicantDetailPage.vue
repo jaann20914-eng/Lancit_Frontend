@@ -89,12 +89,13 @@ import {
 } from '@/features/company/applicants/api/companyApplicationApi.js'
 import {
   getCompanyRecruitment,
-  updateCompanyRecruitmentStatus,
 } from '@/features/company/recruitments/api/companyRecruitmentApi.js'
 import { getCompanyApiError } from '@/features/company/recruitments/api/companyRecruitmentError.js'
 import { formatDateTime } from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
-import { getPortfolioFileUrl } from '@/features/portfolio/api/portfolioApi.js'
-import { getPortfolioProfileImageUrl } from '@/features/portfolio/api/portfolioProfileApi.js'
+import {
+  getCompanyApplicationPortfolioFileUrl,
+  getCompanyApplicationProfileImageUrl,
+} from '@/features/applications/api/applicationApi.js'
 import PortfolioCard from '@/features/portfolio/ui/PortfolioCard.vue'
 import PortfolioProfileCard from '@/features/portfolio/ui/PortfolioProfileCard.vue'
 
@@ -134,7 +135,6 @@ async function loadApplication() {
     const data = await getCompanyApplication(recruitmentId(), applicationId())
     if (!data) throw new Error('Invalid application response')
     application.value = data
-    if (data.status === 'ACCEPTED') await ensureRecruitmentClosed().catch(() => null)
     await loadSubmittedAssetUrls(data)
   } catch (error) {
     application.value = null
@@ -149,12 +149,17 @@ async function loadSubmittedAssetUrls(data) {
   const profileImagePromise =
     profileFileId === null || profileFileId === undefined
       ? Promise.resolve('')
-      : getPortfolioProfileImageUrl(profileFileId).catch(() => '')
+      : getCompanyApplicationProfileImageUrl(recruitmentId(), applicationId()).catch(() => '')
 
   const bannerEntriesPromise = Promise.all(
     data.portfolios.map(async (portfolio) => {
       if (portfolio.bannerFileId === null || portfolio.bannerFileId === undefined) return null
-      const bannerUrl = await getPortfolioFileUrl(portfolio.bannerFileId).catch(() => '')
+      const bannerUrl = await getCompanyApplicationPortfolioFileUrl(
+        recruitmentId(),
+        applicationId(),
+        portfolio.portfolioId,
+        portfolio.bannerFileId,
+      ).catch(() => '')
       return bannerUrl ? [portfolio.portfolioId, bannerUrl] : null
     }),
   )
@@ -188,12 +193,12 @@ async function handleDecision(status) {
 
     if (status === 'ACCEPTED') {
       try {
-        await ensureRecruitmentClosed()
+        await getCompanyRecruitment(recruitmentId())
       } catch (error) {
         alert(
           getCompanyApiError(
             error,
-            '지원 수락은 완료되었지만 공고를 마감하지 못했습니다. 공고 상세에서 상태를 확인해주세요.',
+            '지원 수락은 완료되었지만 갱신된 공고 상태를 확인하지 못했습니다. 공고 상세에서 상태를 확인해주세요.',
           ),
         )
       }
@@ -203,13 +208,6 @@ async function handleDecision(status) {
   } finally {
     isUpdating.value = false
   }
-}
-
-async function ensureRecruitmentClosed() {
-  const relatedRecruitment = await getCompanyRecruitment(recruitmentId())
-  if (!relatedRecruitment || relatedRecruitment.status === 'CLOSED') return
-  if (relatedRecruitment.status === 'CANCELLED') return
-  await updateCompanyRecruitmentStatus(recruitmentId(), 'CLOSED')
 }
 
 function goToRecruitment() {

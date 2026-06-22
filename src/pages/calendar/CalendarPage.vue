@@ -41,7 +41,15 @@
         <span class="event-count">{{ filteredEvents.length }}개 일정</span>
       </div>
 
-      <div v-if="categoryOptions.length" class="category-filters">
+      <div v-if="categoryLoadError" class="filter-error error-message" role="alert">
+        <div>
+          <strong>카테고리를 불러오지 못했습니다.</strong>
+          <p>{{ categoryLoadError }}</p>
+        </div>
+        <button type="button" @click="loadCategories">다시 시도</button>
+      </div>
+
+      <div v-else-if="categoryOptions.length" class="category-filters">
         <button
           type="button"
           :class="['filter-chip', { active: selectedCategoryKeys.length === 0 }]"
@@ -63,7 +71,7 @@
           {{ category.label }}
         </button>
       </div>
-      <p v-else-if="!isLoading && !errorMessage" class="no-categories">
+      <p v-else-if="!categoriesLoading" class="no-categories">
         등록된 카테고리가 없습니다.
       </p>
     </section>
@@ -73,15 +81,15 @@
         공휴일 정보를 불러오지 못해 등록된 일정만 표시합니다.
       </div>
 
-      <div v-if="errorMessage" class="calendar-message error-message" role="alert">
+      <div v-if="taskLoadError" class="calendar-message error-message" role="alert">
         <div>
           <strong>일정을 불러오지 못했습니다.</strong>
-          <p>{{ errorMessage }}</p>
+          <p>{{ taskLoadError }}</p>
         </div>
         <button type="button" @click="reloadCalendar">다시 시도</button>
       </div>
 
-      <div v-else-if="isLoading" class="calendar-message loading-message" role="status">
+      <div v-else-if="tasksLoading" class="calendar-message loading-message" role="status">
         <span class="loading-spinner" aria-hidden="true"></span>
         캘린더 일정을 불러오는 중입니다.
       </div>
@@ -201,7 +209,8 @@ const successMessage = ref('')
 const taskInitialDate = ref(new Date())
 const categoriesLoading = ref(false)
 const tasksLoading = ref(false)
-const errorMessage = ref('')
+const categoryLoadError = ref('')
+const taskLoadError = ref('')
 const holidayError = ref('')
 const visibleRange = ref(null)
 let taskRequestSequence = 0
@@ -307,10 +316,12 @@ function getMutationErrorMessage(error, fallbackMessage) {
 
 async function loadCategories() {
   categoriesLoading.value = true
+  categoryLoadError.value = ''
+
   try {
     rawCategories.value = await getCalendarCategories()
   } catch (error) {
-    errorMessage.value = getErrorMessage(error)
+    categoryLoadError.value = getErrorMessage(error)
   } finally {
     categoriesLoading.value = false
   }
@@ -320,12 +331,13 @@ async function loadTasks(range) {
   if (!range) return
   const sequence = ++taskRequestSequence
   tasksLoading.value = true
+  taskLoadError.value = ''
 
   try {
     const tasks = await getCalendarTasks(toInclusiveRange(range))
     if (sequence === taskRequestSequence) rawTasks.value = tasks
   } catch (error) {
-    if (sequence === taskRequestSequence) errorMessage.value = getErrorMessage(error)
+    if (sequence === taskRequestSequence) taskLoadError.value = getErrorMessage(error)
   } finally {
     if (sequence === taskRequestSequence) tasksLoading.value = false
   }
@@ -367,7 +379,7 @@ async function loadHolidays(range, force = false) {
 
 function handleDatesSet(info) {
   visibleRange.value = { start: info.start, end: info.end }
-  errorMessage.value = ''
+  taskLoadError.value = ''
   loadTasks(visibleRange.value)
   loadHolidays(visibleRange.value)
 }
@@ -551,7 +563,10 @@ async function handleTaskDelete() {
 }
 
 async function reloadCalendar() {
-  errorMessage.value = ''
+  categoryLoadError.value = ''
+  taskLoadError.value = ''
+  holidayError.value = ''
+
   await Promise.all([
     loadCategories(),
     loadTasks(visibleRange.value),
@@ -731,6 +746,19 @@ onMounted(loadCategories)
   font-size: 13px;
 }
 
+.filter-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+.filter-error strong { display: block; }
+.filter-error p { margin: 3px 0 0; }
+
 .holiday-warning {
   margin-bottom: 14px;
   padding: 10px 13px;
@@ -829,6 +857,7 @@ onMounted(loadCategories)
   .page-action:first-child { grid-column: 1 / -1; }
   .filter-heading { flex-direction: column; gap: 8px; }
   .calendar-card { padding: 14px; }
+  .filter-error { align-items: flex-start; flex-direction: column; }
   .error-message { align-items: flex-start; flex-direction: column; }
   .calendar-card :deep(.fc .fc-toolbar-title) { font-size: 18px; }
   .calendar-card :deep(.fc .fc-button) { padding: 0.35em 0.5em; }

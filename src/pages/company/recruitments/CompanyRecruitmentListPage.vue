@@ -200,6 +200,14 @@
                 <button
                   v-if="canManage(item)"
                   type="button"
+                  class="footer-button copy-button"
+                  @click="goToCopy(item)"
+                >
+                  재등록
+                </button>
+                <button
+                  v-if="canManage(item)"
+                  type="button"
                   class="footer-button delete-button"
                   :disabled="!item.canDelete || deletingId === item.recruitmentId"
                   :title="item.canDelete ? '' : '지원자가 있는 공고는 삭제할 수 없습니다.'"
@@ -226,7 +234,6 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
-import { getCompanyApplications } from '@/features/company/applicants/api/companyApplicationApi.js'
 import {
   deleteCompanyRecruitment,
   getAllRecruitments,
@@ -295,8 +302,6 @@ async function loadRecruitments() {
     })
     if (requestId !== latestRequestId || requestedTab !== activeTab.value) return
     recruitments.value = data.content
-    await syncAcceptedRecruitmentStatuses(recruitments.value)
-    if (requestId !== latestRequestId || requestedTab !== activeTab.value) return
     Object.assign(pagination, {
       page: data.page,
       size: data.size,
@@ -312,28 +317,6 @@ async function loadRecruitments() {
   } finally {
     if (requestId === latestRequestId) isLoading.value = false
   }
-}
-
-async function syncAcceptedRecruitmentStatuses(items) {
-  const targets = items.filter(
-    (item) =>
-      canManage(item) &&
-      item.applicantCount > 0 &&
-      item.status !== 'CLOSED' &&
-      item.status !== 'CANCELLED',
-  )
-
-  await Promise.allSettled(
-    targets.map(async (item) => {
-      const applicationPage = await getCompanyApplications(item.recruitmentId, {
-        page: 1,
-        size: Math.min(Math.max(item.applicantCount, 10), 100),
-      })
-      if (!applicationPage.content.some((application) => application.status === 'ACCEPTED')) return
-      const updated = await updateCompanyRecruitmentStatus(item.recruitmentId, 'CLOSED')
-      Object.assign(item, updated)
-    }),
-  )
 }
 
 function changeScope(scope) {
@@ -440,6 +423,11 @@ function goToEdit(item) {
   router.push({ name: 'CompanyRecruitmentEdit', params: { recruitmentId: item.recruitmentId } })
 }
 
+function goToCopy(item) {
+  if (!canManage(item)) return
+  router.push({ name: 'CompanyRecruitmentCreate', query: { copyFrom: item.recruitmentId } })
+}
+
 </script>
 
 <style scoped>
@@ -502,7 +490,7 @@ function goToEdit(item) {
 .tech-stack-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .tech-tag { background: #eef1f6; color: #334155; font-weight: 500; }
 .tech-stack-empty { margin: 0; color: #9ca3af; font-size: 11px; }
-.footer-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.footer-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
 .detail-button, .footer-button { min-height: 36px; padding: 0 14px; border-radius: 6px; background: white; font-size: 12px; font-weight: 600; cursor: pointer; }
 .detail-button { border: 1px solid #cbd5e1; color: #334155; }
 .edit-button { border: 1px solid #cbd5e1; color: #4b5563; }

@@ -13,6 +13,24 @@ export async function applyToRecruitment(recruitmentId, form) {
   return mapApplicationDetailFromApi(unwrapResponse(response))
 }
 
+export async function getMyApplication(recruitmentId) {
+  const response = await httpClient.get(`/recruitments/${recruitmentId}/applications/me`)
+  return mapApplicationDetailFromApi(unwrapResponse(response))
+}
+
+export async function updateMyApplication(recruitmentId, form) {
+  const response = await httpClient.put(
+    `/recruitments/${recruitmentId}/applications/me`,
+    mapApplicationRequest(form),
+  )
+  return mapApplicationDetailFromApi(unwrapResponse(response))
+}
+
+export async function cancelMyApplication(recruitmentId) {
+  const response = await httpClient.delete(`/recruitments/${recruitmentId}/applications/me`)
+  return unwrapResponse(response)
+}
+
 export async function getCompanyApplication(recruitmentId, applicationId) {
   const response = await httpClient.get(
     `/recruitments/${recruitmentId}/applications/${applicationId}`,
