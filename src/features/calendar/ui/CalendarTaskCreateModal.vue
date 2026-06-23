@@ -16,7 +16,7 @@
           <button type="button" class="icon-button" :aria-label="`${isEditing ? '일정 수정' : '일정 등록'} 닫기`" :disabled="submitting || parsing" @click="closeModal">×</button>
         </header>
 
-        <form @submit.prevent="handleSubmit">
+        <form novalidate @submit.prevent="handleSubmit">
           <div :class="['form-layout', { 'with-ai': !isEditing }]">
             <aside v-if="!isEditing" class="ai-panel" aria-labelledby="ai-parse-title">
               <div class="ai-panel-heading">
@@ -49,12 +49,16 @@
 
               <p v-if="parseError" class="parse-error" role="alert">{{ parseError }}</p>
 
-              <section v-if="parseResult" class="parse-result" aria-live="polite">
+              <section
+                v-if="parseResult"
+                :class="['parse-result', { 'needs-confirmation': parseNeedsConfirmation }]"
+                aria-live="polite"
+              >
                 <div class="result-heading">
-                  <strong>분석 완료</strong>
+                  <strong>{{ parseResultTitle }}</strong>
                   <span v-if="parseResult.confidence != null">신뢰도 {{ parseResult.confidence }}%</span>
                 </div>
-                <p>분석 결과를 오른쪽 입력란에 반영했습니다. 필수 항목을 확인해주세요.</p>
+                <p>{{ parseResultMessage }}</p>
 
                 <dl v-if="visibleParseDetails.length" class="parse-details">
                   <div v-for="detail in visibleParseDetails" :key="detail.label">
@@ -186,6 +190,18 @@ const parsing = ref(false)
 const parseError = ref('')
 const parseResult = ref(null)
 const isEditing = computed(() => props.task?.taskId != null)
+const parseNeedsConfirmation = computed(() => (
+  parseResult.value?.requiresConfirmation === true
+  || (parseResult.value?.warnings?.length ?? 0) > 0
+))
+const parseResultTitle = computed(() => (
+  parseNeedsConfirmation.value ? '확인 필요' : '분석 완료'
+))
+const parseResultMessage = computed(() => (
+  parseNeedsConfirmation.value
+    ? 'AI가 확정하지 못한 항목이 있습니다. 시작 및 종료 일시를 확인해주세요.'
+    : '분석 결과를 오른쪽 입력란에 반영했습니다. 필수 항목을 확인해주세요.'
+))
 const visibleParseDetails = computed(() => {
   const details = parseResult.value?.details
   if (!details) return []
@@ -295,8 +311,12 @@ function handleSubmit() {
   const startTime = new Date(form.startAt).getTime()
   const endTime = new Date(form.endAt).getTime()
 
-  if (!form.title.trim() || !form.categoryId || !form.startAt || !form.endAt) {
-    localError.value = '제목, 카테고리, 시작 일시, 종료 일시는 필수입니다.'
+  if (!form.title.trim() || !form.categoryId) {
+    localError.value = '제목과 카테고리는 필수입니다.'
+    return
+  }
+  if (!form.startAt || !form.endAt) {
+    localError.value = '시작 일시와 종료 일시를 확인해주세요.'
     return
   }
   if (Number.isNaN(startTime) || Number.isNaN(endTime)) {
@@ -357,9 +377,12 @@ function handleSubmit() {
 .parse-button:disabled { opacity: .55; cursor: wait; }
 .parse-error { margin: 12px 0 0; padding: 10px 11px; border-radius: 8px; background: #fff1f2; color: #991b1b; font-size: 11px; line-height: 1.5; }
 .parse-result { margin-top: 14px; padding: 13px; border: 1px solid #cce4d4; border-radius: 9px; background: #f2faf5; color: #335c42; font-size: 11px; }
+.parse-result.needs-confirmation { border-color: #f1d18f; background: #fff8e7; color: #674b16; }
 .result-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .result-heading strong { color: #24613b; font-size: 12px; }
 .result-heading span { padding: 3px 7px; border-radius: 999px; background: #dcefe2; font-size: 10px; font-weight: 700; }
+.parse-result.needs-confirmation .result-heading strong { color: #7c4a03; }
+.parse-result.needs-confirmation .result-heading span { background: #f8e6b7; }
 .parse-result > p { margin: 7px 0 0; line-height: 1.5; }
 .parse-details { display: grid; gap: 7px; margin: 11px 0 0; padding-top: 10px; border-top: 1px solid #d9eadf; }
 .parse-details div { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 7px; }

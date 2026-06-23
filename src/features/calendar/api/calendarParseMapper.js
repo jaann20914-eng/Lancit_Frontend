@@ -16,6 +16,17 @@ function toOptionalText(value) {
   return hasText(value) ? value.trim() : ''
 }
 
+function hasField(dto, field) {
+  return dto != null && Object.prototype.hasOwnProperty.call(dto, field)
+}
+
+function normalizeConfidence(value) {
+  const confidence = Number(value)
+  if (!Number.isFinite(confidence)) return null
+  if (confidence >= 0 && confidence <= 1) return Math.round(confidence * 100)
+  return Math.round(Math.max(0, Math.min(100, confidence)))
+}
+
 function formatDateDetail(prefix, dto) {
   const precision = dto?.[`${prefix}Precision`] || 'NONE'
   const at = dto?.[`${prefix}At`]
@@ -37,23 +48,22 @@ export function mapTaskParseResponse(dto) {
   const paid = formatDateDetail('paid', dto)
   const budget = dto?.budget ?? dto?.budgetAmount ?? dto?.contractAmount ?? null
   const patch = {
-    startAt: start.precision === 'DATE_TIME' ? toDateTimeInput(dto?.startAt) : '',
-    endAt: end.precision === 'DATE_TIME' ? toDateTimeInput(dto?.endAt) : '',
-    paidAt: paid.precision === 'DATE_TIME' ? toDateTimeInput(dto?.paidAt) : '',
+    startAt: toDateTimeInput(dto?.startAt),
+    endAt: toDateTimeInput(dto?.endAt),
+    paidAt: toDateTimeInput(dto?.paidAt),
   }
 
   if (hasText(dto?.title)) patch.title = dto.title.trim()
-  if (dto?.content != null) patch.content = toOptionalText(dto.content)
-  if (dto?.memo != null) patch.memo = toOptionalText(dto.memo)
-  if (dto?.clientCompany != null) patch.clientCompany = toOptionalText(dto.clientCompany)
+  if (hasField(dto, 'content')) patch.content = toOptionalText(dto.content)
+  if (hasField(dto, 'memo')) patch.memo = toOptionalText(dto.memo)
+  if (hasField(dto, 'clientCompany')) patch.clientCompany = toOptionalText(dto.clientCompany)
   if (status) patch.status = status
   if (Number.isFinite(Number(budget)) && Number(budget) >= 0) patch.budget = Number(budget)
 
   return {
     patch,
-    confidence: typeof dto?.confidence === 'number'
-      ? Math.round(Math.max(0, Math.min(1, dto.confidence)) * 100)
-      : null,
+    confidence: normalizeConfidence(dto?.confidence),
+    requiresConfirmation: dto?.requiresConfirmation === true,
     warnings: Array.isArray(dto?.warnings) ? dto.warnings.filter(hasText) : [],
     details: {
       start,
