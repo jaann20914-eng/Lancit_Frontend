@@ -51,9 +51,9 @@
             <dt>고객사</dt>
             <dd>{{ event.clientCompany }}</dd>
           </div>
-          <div class="detail-row">
+          <div v-if="connectionTargetLabel" class="detail-row">
             <dt>연결 대상</dt>
-            <dd>{{ event.taskId != null ? `캘린더 일정 #${event.taskId}` : '연결 정보 없음' }}</dd>
+            <dd>{{ connectionTargetLabel }}</dd>
           </div>
           <div v-if="event.autoRegisteredSource" class="detail-row">
             <dt>등록 출처</dt>
@@ -97,11 +97,28 @@ const categoryStyle = computed(() => (
     ? { '--calendar-category-color': props.event.categoryColor }
     : undefined
 ))
+const connectionTargetLabel = computed(() => {
+  const label = normalizeLabel(
+    props.event.connectionTargetLabel
+      || props.event.relatedTargetLabel
+      || props.event.linkedTargetLabel
+      || props.event.referenceLabel,
+  )
+  return isInternalTaskLabel(label) ? '' : label
+})
 
 function formatDateTime(value) {
   if (!value) return '일시 미정'
   const date = value instanceof Date ? value : new Date(value)
   return Number.isNaN(date.getTime()) ? '일시 미정' : dateTimeFormatter.format(date)
+}
+
+function normalizeLabel(value) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function isInternalTaskLabel(label) {
+  return /^(?:캘린더\s*)?일정\s*#\d+$|^TASK\s*#\d+$/i.test(label)
 }
 
 function toDateTimeAttribute(value) {

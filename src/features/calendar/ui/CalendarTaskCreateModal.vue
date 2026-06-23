@@ -197,11 +197,18 @@ const parseNeedsConfirmation = computed(() => (
 const parseResultTitle = computed(() => (
   parseNeedsConfirmation.value ? '확인 필요' : '분석 완료'
 ))
-const parseResultMessage = computed(() => (
-  parseNeedsConfirmation.value
-    ? 'AI가 확정하지 못한 항목이 있습니다. 시작 및 종료 일시를 확인해주세요.'
-    : '분석 결과를 오른쪽 입력란에 반영했습니다. 필수 항목을 확인해주세요.'
+const parseResultHasMissingDateTime = computed(() => (
+  !parseResult.value?.patch?.startAt || !parseResult.value?.patch?.endAt
 ))
+const parseResultMessage = computed(() => {
+  if (!parseNeedsConfirmation.value) {
+    return '분석 결과를 오른쪽 입력란에 반영했습니다. 필수 항목을 확인해주세요.'
+  }
+  if (parseResultHasMissingDateTime.value) {
+    return 'AI가 확정하지 못한 항목이 있습니다. 시작 및 종료 일시를 확인해주세요.'
+  }
+  return 'AI가 확인할 항목을 표시했습니다. 확인할 내용을 검토해주세요.'
+})
 const visibleParseDetails = computed(() => {
   const details = parseResult.value?.details
   if (!details) return []

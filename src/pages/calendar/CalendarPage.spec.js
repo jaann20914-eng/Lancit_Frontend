@@ -331,6 +331,9 @@ describe('CalendarPage', () => {
     expect(manualTextareas[1].element.value).toBe('장소: 역삼역')
     expect(parseResult.text()).toContain('확인 필요')
     expect(parseResult.text()).toContain('신뢰도 80%')
+    expect(parseResult.text()).toContain('확인할 내용')
+    expect(parseResult.text()).toContain('종료 시간을 인식하지 못했습니다.')
+    expect(parseResult.text()).toContain('시작 및 종료 일시를 확인해주세요.')
     expect(parseResult.text()).not.toContain('분석 완료')
 
     await wrapper.get('form').trigger('submit')
@@ -339,7 +342,7 @@ describe('CalendarPage', () => {
     expect(wrapper.get('.form-error').text()).toContain('시작 일시와 종료 일시를 확인해주세요.')
   })
 
-  it('AI 파싱 결과에 시작과 종료 일시가 모두 있으면 폼에 반영하고 저장할 수 있다', async () => {
+  it('AI 파싱 결과에 시작과 종료 일시가 모두 있으면 경고가 있어도 저장할 수 있다', async () => {
     const wrapper = mountCalendarPage()
     await flushCalendarPage()
     await openTaskCreateModal(wrapper)
@@ -352,13 +355,19 @@ describe('CalendarPage', () => {
       endAt: '2026-06-24T15:00:00',
       requiresConfirmation: false,
       confidence: 0.95,
-      warnings: [],
+      warnings: ['참석자를 확인해주세요.'],
     })
 
     const dateTimeInputs = getDateTimeInputs(wrapper)
+    const parseResult = wrapper.get('.parse-result')
     expect(dateTimeInputs[0].element.value).toBe('2026-06-24T14:00')
     expect(dateTimeInputs[1].element.value).toBe('2026-06-24T15:00')
-    expect(wrapper.get('.parse-result').text()).toContain('분석 완료')
+    expect(parseResult.text()).toContain('확인 필요')
+    expect(parseResult.text()).toContain('확인할 내용')
+    expect(parseResult.text()).toContain('참석자를 확인해주세요.')
+    expect(parseResult.text()).toContain('신뢰도 95%')
+    expect(parseResult.text()).not.toContain('분석 완료')
+    expect(parseResult.text()).not.toContain('시작 및 종료 일시를 확인해주세요.')
 
     await wrapper.get('form').trigger('submit')
     await flushPromises()
@@ -372,5 +381,6 @@ describe('CalendarPage', () => {
       content: '프로젝트 범위 논의',
       memo: '장소: Zoom',
     }))
+    expect(wrapper.find('.form-error').exists()).toBe(false)
   })
 })
