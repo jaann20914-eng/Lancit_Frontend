@@ -76,7 +76,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { getPdfDownloadUrl } from '@/features/contract/api/contractApi.js'
+import { downloadContractPdf } from '@/features/contract/api/contractApi.js'
 import { useContractDocumentForm } from '@/features/contract/model/useContractDocumentForm.js'
 import ContractDocumentForm from '@/features/contract/ui/ContractDocumentForm.vue'
 
@@ -110,10 +110,17 @@ function formatDate(dateStr) {
 
 async function handleDownloadPdf() {
   try {
-    const res = await getPdfDownloadUrl(contractId.value)
-    window.open(res.data.data.downloadUrl, '_blank')
+    const response = await downloadContractPdf(contractId.value)
+    const blobUrl = URL.createObjectURL(response.data)
+    const el = window.document.createElement('a')
+    el.href = blobUrl
+    el.download = '근로계약서.pdf'
+    window.document.body.appendChild(el)
+    el.click()
+    window.document.body.removeChild(el)
+    URL.revokeObjectURL(blobUrl)
   } catch (err) {
-    alert(err.response?.data?.message || 'PDF 다운로드에 실패했습니다.')
+    alert('PDF 다운로드에 실패했습니다.')
   }
 }
 </script>

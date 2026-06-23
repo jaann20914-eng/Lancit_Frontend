@@ -5,7 +5,6 @@
       <span class="status-badge badge-negotiating">{{ stageLabel }}</span>
     </div>
 
-    <!-- 파기 요청 배너 -->
     <div v-if="cancelRequest" class="cancel-banner">
       <p class="cancel-text">
         {{
@@ -19,7 +18,6 @@
       </button>
     </div>
 
-    <!-- 드롭다운: 공고문 / 계약서 -->
     <div class="dropdown-tabs">
       <button
         :class="['dropdown-tab', activeView === 'recruitment' ? 'active' : '']"
@@ -35,12 +33,10 @@
       </button>
     </div>
 
-    <!-- 공고문 뷰 -->
     <div v-if="activeView === 'recruitment'" class="panel-body">
       <p class="info-text">공고문 상세 내용은 추후 연동됩니다.</p>
     </div>
 
-    <!-- 계약서 뷰: 실제 PDF 양식 그대로, 빈 칸에 입력받는 폼 -->
     <div v-else class="panel-body document-wrap">
       <p class="form-note">
         {{ canEdit ? '전송하기 전에는 내용 수정 가능' : '상대방이 작성 중입니다' }}
@@ -56,7 +52,6 @@
       />
     </div>
 
-    <!-- 하단 액션 버튼 -->
     <div class="panel-footer">
       <div v-if="(canEdit && !isFinalStage) || canSend" class="btn-row">
         <button
@@ -131,7 +126,6 @@ const stageLabel = computed(() => {
   return map[status.value] || '협의중'
 })
 
-// 현재 단계에서 "내가" 수정 가능한지 (전체 흐름 제어용)
 const canEdit = computed(() => {
   if (status.value === 'NEGOTIATING_A') return !props.isFreelancer
   if (status.value === 'NEGOTIATING_B') return props.isFreelancer
@@ -140,18 +134,14 @@ const canEdit = computed(() => {
 
 const isFinalStage = computed(() => status.value === 'NEGOTIATING_C')
 
-// 회사 입력 필드(을 정보 제외 전부) 수정 가능 여부 - A단계 + 회사 본인일 때만
 const canEditCompanyFields = computed(() => status.value === 'NEGOTIATING_A' && !props.isFreelancer)
 
-// 프리랜서 입력 필드(을 정보) 수정 가능 여부 - B단계 + 프리랜서 본인일 때만
 const canEditFreelancerFields = computed(
   () => status.value === 'NEGOTIATING_B' && props.isFreelancer,
 )
 
-// 개인정보 동의 체크 가능 여부 - B단계 + 프리랜서일 때만
 const canEditConsent = computed(() => canEditFreelancerFields.value)
 
-// 발송 가능 여부 (A단계 회사, B단계 프리랜서)
 const canSend = computed(() => {
   if (status.value === 'NEGOTIATING_A') return !props.isFreelancer
   if (status.value === 'NEGOTIATING_B') return props.isFreelancer
@@ -164,55 +154,46 @@ const sendButtonLabel = computed(() => {
   return '발송'
 })
 
-// C단계: 회사만 최종 승인 가능
 const canApprove = computed(() => status.value === 'NEGOTIATING_C' && !props.isFreelancer)
 
 const form = reactive({
-  // 제1조
   contractStartDate: '',
   contractEndDate: '',
-  // 제2조
   workLocation: '',
   workDescription: '',
-  // 제3조 - 휴게시간은 시작~종료 범위로 관리, 익일근무 가능
   workDaysArr: [],
   workStartTime: '',
   workEndTime: '',
   breakTimeStart: '',
   breakTimeEnd: '',
-  // 제5조
   monthlyWage: 0,
   basePay: 0,
-  basePayBasis: '',
+
   overtimePay: 0,
-  overtimePayBasis: '',
+
   holidayPay: 0,
-  holidayPayBasis: '',
+  basePayBasisHour: null,
+
+  overtimePayBasisHour: null,
+
+  holidayPayBasisHour: null,
   mealAllowance: 0,
   totalWage: 0,
-  // 서명 날짜
   contractWrittenAt: '',
-  // 회사 서명 정보 (갑)
   partyA: '',
   representativeName: '',
   companyAddress: '',
-  // 프리랜서 서명 정보 (을) - 성명(partyB)은 회사가 작성, 생년월일/주소는 프리랜서가 작성
   partyB: '',
   freelancerBirthDate: '',
   freelancerAddress: '',
-  // 교부확인서 / 개인정보 동의서에 프리랜서가 직접 타이핑하는 성명
-  // (서명테이블의 partyB와 일치해야 발송 가능 - nameMismatch 검증 대상)
   confirmSignerName: '',
   privacySignerName: '',
-  // 서명 - 전부 배열 형태로 관리 (서명 1개당 각각 보관)
-  representativeSignFileIds: [], // 회사 대표자 서명
-  freelancerSignFileIds: [], // 프리랜서 서명 (서명 테이블)
-  confirmSignFileIds: [], // 교부확인서 서명
-  privacySignFileIds: [], // 개인정보 동의서 서명
+  representativeSignFileId: null,
+  contractSignFileId: null,
+  confirmSignFileId: null,
+  privacySignFileId: null,
 })
 
-// 개인정보 동의 - B단계(프리랜서)에서만 사용, 4개 전부 동의해야 발송 가능
-// null = 미선택, true = 동의, false = 동의하지 않음
 const consent = reactive({
   basic: null,
   unique: null,
@@ -220,6 +201,19 @@ const consent = reactive({
   thirdParty: null,
   thirdPartyUnique: null,
 })
+watch(
+  status,
+  (newStatus) => {
+    if (newStatus === 'NEGOTIATING_C') {
+      consent.basic = true
+      consent.unique = true
+      consent.sensitive = true
+      consent.thirdParty = true
+      consent.thirdPartyUnique = true
+    }
+  },
+  { immediate: true },
+)
 
 const allConsentChecked = computed(
   () =>
@@ -238,10 +232,10 @@ function loadDocumentIntoForm() {
     'workDaysArr',
     'breakTimeStart',
     'breakTimeEnd',
-    'representativeSignFileIds',
-    'freelancerSignFileIds',
-    'confirmSignFileIds',
-    'privacySignFileIds',
+
+    'basePayBasisHour',
+    'overtimePayBasisHour',
+    'holidayPayBasisHour',
   ]
 
   Object.keys(form).forEach((key) => {
@@ -251,7 +245,6 @@ function loadDocumentIntoForm() {
     }
   })
 
-  // workDays는 백엔드에서 "MON,TUE,WED" 콤마구분 문자열로 저장됨 -> 배열로 변환
   if (doc.workDays) {
     form.workDaysArr = String(doc.workDays)
       .split(',')
@@ -259,43 +252,40 @@ function loadDocumentIntoForm() {
       .filter(Boolean)
   }
 
-  // 휴게시간: 백엔드가 별도 시작/종료 필드를 주면 그대로, 단일 breakTime만 있으면 시작값으로만 채움(과거 데이터 호환)
   form.breakTimeStart = doc.breakTimeStart || doc.breakTime || ''
   form.breakTimeEnd = doc.breakTimeEnd || ''
 
-  // 서명: 각 항목별로 넘버링 필드(xxx1, xxx2, ...) 또는 배열 형태 모두 대응
-  form.representativeSignFileIds = extractSignatureList(doc, 'representativeSignFileId')
-  form.freelancerSignFileIds = extractSignatureList(doc, 'freelancerSignFileId')
-  form.confirmSignFileIds = extractSignatureList(doc, 'confirmSignFileId')
-  form.privacySignFileIds = extractSignatureList(doc, 'privacySignFileId')
-}
+  form.basePayBasisHour =
+    doc.basePayBasisMinutes == null ? null : Math.floor(doc.basePayBasisMinutes / 60)
 
-function extractSignatureList(doc, prefix) {
-  const arrayKey = prefix + 's'
-  if (Array.isArray(doc[arrayKey])) {
-    return doc[arrayKey].map((item) =>
-      typeof item === 'object' ? item : { fileId: item, previewUrl: null },
-    )
-  }
+  form.overtimePayBasisHour =
+    doc.overtimePayBasisMinutes == null ? null : Math.floor(doc.overtimePayBasisMinutes / 60)
 
-  const result = []
-  let i = 1
-  while (doc[`${prefix}${i}`] !== undefined && doc[`${prefix}${i}`] !== null) {
-    result.push({ fileId: doc[`${prefix}${i}`], previewUrl: null })
-    i++
-  }
-  return result
+  form.holidayPayBasisHour =
+    doc.holidayPayBasisMinutes == null ? null : Math.floor(doc.holidayPayBasisMinutes / 60)
+
+  form.representativeSignFileId = doc.representativeSignFileId
+
+  form.contractSignFileId = doc.contractSignFileId
+
+  form.confirmSignFileId = doc.confirmSignFileId
+
+  form.privacySignFileId = doc.privacySignFileId
 }
 
 watch(() => props.detail, loadDocumentIntoForm, { immediate: true, deep: true })
 
-// 백엔드 DTO 그룹 단위로 묶어서 전송
-// - workDaysArr(배열) -> workDays(콤마구분 문자열)
-// - 서명 배열 4종 전부 -> {필드명}1, {필드명}2, ... 형태로 풀어서 전송
 function buildPayload() {
   const payload = {
     ...form,
     workDays: form.workDaysArr.join(','),
+
+    basePayBasisMinutes: form.basePayBasisHour == null ? null : form.basePayBasisHour * 60,
+
+    overtimePayBasisMinutes:
+      form.overtimePayBasisHour == null ? null : form.overtimePayBasisHour * 60,
+
+    holidayPayBasisMinutes: form.holidayPayBasisHour == null ? null : form.holidayPayBasisHour * 60,
   }
 
   delete payload.workDaysArr
@@ -304,16 +294,17 @@ function buildPayload() {
   delete payload.confirmSignFileIds
   delete payload.privacySignFileIds
 
-  const flattenSignatures = (list, prefix) => {
-    list.forEach((sig, idx) => {
-      payload[`${prefix}${idx + 1}`] = sig.fileId
-    })
-  }
+  delete payload.basePayBasisHour
+  delete payload.overtimePayBasisHour
+  delete payload.holidayPayBasisHour
 
-  flattenSignatures(form.representativeSignFileIds, 'representativeSignFileId')
-  flattenSignatures(form.freelancerSignFileIds, 'freelancerSignFileId')
-  flattenSignatures(form.confirmSignFileIds, 'confirmSignFileId')
-  flattenSignatures(form.privacySignFileIds, 'privacySignFileId')
+  payload.representativeSignFileId = form.representativeSignFileId
+
+  payload.contractSignFileId = form.contractSignFileId
+
+  payload.confirmSignFileId = form.confirmSignFileId
+
+  payload.privacySignFileId = form.privacySignFileId
 
   return payload
 }
@@ -331,20 +322,16 @@ async function handleSaveDraft() {
 }
 
 async function handleSend() {
-  // 동일 인물을 가리키는 값(서명테이블 성명 vs 교부확인서/동의서에 직접 작성한 성명)이
-  // 서로 일치하지 않으면 발송 자체를 막음
   if (documentFormRef.value?.hasAnyMismatch) {
     alert('성명 입력값이 서로 일치하지 않습니다. 빨간색으로 표시된 항목을 확인해주세요.')
     return
   }
 
-  // 본인이 채워야 하는 항목 중 비어있는 칸이 있으면 발송 자체를 막음
   if (documentFormRef.value?.hasMissingRequired) {
     alert('아직 작성하지 않은 항목이 있습니다. 빨간색으로 표시된 항목을 모두 채워주세요.')
     return
   }
 
-  // B단계(프리랜서)는 개인정보 동의 5개 항목 전부 "동의"를 선택해야만 진행
   if (status.value === 'NEGOTIATING_B' && props.isFreelancer) {
     if (!allConsentChecked.value) {
       alert('개인정보 수집·이용·제공에 모두 동의해야만 다음 단계로 진행할 수 있습니다.')
@@ -489,7 +476,6 @@ async function handleApprove() {
 
 .document-wrap {
   padding: 0 0 16px;
-  /* 내부 doc-page가 min-width를 가지므로, 화면이 좁으면 가로 스크롤로 처리 (테이블이 찌그러지지 않도록) */
   overflow-x: auto;
 }
 

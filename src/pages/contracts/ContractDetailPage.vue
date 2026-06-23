@@ -1,5 +1,11 @@
 <template>
   <div class="detail-page">
+    <button
+      class="btn-back"
+      @click="router.push(isFreelancer ? '/freelancer/contracts' : '/company/contracts')"
+    >
+      목록으로
+    </button>
     <div v-if="isLoading" class="loading-state">불러오는 중...</div>
 
     <div v-else-if="loadError" class="error-state">
@@ -50,7 +56,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getContractDetail } from '@/features/contract/api/contractApi.js'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
 
@@ -62,11 +68,12 @@ import ContractCancelledPanel from '@/features/contract/ui/ContractCancelledPane
 import ContractChatPanel from '@/features/chat/ui/ContractChatPanel.vue'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 
 const contractId = route.params.id
-const isFreelancer = computed(() => authStore.role === 'user')
-const isCompany = computed(() => authStore.role === 'company')
+const isFreelancer = computed(() => authStore.role === 'USER')
+const isCompany = computed(() => authStore.role === 'COMPANY')
 
 const detail = ref(null)
 const isLoading = ref(false)
@@ -89,6 +96,24 @@ onMounted(fetchDetail)
 </script>
 
 <style scoped>
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  margin-bottom: 7px;
+  background: white;
+  color: #1a233d;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-back:hover {
+  background: #f9fafb;
+}
+
 .detail-page {
   padding: 24px;
   height: 100vh;
@@ -120,7 +145,7 @@ onMounted(fetchDetail)
   display: grid;
   grid-template-columns: 500px 1fr;
   gap: 20px;
-  height: 100%;
+  height: 95%;
 }
 
 .left-panel {

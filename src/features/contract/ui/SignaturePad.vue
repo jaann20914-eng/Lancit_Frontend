@@ -3,10 +3,10 @@
     <label v-if="label" class="form-label">{{ label }}</label>
 
     <!-- 서명 목록 -->
-    <div v-if="signatures.length" class="signature-list">
-      <div v-for="(sig, idx) in signatures" :key="idx" class="signature-thumb">
-        <img :src="sig.previewUrl" :alt="`서명 ${idx + 1}`" />
-        <button v-if="editable" class="thumb-remove" @click="removeSignature(idx)">×</button>
+    <div v-if="signatures" class="signature-list">
+      <div class="signature-thumb">
+        <img :src="signatureUrl" />
+        <button v-if="editable" class="thumb-remove" @click="removeSignature">×</button>
       </div>
     </div>
 
@@ -95,9 +95,7 @@
         <div class="modal-actions">
           <button class="btn-cancel" @click="closeModal">취소</button>
           <button v-if="mode === 'draw'" class="btn-clear" @click="clearCanvas">지우기</button>
-          <button class="btn-confirm" :disabled="!canConfirm" @click="confirmSignature">
-            서명완료
-          </button>
+          <button class="btn-confirm" @click="confirmSignature">서명완료</button>
         </div>
       </div>
     </div>
@@ -105,12 +103,17 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Vue3Signature from 'vue3-signature'
+import { uploadFile, getFileUrl } from '@/features/file/api/fileApi'
+import { dataURLtoFile } from '@/shared/utils/fileUtils'
 
 const props = defineProps({
   label: { type: String, default: '서명' },
-  modelValue: { type: Array, default: () => [] }, // [{ fileId, previewUrl }, ...]
+  modelValue: {
+    type: Number,
+    default: null,
+  }, // [{ fileId, previewUrl }, ...]
   editable: { type: Boolean, default: true },
   compact: { type: Boolean, default: false },
   // true면 "아직 서명 안 함" 경고 상태 - 버튼 배경을 노란색으로 표시
@@ -121,7 +124,10 @@ const emit = defineEmits(['update:modelValue'])
 
 const signatures = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val),
+  set: (val) => {
+    console.log('emit 발생', val)
+    emit('update:modelValue', val)
+  },
 })
 
 const showModal = ref(false)
@@ -129,7 +135,8 @@ const mode = ref('draw')
 const signatureRef = ref(null)
 const fileInputRef = ref(null)
 const uploadPreview = ref(null)
-const uploadFile = ref(null)
+const uploadTargetFile = ref(null)
+const signatureUrl = ref(null)
 
 const sigOption = {
   penColor: 'rgb(26, 35, 61)',
@@ -140,13 +147,14 @@ const canConfirm = computed(() => {
   if (mode.value === 'draw') {
     return signatureRef.value && !signatureRef.value.isEmpty()
   }
-  return !!uploadFile.value
+
+  return !!uploadTargetFile.value
 })
 
 function openModal() {
   mode.value = 'draw'
   uploadPreview.value = null
-  uploadFile.value = null
+  uploadTargetFile.value = null
   showModal.value = true
 }
 
@@ -161,33 +169,65 @@ function clearCanvas() {
 function handleFileChange(e) {
   const file = e.target.files[0]
   if (!file) return
-  uploadFile.value = file
+  uploadTargetFile.value = file
   uploadPreview.value = URL.createObjectURL(file)
 }
+function loadSignatureUrl() {
+  if (!signatures.value) return
+
+  getFileUrl(signatures.value).then((res) => {
+    signatureUrl.value = res.data.data
+  })
+}
+watch(
+  signatures,
+  () => {
+    loadSignatureUrl()
+  },
+  {
+    immediate: true,
+  },
+)
 
 async function confirmSignature() {
-  let dataUrl = null
+  try {
+    let file
+    if (mode.value === 'draw' && signatureRef.value.isEmpty()) {
+      alert('서명을 입력해주세요')
+      return
+    }
 
-  if (mode.value === 'draw') {
-    dataUrl = signatureRef.value.save('image/png')
-  } else {
-    dataUrl = uploadPreview.value
+    if (mode.value === 'draw') {
+      const dataUrl = signatureRef.value.save('image/png')
+      file = dataURLtoFile(dataUrl, `signature-${Date.now()}.png`)
+    } else {
+      file = uploadTargetFile.value
+    }
+
+    const response = await uploadFile(file, 'TEMP_SIGNATURE')
+
+    const uploaded = response.data.data[0]
+
+    signatures.value = uploaded.fileId
+    getFileUrl(uploaded.fileId).then((res) => {
+      signatureUrl.value = res.data.data
+    })
+
+    console.log('업로드 완료', uploaded.fileId)
+    console.log('현재 modelValue', signatures.value)
+
+    closeModal()
+  } catch (error) {
+    console.error(error)
+    alert('서명 업로드 실패')
   }
-
-  // TODO: 실제로는 dataUrl(or uploadFile)을 POST /files/upload 로 보내고
-  // 응답으로 받은 fileId를 저장해야 함. 지금은 mock fileId 사용
-  const mockFileId = Math.floor(Math.random() * 100000)
-
-  signatures.value = [...signatures.value, { fileId: mockFileId, previewUrl: dataUrl }]
-
-  closeModal()
 }
 
-function removeSignature(idx) {
+function removeSignature() {
   if (!confirm('이 서명을 삭제하시겠습니까?')) return
-  const next = [...signatures.value]
-  next.splice(idx, 1)
-  signatures.value = next
+
+  signatures.value = null
+  signatureUrl.value = null
 }
 </script>
 

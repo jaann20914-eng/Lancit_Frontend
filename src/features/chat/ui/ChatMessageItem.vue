@@ -17,7 +17,7 @@
         </template>
 
         <template v-else-if="message.messageType === 'FILE' || message.messageType === 'IMAGE'">
-          <div class="file-bubble">
+          <div class="file-bubble" @click="handleDownloadFile" style="cursor: pointer">
             <svg
               width="16"
               height="16"
@@ -30,7 +30,6 @@
               <polyline points="14 2 14 8 20 8" />
             </svg>
             <span class="file-bubble-name">{{ message.fileName || '파일' }}</span>
-            <span class="file-bubble-size">{{ message.fileSize || '' }}</span>
           </div>
         </template>
 
@@ -63,6 +62,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { getFileDownloadUrl } from '@/features/contract/api/contractApi.js'
 
 const props = defineProps({
   message: { type: Object, required: true },
@@ -86,6 +86,23 @@ function formatTime(dateStr) {
   const period = hh < 12 ? '오전' : '오후'
   const hour12 = hh % 12 === 0 ? 12 : hh % 12
   return `${period} ${hour12}:${mm}`
+}
+
+async function handleDownloadFile() {
+  if (!props.message.fileId) return
+  try {
+    const response = await getFileDownloadUrl(props.message.fileId)
+    const blobUrl = URL.createObjectURL(response.data)
+    const a = window.document.createElement('a')
+    a.href = blobUrl
+    a.download = props.message.fileName || `파일_${props.message.fileId}`
+    window.document.body.appendChild(a)
+    a.click()
+    window.document.body.removeChild(a)
+    URL.revokeObjectURL(blobUrl)
+  } catch (err) {
+    alert('파일 다운로드에 실패했습니다.')
+  }
 }
 </script>
 
