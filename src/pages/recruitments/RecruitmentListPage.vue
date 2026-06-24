@@ -437,7 +437,12 @@ async function handleBookmark(item) {
 }
 
 function goToDetail(recruitmentId) {
-  router.push({ name: 'RecruitmentDetail', params: { id: recruitmentId } })
+  //router.push({ name: 'RecruitmentDetail', params: { id: recruitmentId } })
+  router.push({
+    name: 'RecruitmentDetail',
+    params: { id: recruitmentId },
+    query: { from: 'list' },
+  })
 }
 
 function handleApplicationAction(item) {

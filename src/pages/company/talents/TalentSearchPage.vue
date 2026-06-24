@@ -5,37 +5,46 @@
 
     <!-- 탭 -->
     <div class="tab-bar">
-        <button
-            v-for="tab in jobCategoryTabs"
-            :key="tab.value"
-            :class="['tab-item', activeTab === tab.value ? 'active' : '']"
-            @click="changeTab(tab.value)"
-        >
-            {{ tab.label }}
-        </button>
+      <button
+        v-for="tab in jobCategoryTabs"
+        :key="tab.value"
+        :class="['tab-item', activeTab === tab.value ? 'active' : '']"
+        @click="changeTab(tab.value)"
+      >
+        {{ tab.label }}
+      </button>
     </div>
 
     <!-- 검색 + 정렬 -->
     <div class="search-bar">
       <select v-model="sortType" class="sort-select" @change="fetchList">
-        <option value="VIEW">조회순</option>
-        <option value="NAME">이름순</option>
+        <option value="latest">최신 가입순</option>
+        <option value="oldest">오래된 가입순</option>
+        <option value="name">이름순</option>
       </select>
 
       <div class="search-input-wrap">
-        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        <svg
+          class="search-icon"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
         <input
           v-model="keyword"
           type="text"
           class="search-input"
-          placeholder="프로필로 검색..."
+          placeholder="이름으로 검색..."
           @keyup.enter="handleSearch"
         />
       </div>
       <button class="btn-search" @click="handleSearch">검색</button>
-
     </div>
 
     <!-- 목록 -->
@@ -59,31 +68,19 @@
 
         <div class="talent-info">
           <p class="talent-name">{{ talent.name }}</p>
-          <p class="talent-meta">{{ jobCategoryLabel(talent.jobCategory) }} · 작성일: {{ formatDate(talent.createdAt) }}</p>
-        </div>
-
-        <div class="talent-stats">
-          <span class="stat">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-            </svg>
-            {{ talent.viewCount ?? 0 }}
-          </span>
-          <span class="stat">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/>
-            </svg>
-            {{ talent.likeCount ?? 0 }}
-          </span>
+          <p class="talent-meta">
+            {{ jobCategoryLabel(talent.jobCategory) }}
+          </p>
+          <p class="talent-meta">가입일: {{ formatDate(talent.createdAt) }}</p>
         </div>
 
         <div class="talent-actions" @click.stop>
           <button
             class="btn-bookmark"
-            :class="{ active: talent.isBookmarked }"
+            :class="{ active: talent.bookmarked }"
             @click="toggleBookmark(talent)"
           >
-            {{ talent.isBookmarked ? '찜 취소' : '찜하기' }}
+            {{ talent.bookmarked ? '찜 취소' : '찜하기' }}
           </button>
           <button class="btn-propose" @click="goPropose(talent.email)">제안하기</button>
         </div>
@@ -91,8 +88,10 @@
     </div>
 
     <!-- 페이지네이션 -->
-    <div class="pagination" v-if="totalPages > 1">
-      <button class="page-btn" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">‹</button>
+    <div class="pagination">
+      <button class="page-btn" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
+        ‹
+      </button>
       <button
         v-for="p in totalPages"
         :key="p"
@@ -101,7 +100,13 @@
       >
         {{ p }}
       </button>
-      <button class="page-btn" :disabled="currentPage === totalPages" @click="changePage(currentPage + 1)">›</button>
+      <button
+        class="page-btn"
+        :disabled="currentPage === totalPages"
+        @click="changePage(currentPage + 1)"
+      >
+        ›
+      </button>
     </div>
   </div>
 </template>
@@ -109,16 +114,19 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getTalentList, toggleTalentBookmark } from '@/features/talent/api/talentApi.js'
+import {
+  getTalentList,
+  addTalentBookmark,
+  removeTalentBookmark,
+} from '@/features/talent/api/talentApi.js'
 
 const router = useRouter()
 
-const activeTab = ref('ALL')  // ALL | DESIGN | IT | MUSIC | EDUCATION | VIDEO | MARKETING | WRITING | ETC | BOOKMARK
+const activeTab = ref('ALL') // ALL | DESIGN | IT | MUSIC | EDUCATION | VIDEO | MARKETING | WRITING | ETC | BOOKMARK
 import { TALENT_TAB_OPTIONS, jobCategoryLabel } from '@/shared/constants/jobCategory.js'
 const jobCategoryTabs = TALENT_TAB_OPTIONS
 
-
-const sortType = ref('VIEW')       // VIEW | NAME
+const sortType = ref('latest') // VIEW | NAME
 const keyword = ref('')
 const talents = ref([])
 const isLoading = ref(false)
@@ -126,25 +134,29 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 const pageSize = 5
 
-
 function formatDate(dateStr) {
   if (!dateStr) return ''
   return new Date(dateStr).toISOString().slice(0, 10)
 }
 
 async function fetchList() {
-    isLoading.value = true
+  isLoading.value = true
   try {
     const res = await getTalentList({
       keyword: keyword.value,
-      jobCategory: (activeTab.value !== 'ALL' && activeTab.value !== 'BOOKMARK') ? activeTab.value : null,
+      jobCategory:
+        activeTab.value !== 'ALL' && activeTab.value !== 'BOOKMARK' ? activeTab.value : null,
       bookmarked: activeTab.value === 'BOOKMARK',
       sort: sortType.value,
       page: currentPage.value,
-      size: pageSize
+      size: pageSize,
     })
+    console.log('응답:', res.data)
     const data = res.data.data
+    console.log('data:', data)
+    console.log('content:', data.content)
     talents.value = data.content || data.list || []
+
     totalPages.value = data.totalPages || 1
   } catch (err) {
     talents.value = []
@@ -172,8 +184,12 @@ function changePage(p) {
 
 async function toggleBookmark(talent) {
   try {
-    await toggleTalentBookmark(talent.email)
-    talent.isBookmarked = !talent.isBookmarked
+    if (talent.bookmarked) {
+      await removeTalentBookmark(talent.email)
+    } else {
+      await addTalentBookmark(talent.email)
+    }
+    talent.bookmarked = !talent.bookmarked
   } catch (err) {
     alert('찜하기에 실패했습니다.')
   }
@@ -194,18 +210,22 @@ onMounted(fetchList)
 .page {
   padding: 32px;
   max-width: 100%;
+  /* min-height: calc(100vh - 64px); */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .page-title {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  color: #1A233D;
+  color: #1a233d;
   margin: 0 0 4px;
 }
 
 .page-sub {
   font-size: 14px;
-  color: #6C757D;
+  color: #6c757d;
   margin: 0 0 20px;
 }
 
@@ -213,9 +233,8 @@ onMounted(fetchList)
 .tab-bar {
   display: flex;
   gap: 0;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #e5e7eb;
   margin-bottom: 16px;
-  /* overflow-x: auto; */
   white-space: nowrap;
 }
 
@@ -223,7 +242,7 @@ onMounted(fetchList)
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 500;
-  color: #9CA3AF;
+  color: #9ca3af;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -232,8 +251,8 @@ onMounted(fetchList)
 }
 
 .tab-item.active {
-  color: #1A233D;
-  border-bottom-color: #1A233D;
+  color: #1a233d;
+  border-bottom-color: #1a233d;
   font-weight: 600;
 }
 
@@ -254,25 +273,27 @@ onMounted(fetchList)
 .search-icon {
   position: absolute;
   left: 12px;
-  color: #9CA3AF;
+  color: #9ca3af;
 }
 
 .search-input {
   width: 100%;
   height: 40px;
   padding: 0 12px 0 36px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 14px;
   outline: none;
 }
 
-.search-input:focus { border-color: #1A233D; }
+.search-input:focus {
+  border-color: #1a233d;
+}
 
 .btn-search {
   padding: 0 20px;
   height: 40px;
-  background: #1A233D;
+  background: #1a233d;
   color: white;
   border: none;
   border-radius: 6px;
@@ -285,26 +306,29 @@ onMounted(fetchList)
 .sort-select {
   height: 40px;
   padding: 0 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 14px;
-  color: #1A233D;
+  color: #1a233d;
   background: white;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 /* 목록 */
-.loading, .empty-state {
+.loading,
+.empty-state {
+  flex: 1;
   text-align: center;
   padding: 60px 0;
-  color: #9CA3AF;
+  color: #9ca3af;
 }
 
 .talent-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1;
 }
 
 .talent-item {
@@ -313,46 +337,53 @@ onMounted(fetchList)
   gap: 14px;
   padding: 14px 16px;
   background: white;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #e5e7eb;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .talent-item:hover {
-  border-color: #1A233D;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-color: #1a233d;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .talent-avatar {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #D1D5DB;
+  background: #d1d5db;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
   font-weight: 600;
-  color: #6B7280;
+  color: #6b7280;
   flex-shrink: 0;
   overflow: hidden;
 }
 
-.talent-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.talent-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-.talent-info { flex: 1; min-width: 0; }
+.talent-info {
+  flex: 1;
+  min-width: 0;
+}
 
 .talent-name {
   font-size: 14px;
   font-weight: 600;
-  color: #1A233D;
+  color: #1a233d;
   margin: 0 0 2px;
 }
 
 .talent-meta {
   font-size: 12px;
-  color: #9CA3AF;
+  color: #9ca3af;
   margin: 0;
 }
 
@@ -367,7 +398,7 @@ onMounted(fetchList)
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #9CA3AF;
+  color: #9ca3af;
 }
 
 .talent-actions {
@@ -376,7 +407,8 @@ onMounted(fetchList)
   flex-shrink: 0;
 }
 
-.btn-bookmark, .btn-propose {
+.btn-bookmark,
+.btn-propose {
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 500;
@@ -387,18 +419,18 @@ onMounted(fetchList)
 
 .btn-bookmark {
   background: white;
-  color: #6C757D;
-  border: 1px solid #E5E7EB;
+  color: #6c757d;
+  border: 1px solid #e5e7eb;
 }
 
 .btn-bookmark.active {
-  background: #FEE2E2;
-  color: #EF4444;
-  border-color: #EF4444;
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #ef4444;
 }
 
 .btn-propose {
-  background: #1A233D;
+  background: #1a233d;
   color: white;
   border: none;
 }
@@ -408,7 +440,8 @@ onMounted(fetchList)
   display: flex;
   justify-content: center;
   gap: 4px;
-  margin-top: 24px;
+  margin-top: auto;
+  padding-top: 24px;
 }
 
 .page-btn {
@@ -418,11 +451,22 @@ onMounted(fetchList)
   background: none;
   border-radius: 6px;
   font-size: 13px;
-  color: #6C757D;
+  color: #6c757d;
   cursor: pointer;
 }
 
-.page-btn:hover:not(:disabled) { background: #F3F4F6; }
-.page-btn.active { background: #1A233D; color: white; font-weight: 600; }
-.page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.page-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.page-btn.active {
+  background: #1a233d;
+  color: white;
+  font-weight: 600;
+}
+
+.page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 </style>

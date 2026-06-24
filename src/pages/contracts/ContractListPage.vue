@@ -59,7 +59,8 @@
         v-for="item in contracts"
         :key="item.contractId || item.contract_id"
         class="contract-item"
-        @click="goDetail(item)"
+        :class="{ disabled: item.status === 'PROPOSAL' }"
+        @click="item.status !== 'PROPOSAL' && goDetail(item)"
       >
         <span :class="['status-badge', statusBadgeClass(item.status)]">
           {{ statusLabel(item.status) }}
@@ -83,6 +84,12 @@
             <strong>{{ formatMoney(totalWage(item)) }}</strong>
           </p>
         </div>
+
+        <!-- ✅ 알림 배지 -->
+        <span
+          v-if="notificationStore.hasUnreadByContract(item.contractId || item.contract_id)"
+          class="contract-badge"
+        ></span>
 
         <svg
           class="chevron"
@@ -123,10 +130,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getContracts } from '@/features/contract/api/contractApi.js'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
+import { useNotificationStore } from '@/features/notification/model/useNotificationStore.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -137,11 +145,14 @@ const isCompanyView = computed(() => authStore.role === 'COMPANY')
 // 탭: status=''(전체) | NEGOTIATING(협의중 묶음, A/B/C 클라이언트 필터링) | IN_PROGRESS | COMPLETED_PENDING | COMPLETED | CANCELLED
 const statusTabs = [
   { value: '', label: '전체' },
-  { value: 'NEGOTIATING', label: '협의중' },
+
+  { value: 'WAITING', label: '논의중' },
+  { value: 'NEGOTIATING', label: '계약 협의중' },
   { value: 'IN_PROGRESS', label: '진행중' },
   { value: 'COMPLETED_PENDING', label: '완료대기' },
   { value: 'COMPLETED', label: '완료' },
   { value: 'CANCELLED', label: '파기' },
+  { value: 'PROPOSAL', label: '제안발송' },
 ]
 
 const activeStatus = ref('')
@@ -149,15 +160,17 @@ const keywordType = ref('')
 const keyword = ref('')
 const contracts = ref([])
 const isLoading = ref(false)
-const currentPage = ref(1)
+const currentPage = ref(route.query.page ? Number(route.query.page) : 1)
 const totalPages = ref(1)
 const pageSize = 5
+const notificationStore = useNotificationStore()
 
 const STATUS_LABELS = {
-  WAITING: '제안중',
-  NEGOTIATING_A: '협의중',
-  NEGOTIATING_B: '협의중',
-  NEGOTIATING_C: '협의중',
+  PROPOSAL: '제안발송',
+  WAITING: '논의중',
+  NEGOTIATING_A: '계약 협의중',
+  NEGOTIATING_B: '계약 협의중',
+  NEGOTIATING_C: '계약 협의중',
   IN_PROGRESS: '진행중',
   COMPLETED_PENDING: '완료대기',
   COMPLETED: '완료',
@@ -174,6 +187,16 @@ const STATUS_BADGE_CLASS = {
   COMPLETED: 'badge-completed',
   CANCELLED: 'badge-cancelled',
 }
+
+watch(
+  () => route.query.page,
+  (newPage) => {
+    if (newPage) {
+      currentPage.value = Number(newPage)
+      fetchList()
+    }
+  },
+)
 
 function statusLabel(status) {
   return STATUS_LABELS[status] || status
@@ -264,24 +287,18 @@ function handleSearch() {
 function changePage(p) {
   if (p < 1 || p > totalPages.value) return
   currentPage.value = p
+  router.replace({ query: { ...route.query, page: p } }) // ✅ URL 동기화
   fetchList()
 }
 
 function goDetail(item) {
   const contractId = item.contractId || item.contract_id
-  console.log('[goDetail] clicked item:', item)
-  console.log('[goDetail] resolved contractId:', contractId)
+  if (!contractId) return
 
-  if (!contractId) {
-    console.warn('[goDetail] contractId가 없어 이동을 중단합니다. item 구조를 확인하세요.')
-    return
-  }
-
-  const name = isCompanyView.value ? 'CompanyContractDetail' : 'ContractDetail'
-  console.log('[goDetail] route name:', name, 'authStore.role:', authStore.role)
-
-  router.push({ name, params: { id: contractId } }).catch((err) => {
-    console.error('[goDetail] router.push 실패:', err)
+  router.push({
+    name: isCompanyView.value ? 'CompanyContractDetail' : 'ContractDetail', // ✅ 수정
+    params: { id: contractId },
+    query: { page: currentPage.value },
   })
 }
 
@@ -290,7 +307,7 @@ onMounted(fetchList)
 
 <style scoped>
 .page {
-  padding: 24px 32px;
+  padding: 32px 32px 48px;
   max-width: 100%;
   box-sizing: border-box;
   height: 100vh;
@@ -301,7 +318,7 @@ onMounted(fetchList)
 }
 
 .page-title {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   color: #1a233d;
   margin: 0 0 4px;
@@ -310,7 +327,7 @@ onMounted(fetchList)
 .page-sub {
   font-size: 14px;
   color: #6c757d;
-  margin: 0 0 20px;
+  margin: 0 0 15px;
 }
 
 /* 탭 - overflow-x 제거, flex-wrap으로 줄바꿈 허용 */
@@ -413,7 +430,7 @@ onMounted(fetchList)
 
 .contract-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center; /* flex-start → center */
   gap: 12px;
   padding: 10px 16px;
   background: white;
@@ -421,21 +438,23 @@ onMounted(fetchList)
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
+  height: 140px;
 }
 
 .contract-item:hover {
-  border-color: #1a233d;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-color: #7f89a1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
 }
-
 .status-badge {
   flex-shrink: 0;
-  padding: 3px 9px;
+  padding: 4px 11px; /* 3px 9px → 4px 11px */
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: 11.5px; /* 10.5px → 11.5px */
   font-weight: 600;
   white-space: nowrap;
-  margin-top: 1px;
+  margin-top: 10px;
+  align-self: flex-start;
 }
 
 .badge-waiting {
@@ -463,16 +482,27 @@ onMounted(fetchList)
   color: #991b1b;
 }
 
+.contract-badge {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  flex-shrink: 0;
+  margin-top: 0; /* 4px → 0 */
+  align-self: flex-start; /* 알림 배지는 상단 */
+  margin-top: 10px;
+}
+
 .contract-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 8px; /* 1px → 4px */
 }
 
 .contract-title {
-  font-size: 13.5px;
+  font-size: 15px;
   font-weight: 600;
   color: #1a233d;
   margin: 0 0 2px;
@@ -486,7 +516,7 @@ onMounted(fetchList)
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12.5px;
   color: #9ca3af;
   margin: 0;
   line-height: 1.4;
@@ -494,13 +524,18 @@ onMounted(fetchList)
 
 .contract-meta-line strong {
   color: #4b5563;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .chevron {
   color: #d1d5db;
   flex-shrink: 0;
-  margin-top: 4px;
+  margin-top: 0; /* 4px → 0 */
+}
+
+.contract-item.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* 페이지네이션 */

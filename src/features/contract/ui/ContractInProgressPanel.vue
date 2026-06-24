@@ -28,12 +28,14 @@
         @click="activeView = 'confirm'"
       >
         컨펌 파일 목록
+        <span v-if="hasConfirmNotif" class="tab-badge"></span>
       </button>
       <button
         :class="['dropdown-tab', activeView === 'document' ? 'active' : '']"
         @click="activeView = 'document'"
       >
         계약서
+        <span v-if="hasDocumentNotif" class="tab-badge"></span>
       </button>
     </div>
 
@@ -120,7 +122,8 @@
 </template>
 
 <script setup>
-import { ref, computed, toRef } from 'vue'
+import { ref, computed, toRef, watch, onMounted } from 'vue'
+import httpClient from '@/shared/api/httpClient.js'
 import {
   getConfirmFiles,
   uploadConfirmFile,
@@ -134,6 +137,7 @@ import { useAuthStore } from '@/features/auth/model/authStore.js'
 import { useContractCancel } from '@/features/contract/model/useContractCancel.js'
 import { useContractDocumentForm } from '@/features/contract/model/useContractDocumentForm.js'
 import ContractDocumentForm from '@/features/contract/ui/ContractDocumentForm.vue'
+import { useNotificationStore } from '@/features/notification/model/useNotificationStore.js'
 
 const props = defineProps({
   detail: { type: Object, required: true },
@@ -152,6 +156,7 @@ const isPending = computed(() => props.detail.status === 'COMPLETED_PENDING')
 const document = computed(() => props.detail.document)
 const pdfFile = computed(() => props.detail.pdfFile)
 const confirmFiles = ref(props.detail.confirmFiles || [])
+const notificationStore = useNotificationStore()
 
 // 계약서 내용을 ContractDocumentForm이 기대하는 form 형태로 변환 (전체 읽기전용으로 표시)
 const { form: documentForm } = useContractDocumentForm(document)
@@ -175,6 +180,78 @@ const {
 } = useContractCancel(detailRef, emit)
 
 const fileInputRef = ref(null)
+
+// 컨펌파일 탭 알림 표시
+const hasConfirmNotif = computed(() =>
+  notificationStore.hasUnreadByContractAndType(contractId.value, 'CONFIRM_FILE'),
+)
+
+// 계약서 탭 알림 표시 (PROPOSAL, CONTRACT_CANCEL_REQUEST, CONTRACT_COMPLETED_PENDING)
+const hasDocumentNotif = computed(() =>
+  notificationStore.hasUnreadByContractAndType(
+    contractId.value,
+    'PROPOSAL',
+    'CONTRACT_CANCEL_REQUEST',
+    'CONTRACT_COMPLETED_PENDING',
+    'CONTRACT_COMPLETED',
+  ),
+)
+
+// onMounted(async () => {
+//   // 초기 탭 상태에 따라 즉시 읽음 처리
+//   if (activeView.value === 'confirm') {
+//     try {
+//       await httpClient.patch(`/api/notifications/contracts/${contractId.value}/confirm-files/read`)
+//       notificationStore.markReadByContractAndType(contractId.value, 'CONFIRM_FILE')
+//       await notificationStore.fetchUnread()
+//     } catch (e) {}
+//   } else if (activeView.value === 'document') {
+//     try {
+//       await httpClient.patch(`/api/notifications/contracts/${contractId.value}/read`)
+//       notificationStore.markReadByContractAndType(
+//         contractId.value,
+//         'PROPOSAL',
+//         'CONTRACT_CANCEL_REQUEST',
+//         'CONTRACT_COMPLETED_PENDING',
+//         'CONTRACT_COMPLETED',
+//       )
+//       await notificationStore.fetchUnread()
+//     } catch (e) {}
+//   }
+// })
+
+// 탭 변경 시 읽음 처리
+watch(
+  activeView,
+  async (view) => {
+    if (view === 'confirm') {
+      try {
+        await httpClient.patch(`/notifications/contracts/${contractId.value}/confirm-files/read`)
+        notificationStore.markReadByContractAndType(contractId.value, 'CONFIRM_FILE')
+        await notificationStore.fetchUnread()
+      } catch (e) {}
+    }
+    if (view === 'document') {
+      try {
+        await httpClient.patch(`/notifications/contracts/${contractId.value}/types/read`, [
+          'PROPOSAL',
+          'CONTRACT_CANCEL_REQUEST',
+          'CONTRACT_COMPLETED_PENDING',
+          'CONTRACT_COMPLETED',
+        ])
+        notificationStore.markReadByContractAndType(
+          contractId.value,
+          'PROPOSAL',
+          'CONTRACT_CANCEL_REQUEST',
+          'CONTRACT_COMPLETED_PENDING',
+          'CONTRACT_COMPLETED',
+        )
+        await notificationStore.fetchUnread()
+      } catch (e) {}
+    }
+  },
+  { immediate: true },
+) // ← 탭 초기값이 'confirm'이면 진입 즉시 읽음 처리
 
 function formatDate(dateStr) {
   if (!dateStr) return '-'
@@ -341,6 +418,20 @@ async function handleComplete() {
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   cursor: pointer;
+}
+
+.dropdown-tab {
+  position: relative;
+}
+
+.tab-badge {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  margin-left: 5px;
+  vertical-align: middle;
 }
 
 .dropdown-tab.active {

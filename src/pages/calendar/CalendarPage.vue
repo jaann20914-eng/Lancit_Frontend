@@ -2,16 +2,26 @@
   <main class="calendar-page">
     <header class="page-header">
       <div>
-        <p class="page-eyebrow">SCHEDULE</p>
+        <!-- <p class="page-eyebrow">SCHEDULE</p> -->
         <h1>일정 관리</h1>
         <p class="page-description">월간·주간·일간 보기를 전환하며 등록된 일정을 확인하세요.</p>
       </div>
       <div class="page-actions">
-        <button class="page-action secondary-action" type="button" :disabled="isLoading" @click="openCategoryCreateModal">
+        <button
+          class="page-action secondary-action"
+          type="button"
+          :disabled="isLoading"
+          @click="openCategoryCreateModal"
+        >
           <span aria-hidden="true">＋</span>
           카테고리 등록
         </button>
-        <button class="page-action secondary-action" type="button" :disabled="isLoading || categories.length === 0" @click="openCategoryManageModal">
+        <button
+          class="page-action secondary-action"
+          type="button"
+          :disabled="isLoading || categories.length === 0"
+          @click="openCategoryManageModal"
+        >
           <span aria-hidden="true">⚙</span>
           카테고리 관리
         </button>
@@ -19,7 +29,9 @@
           class="page-action primary-action"
           type="button"
           :disabled="isLoading || categories.length === 0"
-          :title="categories.length === 0 ? '일정을 등록하려면 카테고리를 먼저 등록해주세요.' : undefined"
+          :title="
+            categories.length === 0 ? '일정을 등록하려면 카테고리를 먼저 등록해주세요.' : undefined
+          "
           @click="openTaskCreateModal"
         >
           <span aria-hidden="true">＋</span>
@@ -71,9 +83,7 @@
           {{ category.label }}
         </button>
       </div>
-      <p v-else-if="!categoriesLoading" class="no-categories">
-        등록된 카테고리가 없습니다.
-      </p>
+      <p v-else-if="!categoriesLoading" class="no-categories">등록된 카테고리가 없습니다.</p>
     </section>
 
     <section class="calendar-card" aria-label="일정 캘린더">
@@ -98,7 +108,13 @@
         <span class="empty-icon" aria-hidden="true">□</span>
         <div>
           <strong>표시할 일정이 없습니다.</strong>
-          <p>{{ selectedCategoryKeys.length === 0 ? '현재 기간에 등록된 일정이 없습니다.' : '선택한 카테고리의 일정이 없습니다.' }}</p>
+          <p>
+            {{
+              selectedCategoryKeys.length === 0
+                ? '현재 기간에 등록된 일정이 없습니다.'
+                : '선택한 카테고리의 일정이 없습니다.'
+            }}
+          </p>
         </div>
       </div>
 
@@ -220,17 +236,15 @@ const holidayCache = new Map()
 const categories = computed(() => mapCalendarCategories(rawCategories.value))
 const mappedEvents = computed(() => mapCalendarEvents(rawTasks.value, categories.value))
 const holidayEvents = computed(() => mapHolidayEvents(rawHolidays.value))
-const categoryOptions = computed(() => (
+const categoryOptions = computed(() =>
   hasUnknownCategory(mappedEvents.value)
     ? [...categories.value, UNKNOWN_CATEGORY_META]
-    : categories.value
-))
+    : categories.value,
+)
 const filteredEvents = computed(() => {
   if (selectedCategoryKeys.value.length === 0) return mappedEvents.value
   const selectedKeys = new Set(selectedCategoryKeys.value)
-  return mappedEvents.value.filter(
-    (event) => selectedKeys.has(event.extendedProps.categoryKey),
-  )
+  return mappedEvents.value.filter((event) => selectedKeys.has(event.extendedProps.categoryKey))
 })
 const calendarEvents = computed(() => [...holidayEvents.value, ...filteredEvents.value])
 const isLoading = computed(() => categoriesLoading.value || tasksLoading.value)
@@ -252,7 +266,7 @@ const calendarOptions = computed(() => ({
   },
   events: calendarEvents.value,
   eventClick: handleEventClick,
-  eventClassNames: ({ event }) => (
+  eventClassNames: ({ event }) =>
     event.extendedProps.sourceType === 'HOLIDAY'
       ? [
           'calendar-holiday-event',
@@ -263,8 +277,7 @@ const calendarOptions = computed(() => ({
       : [
           'calendar-category-event',
           event.extendedProps.categoryClassName || 'calendar-category-unknown',
-        ]
-  ),
+        ],
   eventDidMount: ({ el, event }) => {
     const color = event.extendedProps.categoryColor
     if (color) el.style.setProperty('--calendar-category-color', color)
@@ -361,13 +374,15 @@ async function loadHolidays(range, force = false) {
   holidayError.value = ''
 
   try {
-    const holidayGroups = await Promise.all(years.map(async (year) => {
-      if (!force && holidayCache.has(year)) return holidayCache.get(year)
+    const holidayGroups = await Promise.all(
+      years.map(async (year) => {
+        if (!force && holidayCache.has(year)) return holidayCache.get(year)
 
-      const holidays = await getCalendarHolidays(year)
-      holidayCache.set(year, holidays)
-      return holidays
-    }))
+        const holidays = await getCalendarHolidays(year)
+        holidayCache.set(year, holidays)
+        return holidays
+      }),
+    )
     if (sequence === holidayRequestSequence) rawHolidays.value = holidayGroups.flat()
   } catch {
     if (sequence === holidayRequestSequence) {
@@ -453,7 +468,10 @@ async function handleCategoryCreate(payload) {
     isCategoryCreateOpen.value = false
     successMessage.value = `'${payload.categoryName}' 카테고리가 등록되었습니다.`
   } catch (error) {
-    categoryCreateError.value = getMutationErrorMessage(error, '카테고리 등록에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    categoryCreateError.value = getMutationErrorMessage(
+      error,
+      '카테고리 등록에 실패했습니다. 잠시 후 다시 시도해주세요.',
+    )
   } finally {
     categorySubmitting.value = false
   }
@@ -476,7 +494,10 @@ async function handleTaskCreate(payload) {
     editingTask.value = null
     successMessage.value = `'${payload.title}' 일정이 ${isEditing ? '수정' : '등록'}되었습니다.`
   } catch (error) {
-    taskCreateError.value = getMutationErrorMessage(error, '일정 저장에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    taskCreateError.value = getMutationErrorMessage(
+      error,
+      '일정 저장에 실패했습니다. 잠시 후 다시 시도해주세요.',
+    )
   } finally {
     taskSubmitting.value = false
   }
@@ -504,7 +525,10 @@ async function handleCategoryUpdate({ categoryId, categoryName, color }) {
     isCategoryManageOpen.value = false
     successMessage.value = `'${categoryName}' 카테고리가 수정되었습니다.`
   } catch (error) {
-    categoryManageError.value = getMutationErrorMessage(error, '카테고리 수정에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    categoryManageError.value = getMutationErrorMessage(
+      error,
+      '카테고리 수정에 실패했습니다. 잠시 후 다시 시도해주세요.',
+    )
   } finally {
     categoryManageSubmitting.value = false
   }
@@ -523,10 +547,14 @@ async function handleCategoryDelete({ categoryId, categoryName, moveToCategoryId
     isCategoryManageOpen.value = false
     successMessage.value = `'${categoryName}' 카테고리가 삭제되었습니다.`
   } catch (error) {
-    const backendMessage = getMutationErrorMessage(error, '카테고리 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.')
-    categoryManageError.value = !moveToCategoryId && error?.response?.status === 400
-      ? '연결된 일정이 있어 삭제할 수 없습니다. 이동 대상 카테고리를 먼저 등록해주세요.'
-      : backendMessage
+    const backendMessage = getMutationErrorMessage(
+      error,
+      '카테고리 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.',
+    )
+    categoryManageError.value =
+      !moveToCategoryId && error?.response?.status === 400
+        ? '연결된 일정이 있어 삭제할 수 없습니다. 이동 대상 카테고리를 먼저 등록해주세요.'
+        : backendMessage
   } finally {
     categoryManageSubmitting.value = false
   }
@@ -556,7 +584,10 @@ async function handleTaskDelete() {
     taskPendingDelete.value = null
     successMessage.value = `'${deletedTitle}' 일정이 삭제되었습니다.`
   } catch (error) {
-    taskDeleteError.value = getMutationErrorMessage(error, '일정 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    taskDeleteError.value = getMutationErrorMessage(
+      error,
+      '일정 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.',
+    )
   } finally {
     taskDeleteSubmitting.value = false
   }
@@ -580,7 +611,7 @@ onMounted(loadCategories)
 <style scoped>
 .calendar-page {
   min-height: 100vh;
-  padding: 38px 42px 52px;
+  padding: 38px 32px 48px;
   color: #1f2937;
 }
 
@@ -603,7 +634,7 @@ onMounted(loadCategories)
 .page-header h1 {
   margin: 0;
   color: #1a233d;
-  font-size: 30px;
+  font-size: 28px;
   line-height: 1.25;
 }
 
@@ -632,11 +663,27 @@ onMounted(loadCategories)
   cursor: pointer;
 }
 
-.page-action:disabled { opacity: 0.48; cursor: not-allowed; }
-.secondary-action { border: 1px solid #d7dce4; background: #ffffff; color: #334155; }
-.secondary-action:hover:not(:disabled) { border-color: #1a233d; color: #1a233d; }
-.primary-action { border: 1px solid #1a233d; background: #1a233d; color: #ffffff; }
-.primary-action:hover:not(:disabled) { background: #283554; }
+.page-action:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+.secondary-action {
+  border: 1px solid #d7dce4;
+  background: #ffffff;
+  color: #334155;
+}
+.secondary-action:hover:not(:disabled) {
+  border-color: #1a233d;
+  color: #1a233d;
+}
+.primary-action {
+  border: 1px solid #1a233d;
+  background: #1a233d;
+  color: #ffffff;
+}
+.primary-action:hover:not(:disabled) {
+  background: #283554;
+}
 
 .success-message {
   display: flex;
@@ -653,7 +700,14 @@ onMounted(loadCategories)
   font-weight: 600;
 }
 
-.success-message button { padding: 0; border: 0; background: transparent; color: #15803d; font-size: 20px; cursor: pointer; }
+.success-message button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #15803d;
+  font-size: 20px;
+  cursor: pointer;
+}
 
 .filter-card,
 .calendar-card {
@@ -715,11 +769,20 @@ onMounted(loadCategories)
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
 }
 
-.filter-chip:hover { border-color: var(--calendar-category-color, #94a3b8); }
-.filter-chip.active { border-color: #1a233d; background: #1a233d; color: #ffffff; }
+.filter-chip:hover {
+  border-color: var(--calendar-category-color, #94a3b8);
+}
+.filter-chip.active {
+  border-color: #1a233d;
+  background: #1a233d;
+  color: #ffffff;
+}
 
 .category-dot {
   width: 8px;
@@ -728,7 +791,9 @@ onMounted(loadCategories)
   background: var(--calendar-category-color, #64748b);
 }
 
-.filter-chip.active .category-dot { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35); }
+.filter-chip.active .category-dot {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
 
 .calendar-card {
   position: relative;
@@ -756,8 +821,12 @@ onMounted(loadCategories)
   font-size: 13px;
 }
 
-.filter-error strong { display: block; }
-.filter-error p { margin: 3px 0 0; }
+.filter-error strong {
+  display: block;
+}
+.filter-error p {
+  margin: 3px 0 0;
+}
 
 .holiday-warning {
   margin-bottom: 14px;
@@ -769,14 +838,37 @@ onMounted(loadCategories)
   font-size: 12px;
 }
 
-.calendar-message strong { display: block; color: #334155; }
-.calendar-message p { margin: 3px 0 0; color: #64748b; }
+.calendar-message strong {
+  display: block;
+  color: #334155;
+}
+.calendar-message p {
+  margin: 3px 0 0;
+  color: #64748b;
+}
 .loading-message,
-.empty-message { background: #f6f8fb; color: #64748b; }
-.error-message { justify-content: space-between; background: #fff1f2; color: #991b1b; }
+.empty-message {
+  background: #f6f8fb;
+  color: #64748b;
+}
+.error-message {
+  justify-content: space-between;
+  background: #fff1f2;
+  color: #991b1b;
+}
 .error-message strong,
-.error-message p { color: #991b1b; }
-.error-message button { padding: 7px 11px; border: 1px solid #fecdd3; border-radius: 7px; background: #ffffff; color: #9f1239; font-weight: 600; cursor: pointer; }
+.error-message p {
+  color: #991b1b;
+}
+.error-message button {
+  padding: 7px 11px;
+  border: 1px solid #fecdd3;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #9f1239;
+  font-weight: 600;
+  cursor: pointer;
+}
 
 .loading-spinner {
   width: 18px;
@@ -797,7 +889,11 @@ onMounted(loadCategories)
   color: #94a3b8;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 .calendar-card :deep(.fc) {
   --fc-border-color: #e4e8ee;
@@ -811,20 +907,49 @@ onMounted(loadCategories)
   font-family: inherit;
 }
 
-.calendar-card :deep(.fc .fc-toolbar) { gap: 14px; margin-bottom: 22px; }
-.calendar-card :deep(.fc .fc-toolbar-title) { color: #1a233d; font-size: 21px; }
-.calendar-card :deep(.fc .fc-button) { border-radius: 7px; box-shadow: none; font-size: 12px; font-weight: 600; }
-.calendar-card :deep(.fc .fc-col-header-cell-cushion) { padding: 11px 4px; color: #475569; font-size: 12px; text-decoration: none; }
-.calendar-card :deep(.fc .fc-daygrid-day-number) { padding: 8px; color: #475569; font-size: 12px; text-decoration: none; }
-.calendar-card :deep(.fc .fc-day-sun .fc-daygrid-day-number) { color: #dc2626; }
-.calendar-card :deep(.fc .fc-day-sat .fc-daygrid-day-number) { color: #2563eb; }
-.calendar-card :deep(.fc .fc-daygrid-day:has(.calendar-holiday-event) .fc-daygrid-day-number) { color: #dc2626; }
+.calendar-card :deep(.fc .fc-toolbar) {
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.calendar-card :deep(.fc .fc-toolbar-title) {
+  color: #1a233d;
+  font-size: 21px;
+}
+.calendar-card :deep(.fc .fc-button) {
+  border-radius: 7px;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 600;
+}
+.calendar-card :deep(.fc .fc-col-header-cell-cushion) {
+  padding: 11px 4px;
+  color: #475569;
+  font-size: 12px;
+  text-decoration: none;
+}
+.calendar-card :deep(.fc .fc-daygrid-day-number) {
+  padding: 8px;
+  color: #475569;
+  font-size: 12px;
+  text-decoration: none;
+}
+.calendar-card :deep(.fc .fc-day-sun .fc-daygrid-day-number) {
+  color: #dc2626;
+}
+.calendar-card :deep(.fc .fc-day-sat .fc-daygrid-day-number) {
+  color: #2563eb;
+}
+.calendar-card :deep(.fc .fc-daygrid-day:has(.calendar-holiday-event) .fc-daygrid-day-number) {
+  color: #dc2626;
+}
 .calendar-card :deep(.fc .calendar-category-event) {
   border-color: var(--calendar-category-color, #64748b);
   background-color: var(--calendar-category-color, #64748b);
   cursor: pointer;
 }
-.calendar-card :deep(.fc .calendar-category-event:hover) { filter: brightness(0.92); }
+.calendar-card :deep(.fc .calendar-category-event:hover) {
+  filter: brightness(0.92);
+}
 .calendar-card :deep(.fc .calendar-holiday-event) {
   --fc-event-text-color: #dc2626;
   border-color: transparent;
@@ -839,27 +964,70 @@ onMounted(loadCategories)
   background: transparent;
   color: #dc2626;
 }
-.calendar-card :deep(.fc .fc-event-title) { font-weight: 600; }
-.calendar-card :deep(.fc .calendar-holiday-event .fc-event-title) { font-weight: 400; }
-.calendar-card :deep(.fc .fc-day-other .calendar-holiday-event) { opacity: 0.3; }
+.calendar-card :deep(.fc .fc-event-title) {
+  font-weight: 600;
+}
+.calendar-card :deep(.fc .calendar-holiday-event .fc-event-title) {
+  font-weight: 400;
+}
+.calendar-card :deep(.fc .fc-day-other .calendar-holiday-event) {
+  opacity: 0.3;
+}
 
 @media (max-width: 980px) {
-  .calendar-page { padding: 30px 24px 44px; }
-  .calendar-card :deep(.fc .fc-toolbar) { align-items: stretch; flex-direction: column; }
-  .calendar-card :deep(.fc .fc-toolbar-chunk) { display: flex; justify-content: center; }
+  .calendar-page {
+    padding: 30px 24px 44px;
+  }
+  .calendar-card :deep(.fc .fc-toolbar) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .calendar-card :deep(.fc .fc-toolbar-chunk) {
+    display: flex;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 640px) {
-  .calendar-page { padding: 24px 14px 36px; }
-  .page-header { align-items: flex-start; flex-direction: column; }
-  .page-actions { display: grid; width: 100%; grid-template-columns: 1fr 1fr; }
-  .page-action { justify-content: center; padding: 0 10px; }
-  .page-action:first-child { grid-column: 1 / -1; }
-  .filter-heading { flex-direction: column; gap: 8px; }
-  .calendar-card { padding: 14px; }
-  .filter-error { align-items: flex-start; flex-direction: column; }
-  .error-message { align-items: flex-start; flex-direction: column; }
-  .calendar-card :deep(.fc .fc-toolbar-title) { font-size: 18px; }
-  .calendar-card :deep(.fc .fc-button) { padding: 0.35em 0.5em; }
+  .calendar-page {
+    padding: 24px 14px 36px;
+  }
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .page-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
+  }
+  .page-action {
+    justify-content: center;
+    padding: 0 10px;
+  }
+  .page-action:first-child {
+    grid-column: 1 / -1;
+  }
+  .filter-heading {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .calendar-card {
+    padding: 14px;
+  }
+  .filter-error {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .error-message {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .calendar-card :deep(.fc .fc-toolbar-title) {
+    font-size: 18px;
+  }
+  .calendar-card :deep(.fc .fc-button) {
+    padding: 0.35em 0.5em;
+  }
 }
 </style>

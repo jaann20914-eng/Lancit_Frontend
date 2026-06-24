@@ -19,17 +19,19 @@ export function useContractCancel(detail, emit) {
 
   // 완전삭제 대상 상태인지 (백엔드 cancelContract 분기와 동일 기준)
   const isHardDeleteStatus = computed(() =>
-    ['WAITING', 'NEGOTIATING_A', 'NEGOTIATING_B', 'NEGOTIATING_C'].includes(detail.value.status)
+    ['PROPOSAL', 'WAITING', 'NEGOTIATING_A', 'NEGOTIATING_B', 'NEGOTIATING_C'].includes(
+      detail.value.status,
+    ),
   )
 
   // 내가 파기를 요청한 상태인지
-  const isMyCancelRequest = computed(() =>
-    cancelRequest.value && cancelRequest.value.requesterEmail === myEmail.value
+  const isMyCancelRequest = computed(
+    () => cancelRequest.value && cancelRequest.value.requesterEmail === myEmail.value,
   )
 
   // 상대방이 파기를 요청한 상태인지 (내가 확정 가능)
-  const isOpponentCancelRequest = computed(() =>
-    cancelRequest.value && cancelRequest.value.requesterEmail !== myEmail.value
+  const isOpponentCancelRequest = computed(
+    () => cancelRequest.value && cancelRequest.value.requesterEmail !== myEmail.value,
   )
 
   async function handleRequestCancel() {

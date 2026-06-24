@@ -39,6 +39,7 @@ import { getMessages, deleteMessage, updateMessage } from '@/features/chat/api/c
 import { uploadFile } from '@/features/contract/api/contractApi.js'
 import ChatMessageList from '@/features/chat/ui/ChatMessageList.vue'
 import ChatMessageInput from '@/features/chat/ui/ChatMessageInput.vue'
+import { useGlobalStomp } from '@/features/notification/model/useGlobalStomp.js'
 
 const props = defineProps({
   contractId: { type: [Number, String], required: true },
@@ -56,6 +57,8 @@ const editingMessage = ref(null)
 const editContent = ref('')
 const cursor = ref(null)
 const hasMore = ref(true)
+const { onConnected, getClient } = useGlobalStomp()
+let subscription = null
 
 let stompClient = null
 
@@ -99,36 +102,52 @@ async function handleLoadMore() {
 }
 
 // ─── STOMP 연결 ───────────────────────────────────────────
+// function connectStomp() {
+//   const token = localStorage.getItem('accessToken')
+//   if (!token || !props.chatRoomId) return
+//   console.log('token:', token)
+//   console.log('chatRoomId:', props.chatRoomId)
+
+//   stompClient = new Client({
+//     brokerURL: `ws://localhost:8080/ws-native`,
+//     connectHeaders: {
+//       Authorization: `Bearer ${token}`,
+//     },
+//     reconnectDelay: 3000,
+//     onConnect: () => {
+//       stompClient.subscribe(`/sub/chat/${props.chatRoomId}`, (frame) => {
+//         const msg = JSON.parse(frame.body)
+//         handleIncomingMessage(msg)
+//       })
+//     },
+//     onStompError: (frame) => {
+//       console.error('STOMP 에러', frame)
+//     },
+//   })
+
+//   stompClient.activate()
+// }
 function connectStomp() {
-  const token = localStorage.getItem('accessToken')
-  if (!token || !props.chatRoomId) return
-  console.log('token:', token)
-  console.log('chatRoomId:', props.chatRoomId)
+  if (!props.chatRoomId) return
 
-  stompClient = new Client({
-    brokerURL: `ws://localhost:8080/ws-native`,
-    connectHeaders: {
-      Authorization: `Bearer ${token}`,
-    },
-    reconnectDelay: 3000,
-    onConnect: () => {
-      stompClient.subscribe(`/sub/chat/${props.chatRoomId}`, (frame) => {
-        const msg = JSON.parse(frame.body)
-        handleIncomingMessage(msg)
-      })
-    },
-    onStompError: (frame) => {
-      console.error('STOMP 에러', frame)
-    },
+  onConnected((client) => {
+    subscription = client.subscribe(`/sub/chat/${props.chatRoomId}`, (frame) => {
+      const msg = JSON.parse(frame.body)
+      handleIncomingMessage(msg)
+    })
   })
-
-  stompClient.activate()
 }
 
+// function disconnectStomp() {
+//   if (stompClient) {
+//     stompClient.deactivate()
+//     stompClient = null
+//   }
+// }
 function disconnectStomp() {
-  if (stompClient) {
-    stompClient.deactivate()
-    stompClient = null
+  if (subscription) {
+    subscription.unsubscribe()
+    subscription = null
   }
 }
 
@@ -145,9 +164,20 @@ function handleIncomingMessage(msg) {
 }
 
 // ─── STOMP: 텍스트 메시지 전송 ───────────────────────────
+// async function handleSend(content) {
+//   if (!stompClient?.connected) return
+//   stompClient.publish({
+//     destination: '/pub/api/chat/send',
+//     body: JSON.stringify({
+//       chatRoomId: Number(props.chatRoomId),
+//       content,
+//     }),
+//   })
+// }
 async function handleSend(content) {
-  if (!stompClient?.connected) return
-  stompClient.publish({
+  const client = getClient()
+  if (!client?.connected) return
+  client.publish({
     destination: '/pub/api/chat/send',
     body: JSON.stringify({
       chatRoomId: Number(props.chatRoomId),
@@ -157,13 +187,31 @@ async function handleSend(content) {
 }
 
 // ─── STOMP: 파일 메시지 전송 ─────────────────────────────
+// async function handleSendFile(file) {
+//   try {
+//     const uploadRes = await uploadFile(file)
+//     const fileId = uploadRes.data.data[0].fileId
+
+//     if (!stompClient?.connected) return
+//     stompClient.publish({
+//       destination: '/pub/api/chat/file',
+//       body: JSON.stringify({
+//         chatRoomId: Number(props.chatRoomId),
+//         fileId,
+//       }),
+//     })
+//   } catch (err) {
+//     alert('파일 업로드에 실패했습니다.')
+//   }
+// }
 async function handleSendFile(file) {
   try {
     const uploadRes = await uploadFile(file)
     const fileId = uploadRes.data.data[0].fileId
 
-    if (!stompClient?.connected) return
-    stompClient.publish({
+    const client = getClient()
+    if (!client?.connected) return
+    client.publish({
       destination: '/pub/api/chat/file',
       body: JSON.stringify({
         chatRoomId: Number(props.chatRoomId),
