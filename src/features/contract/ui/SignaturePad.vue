@@ -105,7 +105,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import Vue3Signature from 'vue3-signature'
-import { uploadFile, getFileUrl } from '@/features/file/api/fileApi'
+// import 수정
+import { uploadFile, getFileUrl, deleteFile } from '@/features/file/api/fileApi'
 import { dataURLtoFile } from '@/shared/utils/fileUtils'
 
 const props = defineProps({
@@ -188,7 +189,6 @@ watch(
     immediate: true,
   },
 )
-
 async function confirmSignature() {
   try {
     let file
@@ -204,8 +204,16 @@ async function confirmSignature() {
       file = uploadTargetFile.value
     }
 
-    const response = await uploadFile(file, 'TEMP_SIGNATURE')
+    // ✅ 기존 서명 fileId가 있으면 먼저 삭제
+    if (signatures.value != null) {
+      try {
+        await deleteFile(signatures.value)
+      } catch (e) {
+        // 삭제 실패해도 계속 진행
+      }
+    }
 
+    const response = await uploadFile(file, 'TEMP_SIGNATURE')
     const uploaded = response.data.data[0]
 
     signatures.value = uploaded.fileId
@@ -213,15 +221,45 @@ async function confirmSignature() {
       signatureUrl.value = res.data.data
     })
 
-    console.log('업로드 완료', uploaded.fileId)
-    console.log('현재 modelValue', signatures.value)
-
     closeModal()
   } catch (error) {
     console.error(error)
     alert('서명 업로드 실패')
   }
 }
+// async function confirmSignature() {
+//   try {
+//     let file
+//     if (mode.value === 'draw' && signatureRef.value.isEmpty()) {
+//       alert('서명을 입력해주세요')
+//       return
+//     }
+
+//     if (mode.value === 'draw') {
+//       const dataUrl = signatureRef.value.save('image/png')
+//       file = dataURLtoFile(dataUrl, `signature-${Date.now()}.png`)
+//     } else {
+//       file = uploadTargetFile.value
+//     }
+
+//     const response = await uploadFile(file, 'TEMP_SIGNATURE')
+
+//     const uploaded = response.data.data[0]
+
+//     signatures.value = uploaded.fileId
+//     getFileUrl(uploaded.fileId).then((res) => {
+//       signatureUrl.value = res.data.data
+//     })
+
+//     console.log('업로드 완료', uploaded.fileId)
+//     console.log('현재 modelValue', signatures.value)
+
+//     closeModal()
+//   } catch (error) {
+//     console.error(error)
+//     alert('서명 업로드 실패')
+//   }
+// }
 
 function removeSignature() {
   if (!confirm('이 서명을 삭제하시겠습니까?')) return

@@ -19,7 +19,6 @@
           {{ isDeleting ? '삭제 중...' : '삭제' }}
         </button>
       </div>
-
     </div>
 
     <div v-if="isLoading" class="state-card">
@@ -103,6 +102,7 @@ import {
   getPortfolioFileDownloadUrl,
   getPortfolioFileUrl,
 } from '@/features/portfolio/api/portfolioApi.js'
+import httpClient from '@/shared/api/httpClient.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -122,7 +122,7 @@ const CATEGORY_LABELS = {
   DESIGN: '디자인',
   BRANDING: '브랜딩',
   MARKETING: '마케팅',
-  PLANNING: '기획'
+  PLANNING: '기획',
 }
 
 const title = computed(() => portfolio.value?.title || '제목 없는 프로젝트')
@@ -178,7 +178,10 @@ async function loadPortfolio() {
   } catch (error) {
     portfolio.value = null
     files.value = []
-    errorMessage.value = getRequestError(error, '프로젝트를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+    errorMessage.value = getRequestError(
+      error,
+      '프로젝트를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+    )
   } finally {
     isLoading.value = false
   }
@@ -202,25 +205,51 @@ async function loadBanner() {
   }
 }
 
+// async function downloadFile(file) {
+//   downloadingFileId.value = file.fileId
+//   fileErrorMessage.value = ''
+
+//   try {
+//     const url = isApplicationView.value
+//       ? await getCompanyApplicationPortfolioFileDownloadUrl(
+//           route.query.recruitmentId,
+//           route.query.applicationId,
+//           route.params.id,
+//           file.fileId,
+//         )
+//       : await getPortfolioFileDownloadUrl(file.fileId)
+//     if (!url) throw new Error('Invalid portfolio file URL')
+
+//     const link = document.createElement('a')
+//     link.href = url
+//     link.rel = 'noopener'
+//     link.click()
+//   } catch (error) {
+//     fileErrorMessage.value = getRequestError(
+//       error,
+//       '첨부파일을 다운로드하지 못했습니다. 잠시 후 다시 시도해주세요.',
+//     )
+//   } finally {
+//     downloadingFileId.value = null
+//   }
+// }
 async function downloadFile(file) {
   downloadingFileId.value = file.fileId
   fileErrorMessage.value = ''
 
   try {
-    const url = isApplicationView.value
-      ? await getCompanyApplicationPortfolioFileDownloadUrl(
-          route.query.recruitmentId,
-          route.query.applicationId,
-          route.params.id,
-          file.fileId,
-        )
-      : await getPortfolioFileDownloadUrl(file.fileId)
-    if (!url) throw new Error('Invalid portfolio file URL')
-
+    // ✅ blob으로 직접 다운로드
+    const response = await httpClient.get(`/files/${file.fileId}/download`, {
+      responseType: 'blob',
+    })
+    const blobUrl = URL.createObjectURL(response.data)
     const link = document.createElement('a')
-    link.href = url
-    link.rel = 'noopener'
+    link.href = blobUrl
+    link.download = file.oriName || '첨부파일'
+    document.body.appendChild(link)
     link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(blobUrl)
   } catch (error) {
     fileErrorMessage.value = getRequestError(
       error,
@@ -251,13 +280,13 @@ function goToList() {
       name: 'CompanyApplicantDetail',
       params: {
         recruitmentId: route.query.recruitmentId,
-        applicationId: route.query.applicationId
-      }
+        applicationId: route.query.applicationId,
+      },
     })
   } else if (from === 'talent') {
     router.push({
       name: 'TalentDetail',
-      params: { id: route.query.freelancerEmail }
+      params: { id: route.query.freelancerEmail },
     })
   } else {
     router.push({ name: 'PortfolioList' })
@@ -571,7 +600,9 @@ function getRequestError(error, fallback) {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 600px) {

@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <div class="top-actions">
-      <button type="button" class="back-button" @click="goToList">← 공고 목록</button>
+      <button type="button" class="back-button" @click="goBack">← {{ backButtonText }}</button>
       <div v-if="recruitment" class="recruitment-actions">
         <button
           type="button"
@@ -21,11 +21,7 @@
           @click="handleApplicationAction"
         >
           {{
-            recruitment.isApplied
-              ? '지원서 보기'
-              : recruitment.canApply
-                ? '지원하기'
-                : '지원 불가'
+            recruitment.isApplied ? '지원서 보기' : recruitment.canApply ? '지원하기' : '지원 불가'
           }}
         </button>
       </div>
@@ -124,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   getRecruitment,
@@ -193,13 +189,37 @@ async function handleBookmark() {
   }
 }
 
+const backButtonText = computed(() => {
+  switch (route.query.from) {
+    case 'proposal':
+      return '제안 목록'
+
+    case 'bookmark':
+      return '찜 목록'
+
+    default:
+      return '공고 목록'
+  }
+})
+
 function formatPeriod(start, end) {
   if (!start && !end) return '미정'
   return `${start ? formatDate(start) : '미정'} ~ ${end ? formatDate(end) : '미정'}`
 }
 
-function goToList() {
-  router.push({ name: 'RecruitmentList' })
+function goBack() {
+  switch (route.query.from) {
+    case 'proposal':
+      router.push({ name: 'ProposalList' })
+      break
+
+    case 'bookmark':
+      router.push({ name: 'BookmarkList' })
+      break
+
+    default:
+      router.push({ name: 'RecruitmentList' })
+  }
 }
 
 function handleApplicationAction() {

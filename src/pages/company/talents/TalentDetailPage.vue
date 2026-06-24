@@ -6,7 +6,7 @@
     <div class="profile-card">
       <div class="profile-avatar">
         <img v-if="profile.profileImageUrl" :src="profile.profileImageUrl" />
-        <span v-else>{{ profile.name?.charAt(0) }}</span>
+        <span v-else>{{ profile.displayName?.charAt(0) }}</span>
       </div>
 
       <div class="profile-body">
@@ -20,32 +20,11 @@
         </div>
 
         <p class="profile-intro">{{ profile.intro || '소개글이 없습니다.' }}</p>
-
-        <div class="profile-stats">
-          <span class="stat">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-            </svg>
-            {{ profile.viewCount ?? 0 }}
-          </span>
-          <span class="stat">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/>
-            </svg>
-            {{ profile.likeCount ?? 0 }}
-          </span>
-        </div>
       </div>
     </div>
 
     <!-- 검색 + 정렬 -->
     <div class="search-bar">
-      <div class="search-input-wrap">
-        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input v-model="keyword" type="text" class="search-input" placeholder="프로젝트로 검색..." @keyup.enter="fetchPortfolios" />
-      </div>
       <select v-model="categoryFilter" class="filter-select" @change="fetchPortfolios">
         <option value="">전체</option>
         <option value="WEB_APP">웹/앱</option>
@@ -56,6 +35,27 @@
         <option value="LATEST">최신순</option>
         <option value="OLDEST">오래된순</option>
       </select>
+      <div class="search-input-wrap">
+        <svg
+          class="search-icon"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          v-model="keyword"
+          type="text"
+          class="search-input"
+          placeholder="프로젝트로 검색..."
+          @keyup.enter="fetchPortfolios"
+        />
+      </div>
     </div>
 
     <!-- 포트폴리오 그리드 (공개 프로젝트만) -->
@@ -83,8 +83,16 @@
           <p class="portfolio-summary">{{ item.summary }}</p>
           <div class="portfolio-footer">
             <span class="portfolio-date">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path d="M16 2v4M8 2v4M3 10h18" />
               </svg>
               {{ formatDate(item.workEndAt || item.createdAt) }}
             </span>
@@ -94,8 +102,10 @@
     </div>
 
     <!-- 페이지네이션 -->
-    <div class="pagination" v-if="totalPages > 1">
-      <button class="page-btn" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">‹</button>
+    <div class="pagination">
+      <button class="page-btn" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
+        ‹
+      </button>
       <button
         v-for="p in totalPages"
         :key="p"
@@ -104,7 +114,13 @@
       >
         {{ p }}
       </button>
-      <button class="page-btn" :disabled="currentPage === totalPages" @click="changePage(currentPage + 1)">›</button>
+      <button
+        class="page-btn"
+        :disabled="currentPage === totalPages"
+        @click="changePage(currentPage + 1)"
+      >
+        ›
+      </button>
     </div>
   </div>
 </template>
@@ -113,6 +129,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getTalentProfile, getTalentPublicPortfolios } from '@/features/talent/api/talentApi.js'
+import httpClient from '@/shared/api/httpClient.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -121,12 +138,13 @@ const freelancerEmail = route.params.id
 
 const profile = reactive({
   email: freelancerEmail,
-  name: '',
+  displayName: '', // name → displayName
   jobCategory: '',
   intro: '',
+  profileFileId: null,
   profileImageUrl: null,
   viewCount: 0,
-  likeCount: 0
+  likeCount: 0,
 })
 
 const portfolios = ref([])
@@ -139,8 +157,14 @@ const totalPages = ref(1)
 const pageSize = 4
 
 const jobCategoryMap = {
-  IT: 'IT', DESIGN: '디자이너', MARKETING: '마케팅', VIDEO: '영상',
-  MUSIC: '음악', EDUCATION: '교육', WRITING: '작문', ETC: '기타'
+  IT: 'IT',
+  DESIGN: '디자이너',
+  MARKETING: '마케팅',
+  VIDEO: '영상',
+  MUSIC: '음악',
+  EDUCATION: '교육',
+  WRITING: '작문',
+  ETC: '기타',
 }
 
 function jobCategoryLabel(code) {
@@ -149,8 +173,11 @@ function jobCategoryLabel(code) {
 
 // 포트폴리오 카테고리 라벨 (카드 본문 상단 태그)
 const portfolioCategoryMap = {
-  WEB_APP: '웹/앱', DESIGN: '디자인', VIDEO: '영상',
-  BRANDING: '브랜딩', PLANNING: '기획'
+  WEB_APP: '웹/앱',
+  DESIGN: '디자인',
+  VIDEO: '영상',
+  BRANDING: '브랜딩',
+  PLANNING: '기획',
 }
 
 function categoryLabel(code) {
@@ -171,6 +198,11 @@ async function fetchProfile() {
   try {
     const res = await getTalentProfile(freelancerEmail)
     Object.assign(profile, res.data.data)
+    // profileFileId로 이미지 URL 가져오기
+    if (profile.profileFileId) {
+      const urlRes = await httpClient.get(`/files/${profile.profileFileId}/url`)
+      profile.profileImageUrl = urlRes.data.data
+    }
   } catch {
     // noop
   }
@@ -184,11 +216,26 @@ async function fetchPortfolios() {
       category: categoryFilter.value,
       sort: sortType.value,
       page: currentPage.value,
-      size: pageSize
+      size: pageSize,
     })
     const data = res.data.data
-    portfolios.value = data.content || data.list || []
+    const list = data.content || data.list || []
     totalPages.value = data.totalPages || 1
+
+    // 배너 URL 병렬로 가져오기
+    portfolios.value = await Promise.all(
+      list.map(async (item) => {
+        if (item.bannerFileId) {
+          try {
+            const urlRes = await httpClient.get(`/files/${item.bannerFileId}/public-url`)
+            return { ...item, bannerUrl: urlRes.data.data }
+          } catch {
+            return { ...item, bannerUrl: null }
+          }
+        }
+        return { ...item, bannerUrl: null }
+      }),
+    )
   } catch {
     portfolios.value = []
   } finally {
@@ -209,7 +256,7 @@ function goPortfolioDetail(portfolioId) {
   router.push({
     name: 'TalentPortfolioDetail',
     params: { id: portfolioId },
-    query: { from: 'talent', freelancerEmail: freelancerEmail }
+    query: { from: 'talent', freelancerEmail: freelancerEmail },
   })
 }
 
@@ -227,24 +274,29 @@ onMounted(() => {
 .page {
   padding: 32px;
   max-width: 100%;
+  min-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
 }
 
 .back-link {
   display: inline-block;
   font-size: 13px;
-  color: #6C757D;
+  color: #6c757d;
   text-decoration: none;
   margin-bottom: 16px;
 }
 
-.back-link:hover { color: #1A233D; }
+.back-link:hover {
+  color: #1a233d;
+}
 
 /* 프로필 카드 */
 .profile-card {
   display: flex;
   gap: 20px;
   background: white;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 20px;
@@ -254,20 +306,26 @@ onMounted(() => {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: #D1D5DB;
+  background: #d1d5db;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
   font-weight: 600;
-  color: #6B7280;
+  color: #6b7280;
   flex-shrink: 0;
   overflow: hidden;
 }
 
-.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-.profile-body { flex: 1; }
+.profile-body {
+  flex: 1;
+}
 
 .profile-head {
   display: flex;
@@ -279,13 +337,13 @@ onMounted(() => {
 .profile-name {
   font-size: 18px;
   font-weight: 700;
-  color: #1A233D;
+  color: #1a233d;
   margin: 0;
 }
 
 .btn-propose {
   padding: 8px 16px;
-  background: #1A233D;
+  background: #1a233d;
   color: white;
   border: none;
   border-radius: 6px;
@@ -294,13 +352,15 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.tag-row { margin-bottom: 8px; }
+.tag-row {
+  margin-bottom: 8px;
+}
 
 .tag {
   display: inline-block;
   padding: 2px 10px;
-  background: #E8EDF5;
-  color: #1A233D;
+  background: #e8edf5;
+  color: #1a233d;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
@@ -308,19 +368,22 @@ onMounted(() => {
 
 .profile-intro {
   font-size: 13px;
-  color: #6C757D;
+  color: #6c757d;
   margin: 0 0 12px;
   line-height: 1.5;
 }
 
-.profile-stats { display: flex; gap: 12px; }
+.profile-stats {
+  display: flex;
+  gap: 12px;
+}
 
 .stat {
   display: flex;
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #9CA3AF;
+  color: #9ca3af;
 }
 
 /* 검색바 */
@@ -337,52 +400,64 @@ onMounted(() => {
   align-items: center;
 }
 
-.search-icon { position: absolute; left: 12px; color: #9CA3AF; }
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: #9ca3af;
+}
 
 .search-input {
   width: 100%;
   height: 40px;
   padding: 0 12px 0 36px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 14px;
   outline: none;
 }
 
-.search-input:focus { border-color: #1A233D; }
+.search-input:focus {
+  border-color: #1a233d;
+}
 
 .filter-select {
   height: 40px;
   padding: 0 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 14px;
-  color: #1A233D;
+  color: #1a233d;
   background: white;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 /* 그리드 */
-.loading, .empty-state {
+.loading,
+.empty-state {
+  flex: 1;
   text-align: center;
   padding: 60px 0;
-  color: #9CA3AF;
+  color: #9ca3af;
 }
 
 .portfolio-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+  flex: 1;
+  align-content: start;
 }
 
 @media (max-width: 1100px) {
-  .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
+  .portfolio-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .portfolio-card {
   background: white;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #e5e7eb;
   border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
@@ -390,46 +465,52 @@ onMounted(() => {
 }
 
 .portfolio-card:hover {
-  border-color: #1A233D;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-color: #1a233d;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
 }
 
 .portfolio-thumb {
   width: 100%;
   height: 110px;
-  background: #1A233D;
+  background: #1a233d;
   position: relative;
 }
 
-.portfolio-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.portfolio-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 .thumb-placeholder {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #1A233D, #3A4A6B);
+  background: linear-gradient(135deg, #1a233d, #3a4a6b);
 }
 
 .thumb-tag {
   position: absolute;
   top: 8px;
   left: 8px;
-  background: rgba(255,255,255,0.9);
-  color: #1A233D;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1a233d;
   font-size: 10px;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 999px;
 }
 
-.portfolio-body { padding: 12px 14px 14px; }
+.portfolio-body {
+  padding: 12px 14px 14px;
+}
 
 .portfolio-category {
   display: inline-block;
   font-size: 10px;
   font-weight: 600;
-  color: #1A233D;
-  background: #E8EDF5;
+  color: #1a233d;
+  background: #e8edf5;
   padding: 2px 8px;
   border-radius: 999px;
   margin-bottom: 6px;
@@ -438,7 +519,7 @@ onMounted(() => {
 .portfolio-title {
   font-size: 13px;
   font-weight: 700;
-  color: #1A233D;
+  color: #1a233d;
   margin: 0 0 4px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -447,7 +528,7 @@ onMounted(() => {
 
 .portfolio-summary {
   font-size: 11px;
-  color: #9CA3AF;
+  color: #9ca3af;
   margin: 0 0 10px;
   line-height: 1.4;
   display: -webkit-box;
@@ -468,7 +549,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  color: #9CA3AF;
+  color: #9ca3af;
 }
 
 /* 페이지네이션 */
@@ -476,7 +557,8 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   gap: 4px;
-  margin-top: 24px;
+  margin-top: auto;
+  padding-top: 24px;
 }
 
 .page-btn {
@@ -486,11 +568,22 @@ onMounted(() => {
   background: none;
   border-radius: 6px;
   font-size: 13px;
-  color: #6C757D;
+  color: #6c757d;
   cursor: pointer;
 }
 
-.page-btn:hover:not(:disabled) { background: #F3F4F6; }
-.page-btn.active { background: #1A233D; color: white; font-weight: 600; }
-.page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.page-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.page-btn.active {
+  background: #1a233d;
+  color: white;
+  font-weight: 600;
+}
+
+.page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 </style>

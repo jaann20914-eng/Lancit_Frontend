@@ -30,11 +30,12 @@
         @click="activeView = 'document'"
       >
         계약서
+        <span v-if="hasDocumentNotif" class="tab-badge"></span>
       </button>
     </div>
 
     <div v-if="activeView === 'recruitment'" class="panel-body">
-      <p class="info-text">공고문 상세 내용은 추후 연동됩니다.</p>
+      <RecruitmentDetailReadonly v-if="recruitment" :recruitment="recruitment" />
     </div>
 
     <div v-else class="panel-body document-wrap">
@@ -53,6 +54,7 @@
     </div>
 
     <div class="panel-footer">
+      <!-- 액션 버튼 영역 -->
       <div v-if="(canEdit && !isFinalStage) || canSend" class="btn-row">
         <button
           v-if="canEdit && !isFinalStage"
@@ -62,7 +64,6 @@
         >
           임시저장
         </button>
-
         <button v-if="canSend" class="btn-send" :disabled="isSubmitting" @click="handleSend">
           {{ sendButtonLabel }}
         </button>
@@ -76,15 +77,17 @@
         상대방의 응답을 기다리는 중입니다
       </p>
 
-      <button v-if="!cancelRequest" class="btn-cancel-request" @click="handleRequestCancel">
-        계약 파기 요청
-      </button>
+      <!-- 파기 요청: cancelRequest 없을 때만, 항상 맨 아래 -->
+      <template v-if="!cancelRequest">
+        <hr class="footer-hr" />
+        <button class="btn-cancel-request" @click="handleRequestCancel">계약 파기 요청</button>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, toRef } from 'vue'
+import { ref, reactive, computed, watch, toRef, onMounted } from 'vue'
 import {
   saveDraft,
   sendByCompany,
@@ -93,6 +96,10 @@ import {
 } from '@/features/contract/api/contractApi.js'
 import { useContractCancel } from '@/features/contract/model/useContractCancel.js'
 import ContractDocumentForm from '@/features/contract/ui/ContractDocumentForm.vue'
+import { useNotificationStore } from '@/features/notification/model/useNotificationStore.js'
+import RecruitmentDetailReadonly from '@/features/recruitment/ui/RecruitmentDetailReadonly.vue'
+import { getRecruitmentDetail } from '@/features/recruitment/api/recruitmentApi.js'
+import httpClient from '@/shared/api/httpClient.js'
 
 const props = defineProps({
   detail: { type: Object, required: true },
@@ -110,9 +117,10 @@ const {
   handleCancelConfirm,
 } = useContractCancel(detailRef, emit)
 
-const activeView = ref('document')
+const activeView = ref('recruitment')
 const documentFormRef = ref(null)
 const isSubmitting = ref(false)
+const notificationStore = useNotificationStore()
 
 const contractId = computed(() => props.detail.contractId || props.detail.contract_id)
 const status = computed(() => props.detail.status)
@@ -215,6 +223,10 @@ watch(
   { immediate: true },
 )
 
+const hasDocumentNotif = computed(() =>
+  notificationStore.hasUnreadByContractAndType(contractId.value, 'PROPOSAL'),
+)
+
 const allConsentChecked = computed(
   () =>
     consent.basic === true &&
@@ -223,6 +235,79 @@ const allConsentChecked = computed(
     consent.thirdParty === true &&
     consent.thirdPartyUnique === true,
 )
+
+// onMounted(async () => {
+//   if (activeView.value === 'document') {
+//     try {
+//       await httpClient.patch(`/api/notifications/contracts/${contractId.value}/read`)
+//       notificationStore.markReadByContractAndType(contractId.value, 'PROPOSAL')
+//       await notificationStore.fetchUnread()
+//     } catch (e) {}
+//   }
+// })
+
+const recruitment = ref(null)
+
+// ContractNegotiatingPanel.vue 내부
+async function fetchRecruitment() {
+  const recruitmentId = props.detail.recruitmentId || props.detail.recruitment_id
+  if (!recruitmentId) return
+  try {
+    const res = await getRecruitmentDetail(recruitmentId)
+    // 응답 구조에 맞게 선택
+    recruitment.value = res.data?.data ?? res.data
+  } catch (e) {
+    console.error('공고 로드 실패', e)
+  }
+}
+
+onMounted(() => {
+  fetchRecruitment()
+})
+
+// watch(
+//   activeView,
+//   async (view) => {
+//     if (view === 'document') {
+//       try {
+//         await httpClient.patch(`/notifications/contracts/${contractId.value}/types/read`, [
+//           'PROPOSAL',
+//           'CONTRACT_CANCEL_REQUEST',
+//           'CONTRACT_COMPLETED_PENDING',
+//           'CONTRACT_COMPLETED',
+//         ])
+//         notificationStore.markReadByContractAndType(
+//           contractId.value,
+//           'PROPOSAL',
+//           'CONTRACT_CANCEL_REQUEST',
+//           'CONTRACT_COMPLETED_PENDING',
+//           'CONTRACT_COMPLETED',
+//         )
+//         await notificationStore.fetchUnread()
+//       } catch (e) {}
+//     }
+//   },
+//   { immediate: true }, // ← 추가 (onMounted 역할 대체)
+// )
+watch(activeView, async (view) => {
+  if (view !== 'document') return
+  try {
+    await httpClient.patch(`/notifications/contracts/${contractId.value}/types/read`, [
+      'PROPOSAL',
+      'CONTRACT_CANCEL_REQUEST',
+      'CONTRACT_COMPLETED_PENDING',
+      'CONTRACT_COMPLETED',
+    ])
+    notificationStore.markReadByContractAndType(
+      contractId.value,
+      'PROPOSAL',
+      'CONTRACT_CANCEL_REQUEST',
+      'CONTRACT_COMPLETED_PENDING',
+      'CONTRACT_COMPLETED',
+    )
+    await notificationStore.fetchUnread()
+  } catch (e) {}
+})
 
 function loadDocumentIntoForm() {
   const doc = props.detail.document
@@ -305,6 +390,13 @@ function buildPayload() {
   payload.confirmSignFileId = form.confirmSignFileId
 
   payload.privacySignFileId = form.privacySignFileId
+
+  console.log('[buildPayload] 서명 fileIds:', {
+    representativeSignFileId: payload.representativeSignFileId,
+    contractSignFileId: payload.contractSignFileId,
+    confirmSignFileId: payload.confirmSignFileId,
+    privacySignFileId: payload.privacySignFileId,
+  })
 
   return payload
 }
@@ -485,6 +577,11 @@ async function handleApprove() {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.footer-hr {
+  border: none;
+  border-top: 1px solid #f3f4f6;
+  margin: 0;
 }
 
 .btn-row {

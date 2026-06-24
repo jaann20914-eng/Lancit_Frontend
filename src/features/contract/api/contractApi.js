@@ -1,6 +1,38 @@
 import httpClient from '@/shared/api/httpClient.js'
 
 // ============================================================
+// 제안 관련
+// ============================================================
+
+// 제안 목록 조회 (프리랜서 전용, PROPOSAL 상태)
+// GET /contracts/proposals
+export function getProposals({ keywordType, keyword, page, size, sort }) {
+  return httpClient.get('/contracts/proposals', {
+    params: { keywordType, keyword, page, size, sort },
+  })
+}
+
+// 제안 수락 (PROPOSAL -> WAITING, 프리랜서 전용)
+// PUT /contracts/{contractId}/accept
+export function acceptProposal(contractId) {
+  return httpClient.put(`/contracts/${contractId}/accept`)
+}
+
+// 회사가 지원 수락 시 PROPOSAL -> WAITING (회사 전용)
+// PUT /contracts/{contractId}/accept-by-company
+export function acceptProposalByCompany(contractId) {
+  return httpClient.put(`/contracts/${contractId}/accept-by-company`)
+}
+
+// POST /contracts/accept-application
+export function acceptApplication({ recruitmentId, freelancerEmail, applicationId }) {
+  return httpClient.post('/contracts/accept-application', {
+    recruitmentId,
+    freelancerEmail,
+    applicationId,
+  })
+}
+// ============================================================
 // 조회 관련
 // ============================================================
 
@@ -34,9 +66,10 @@ export function rejectContract(contractId) {
 // 상태 변경 관련
 // ============================================================
 
-// 계약 생성 (WAITING 삽입, 회사 -> 프리랜서)
+// 계약 생성 (PROPOSE 삽입, 회사 -> 프리랜서)
 // POST /contracts  body: { recruitmentId, freelancerEmail }
 export function createContract({ recruitmentId, freelancerEmail }) {
+  //백엔드에서 proposeFreelancer
   return httpClient.post('/contracts', { recruitmentId, freelancerEmail })
 }
 

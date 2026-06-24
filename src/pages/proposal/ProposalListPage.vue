@@ -6,9 +6,13 @@
     <!-- 검색 + 정렬 -->
     <div class="search-bar">
       <select v-model="keywordType" class="keyword-type-select">
-        <option value="">제목+내용</option>
+        <option value="">전체</option>
         <option value="title">제목</option>
-        <option value="content">내용</option>
+        <option value="companyName">회사명</option>
+      </select>
+      <select v-model="sortType" class="sort-select" @change="fetchList">
+        <option value="latest">최신순</option>
+        <option value="oldest">오래된순</option>
       </select>
       <div class="search-input-wrap">
         <input
@@ -33,10 +37,6 @@
         </svg>
         검색
       </button>
-      <select v-model="sortType" class="sort-select" @change="fetchList">
-        <option value="latest">최신순</option>
-        <option value="deadline">마감임박순</option>
-      </select>
     </div>
 
     <!-- 목록 -->
@@ -47,9 +47,14 @@
     </div>
 
     <div v-else class="proposal-list">
-      <div v-for="item in proposals" :key="item.contractId" class="proposal-card">
+      <div
+        v-for="item in proposals"
+        :key="item.contractId"
+        class="proposal-card"
+        @click="goRecruitment(item)"
+      >
         <!-- 안읽음 표시 -->
-        <span v-if="!item.isRead" class="unread-dot"></span>
+        <!-- <span v-if="!item.isRead" class="unread-dot"></span> -->
 
         <!-- 제목 + 태그 -->
         <div class="card-head">
@@ -73,9 +78,10 @@
           <span class="proposal-badge">제안</span>
         </p>
 
-        <!-- 기술스택 -->
-        <div class="tag-row" v-if="item.techStacks && item.techStacks.length">
-          <span v-for="tech in item.techStacks" :key="tech" class="tech-tag">{{ tech }}</span>
+        <!-- 서머리 -->
+        <div class="tag-row" v-if="item.summary">
+          <!-- <span v-for="tech in item.techStacks" :key="tech" class="tech-tag">{{ tech }}</span> -->
+          <span>{{ item.summary }}</span>
         </div>
 
         <!-- 예산/기간/수신일 -->
@@ -136,7 +142,7 @@
     </div>
 
     <!-- 페이지네이션 -->
-    <div class="pagination" v-if="totalPages > 1">
+    <div class="pagination">
       <button class="page-btn" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
         ‹
       </button>
@@ -162,7 +168,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getContracts, rejectContract } from '@/features/contract/api/contractApi.js'
+import {
+  getProposals,
+  acceptProposal,
+  rejectContract,
+} from '@/features/contract/api/contractApi.js'
 import { jobCategoryLabel } from '@/shared/constants/jobCategory.js'
 
 const router = useRouter()
@@ -190,9 +200,7 @@ function formatMoney(amount) {
 async function fetchList() {
   isLoading.value = true
   try {
-    // 제안 관리 = WAITING 상태 계약 목록 (= 회사가 제안만 보내고 아직 시작 안 한 계약)
-    const res = await getContracts({
-      status: 'WAITING',
+    const res = await getProposals({
       keywordType: keyword.value ? keywordType.value : undefined,
       keyword: keyword.value || undefined,
       sort: sortType.value,
@@ -209,6 +217,14 @@ async function fetchList() {
   }
 }
 
+function goRecruitment(item) {
+  router.push({
+    name: 'RecruitmentDetail',
+    params: { id: item.recruitmentId },
+    query: { from: 'proposal' },
+  })
+}
+
 function handleSearch() {
   currentPage.value = 1
   fetchList()
@@ -220,10 +236,20 @@ function changePage(p) {
   fetchList()
 }
 
-// 수락하기: 별도 액션 없이 계약 상세(WAITING)로 이동만 함
-// 실제 시작 버튼은 ContractWaitingPanel 안에 있음
-function handleAccept(item) {
-  router.push({ name: 'ContractDetail', params: { id: item.contractId } })
+async function handleAccept(item) {
+  if (!confirm(`'${item.recruitmentTitle}' 제안을 수락하시겠습니까?`)) return
+
+  processingId.value = item.contractId
+  try {
+    await acceptProposal(item.contractId)
+    proposals.value = proposals.value.filter((p) => p.contractId !== item.contractId)
+    alert('제안을 수락했습니다. 계약 관리에서 확인하세요.')
+    router.push({ name: 'ContractDetail', params: { id: item.contractId } })
+  } catch (err) {
+    alert(err.response?.data?.message || '수락 처리에 실패했습니다.')
+  } finally {
+    processingId.value = null
+  }
 }
 
 // 거절하기: 파기 요청 절차 없이 즉시 완전 삭제
@@ -232,13 +258,20 @@ async function handleReject(item) {
     !confirm(
       `'${item.recruitmentTitle}' 제안을 거절하시겠습니까?\n거절 시 계약이 즉시 삭제되며 되돌릴 수 없습니다.`,
     )
-  )
+  ) {
     return
+  }
 
   processingId.value = item.contractId
+
   try {
     await rejectContract(item.contractId)
-    proposals.value = proposals.value.filter((p) => p.contractId !== item.contractId)
+
+    alert('제안을 거절했습니다.')
+
+    router.replace({
+      name: 'ProposalList',
+    })
   } catch (err) {
     alert(err.response?.data?.message || '거절 처리에 실패했습니다.')
   } finally {
@@ -251,12 +284,16 @@ onMounted(fetchList)
 
 <style scoped>
 .page {
-  padding: 32px;
+  padding: 32px 32px 48px;
   max-width: 100%;
+  /* min-height: calc(100vh - 15px); /* 헤더 높이만큼 빼기, 환경에 맞게 조정 */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .page-title {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   color: #1a233d;
   margin: 0 0 4px;
@@ -265,7 +302,7 @@ onMounted(fetchList)
 .page-sub {
   font-size: 14px;
   color: #6c757d;
-  margin: 0 0 20px;
+  margin: 0 0 25px;
 }
 
 /* 검색바 */
@@ -335,6 +372,7 @@ onMounted(fetchList)
 }
 
 /* 목록 */
+
 .loading,
 .empty-state {
   text-align: center;
@@ -354,6 +392,12 @@ onMounted(fetchList)
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 18px 20px;
+  transition: all 0.15s;
+}
+.proposal-card:hover {
+  border-color: #1a233d;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
 }
 
 .unread-dot {
@@ -504,12 +548,6 @@ onMounted(fetchList)
 }
 
 /* 페이지네이션 */
-.pagination {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-  margin-top: 24px;
-}
 
 .page-btn {
   width: 32px;
@@ -533,5 +571,21 @@ onMounted(fetchList)
 .page-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* 목록 영역이 남은 공간을 채우도록 */
+.proposal-list,
+.loading,
+.empty-state {
+  flex: 1;
+}
+
+/* 페이지네이션: 항상 하단 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 24px;
+  padding-bottom: 16px;
 }
 </style>

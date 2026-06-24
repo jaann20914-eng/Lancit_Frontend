@@ -38,7 +38,7 @@
         />
       </div>
 
-      <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
+      <!-- <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p> -->
 
       <button class="btn-login" @click="handleLogin" :disabled="isLoading">
         {{ isLoading ? '로그인 중...' : '로그인' }}
@@ -94,7 +94,9 @@ async function handleLogin() {
       router.push('/company/dashboard')
     }
   } catch (err) {
-    errorMsg.value = err.response?.data?.message || '이메일 또는 비밀번호가 올바르지 않습니다.'
+    const msg = err.response?.data?.message || '이메일 또는 비밀번호가 올바르지 않습니다.'
+    alert(msg) // ✅ 추가
+    errorMsg.value = msg
   } finally {
     isLoading.value = false
   }

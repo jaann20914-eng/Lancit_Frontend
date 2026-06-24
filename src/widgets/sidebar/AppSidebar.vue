@@ -55,6 +55,7 @@
             <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
           계약관리
+          <span v-if="hasUnread" class="nav-badge"></span>
         </RouterLink>
         <RouterLink to="/freelancer/proposals" class="nav-item" active-class="active">
           <svg
@@ -146,6 +147,7 @@
             <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
           계약관리
+          <span v-if="hasUnread" class="nav-badge"></span>
         </RouterLink>
         <RouterLink to="/company/talents" class="nav-item" active-class="active">
           <svg
@@ -233,12 +235,15 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
+import { useNotificationStore } from '@/features/notification/model/useNotificationStore.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 
 const isFreelancer = computed(() => authStore.role === 'USER')
 const isCompany = computed(() => authStore.role === 'COMPANY')
+const hasUnread = computed(() => notificationStore.hasUnread)
 
 function handleLogout() {
   authStore.logout()
@@ -309,6 +314,17 @@ function handleLogout() {
   text-decoration: none;
   transition: all 0.15s;
   cursor: pointer;
+
+  position: relative; /* 기존에 없으면 추가 */
+}
+
+.nav-badge {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .nav-item:hover {

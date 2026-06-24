@@ -1,11 +1,6 @@
 <template>
   <div class="detail-page">
-    <button
-      class="btn-back"
-      @click="router.push(isFreelancer ? '/freelancer/contracts' : '/company/contracts')"
-    >
-      목록으로
-    </button>
+    <button class="btn-back" @click="goBack()">목록으로</button>
     <div v-if="isLoading" class="loading-state">불러오는 중...</div>
 
     <div v-else-if="loadError" class="error-state">
@@ -66,18 +61,31 @@ import ContractInProgressPanel from '@/features/contract/ui/ContractInProgressPa
 import ContractCompletedPanel from '@/features/contract/ui/ContractCompletedPanel.vue'
 import ContractCancelledPanel from '@/features/contract/ui/ContractCancelledPanel.vue'
 import ContractChatPanel from '@/features/chat/ui/ContractChatPanel.vue'
+import { useNotificationStore } from '@/features/notification/model/useNotificationStore.js'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const contractId = route.params.id
+const contractId = Number(route.params.id)
 const isFreelancer = computed(() => authStore.role === 'USER')
 const isCompany = computed(() => authStore.role === 'COMPANY')
 
 const detail = ref(null)
 const isLoading = ref(false)
 const loadError = ref('')
+const notificationStore = useNotificationStore()
+
+function goBack() {
+  console.log('route.query.page:', route.query.page)
+  const page = route.query.page || 1
+  console.log('page:', page)
+
+  router.push({
+    name: isCompany.value ? 'CompanyContractList' : 'ContractList',
+    query: { page },
+  })
+}
 
 async function fetchDetail() {
   isLoading.value = true
@@ -85,6 +93,10 @@ async function fetchDetail() {
   try {
     const res = await getContractDetail(contractId)
     detail.value = res.data.data
+    // 채팅 알림 읽음 처리
+    notificationStore.markReadByContractAndType(Number(contractId), 'CHAT')
+    // 전체 읽음 여부 갱신
+    await notificationStore.fetchUnread()
   } catch (err) {
     loadError.value = err.response?.data?.message || '계약 정보를 불러오지 못했습니다.'
   } finally {

@@ -61,20 +61,6 @@
       </div>
 
       <div class="project-toolbar" role="search">
-        <div class="search-input-wrap">
-          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
-            v-model="keyword"
-            type="search"
-            class="search-input"
-            placeholder="프로젝트로 검색..."
-            aria-label="프로젝트 검색"
-            @keyup.enter="submitPortfolioSearch"
-          />
-        </div>
         <select
           v-model="categoryFilter"
           class="filter-select"
@@ -97,6 +83,21 @@
           <option value="LATEST">최신순</option>
           <option value="OLDEST">오래된순</option>
         </select>
+
+        <div class="search-input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input
+            v-model="keyword"
+            type="search"
+            class="search-input"
+            placeholder="프로젝트로 검색..."
+            aria-label="프로젝트 검색"
+            @keyup.enter="submitPortfolioSearch"
+          />
+        </div>
       </div>
 
       <div v-if="isLoading" class="state-card">
