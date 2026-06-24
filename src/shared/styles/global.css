@@ -2,6 +2,17 @@
   box-sizing: border-box;
 }
 
+:root {
+  --lancit-page-padding: 32px 32px 48px;
+  --lancit-page-mobile-padding: 24px 18px 40px;
+  --lancit-page-title-color: #1a233d;
+  --lancit-page-description-color: #6c757d;
+  --lancit-page-text-color: #1f2937;
+  --lancit-page-header-margin: 25px;
+  --lancit-section-gap: 24px;
+  --lancit-list-gap: 12px;
+}
+
 html,
 body,
 #app {
@@ -11,4 +22,55 @@ body,
 
 body {
   font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+}
+
+.page,
+.dashboard-page {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: var(--lancit-page-padding);
+  color: var(--lancit-page-text-color);
+}
+
+.page-header,
+.dashboard-header {
+  margin-bottom: var(--lancit-page-header-margin);
+}
+
+.page-title,
+.page-header h1,
+.dashboard-header h1 {
+  margin: 0 0 4px;
+  color: var(--lancit-page-title-color);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.page-description,
+.page-sub,
+.page-header p,
+.dashboard-header p {
+  margin: 0;
+  color: var(--lancit-page-description-color);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lancit-section-gap);
+}
+
+.page-section + .page-section {
+  margin-top: var(--lancit-section-gap);
+}
+
+@media (max-width: 800px) {
+  .page,
+  .dashboard-page {
+    padding: var(--lancit-page-mobile-padding);
+  }
 }

@@ -143,4 +143,25 @@ describe('PortfolioListPage', () => {
     )
     expect(mocks.deletePortfolioProfileImage).not.toHaveBeenCalled()
   })
+
+  it('프로젝트 검색 버튼 클릭 시 검색어로 1페이지부터 다시 조회한다', async () => {
+    const wrapper = await mountPage()
+    mocks.getMyPortfolios.mockClear()
+
+    await wrapper.get('input[aria-label="프로젝트 검색"]').setValue('랜딩 페이지')
+    const searchButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === '검색')
+
+    expect(searchButton).toBeTruthy()
+    await searchButton.trigger('click')
+    await flushPromises()
+
+    expect(mocks.getMyPortfolios).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keyword: '랜딩 페이지',
+        page: 1,
+      }),
+    )
+  })
 })

@@ -1,7 +1,11 @@
 <template>
   <div class="page">
-    <h1 class="page-title">인재 찾기</h1>
-    <p class="page-sub">다양한 프리랜서를 찾아보세요</p>
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">인재 찾기</h1>
+        <p class="page-description page-sub">다양한 프리랜서를 찾아보세요</p>
+      </div>
+    </header>
 
     <!-- 탭 -->
     <div class="tab-bar">
@@ -16,36 +20,22 @@
     </div>
 
     <!-- 검색 + 정렬 -->
-    <div class="search-bar">
-      <select v-model="sortType" class="sort-select" @change="fetchList">
+    <BaseFilterBar aria-label="인재 검색 및 정렬">
+      <BaseSelect v-model="sortType" aria-label="정렬 방식" @change="fetchList">
         <option value="latest">최신 가입순</option>
         <option value="oldest">오래된 가입순</option>
         <option value="name">이름순</option>
-      </select>
+      </BaseSelect>
 
-      <div class="search-input-wrap">
-        <svg
-          class="search-icon"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          v-model="keyword"
-          type="text"
-          class="search-input"
-          placeholder="이름으로 검색..."
-          @keyup.enter="handleSearch"
-        />
-      </div>
-      <button class="btn-search" @click="handleSearch">검색</button>
-    </div>
+      <BaseSearchInput
+        v-model="keyword"
+        type="text"
+        placeholder="이름으로 검색..."
+        aria-label="인재 검색어"
+        @search="handleSearch"
+      />
+      <BaseButton @click="handleSearch">검색</BaseButton>
+    </BaseFilterBar>
 
     <!-- 목록 -->
     <div v-if="isLoading" class="loading">불러오는 중...</div>
@@ -75,39 +65,27 @@
         </div>
 
         <div class="talent-actions" @click.stop>
-          <button
-            class="btn-bookmark"
-            :class="{ active: talent.bookmarked }"
+          <BaseButton
+            size="sm"
+            :variant="talent.bookmarked ? 'danger' : 'outline'"
             @click="toggleBookmark(talent)"
           >
             {{ talent.bookmarked ? '찜 취소' : '찜하기' }}
-          </button>
-          <button class="btn-propose" @click="goPropose(talent.email)">제안하기</button>
+          </BaseButton>
+          <BaseButton size="sm" @click="goPropose(talent.email)">제안하기</BaseButton>
         </div>
       </div>
     </div>
 
     <!-- 페이지네이션 -->
-    <div class="pagination">
-      <button class="page-btn" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
-        ‹
-      </button>
-      <button
-        v-for="p in totalPages"
-        :key="p"
-        :class="['page-btn', p === currentPage ? 'active' : '']"
-        @click="changePage(p)"
-      >
-        {{ p }}
-      </button>
-      <button
-        class="page-btn"
-        :disabled="currentPage === totalPages"
-        @click="changePage(currentPage + 1)"
-      >
-        ›
-      </button>
-    </div>
+    <BasePagination
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :total-elements="totalElements"
+      :page-size="pageSize"
+      :disabled="isLoading"
+      @change="changePage"
+    />
   </div>
 </template>
 
@@ -119,6 +97,11 @@ import {
   addTalentBookmark,
   removeTalentBookmark,
 } from '@/features/talent/api/talentApi.js'
+import BaseButton from '@/shared/ui/BaseButton.vue'
+import BaseFilterBar from '@/shared/ui/BaseFilterBar.vue'
+import BasePagination from '@/shared/ui/BasePagination.vue'
+import BaseSearchInput from '@/shared/ui/BaseSearchInput.vue'
+import BaseSelect from '@/shared/ui/BaseSelect.vue'
 
 const router = useRouter()
 
@@ -132,6 +115,7 @@ const talents = ref([])
 const isLoading = ref(false)
 const currentPage = ref(1)
 const totalPages = ref(1)
+const totalElements = ref(0)
 const pageSize = 5
 
 function formatDate(dateStr) {
@@ -158,8 +142,10 @@ async function fetchList() {
     talents.value = data.content || data.list || []
 
     totalPages.value = data.totalPages || 1
+    totalElements.value = Number(data.totalElements ?? data.totalCount ?? talents.value.length)
   } catch (err) {
     talents.value = []
+    totalElements.value = 0
   } finally {
     isLoading.value = false
   }
@@ -208,7 +194,7 @@ onMounted(fetchList)
 
 <style scoped>
 .page {
-  padding: 32px;
+  padding: var(--lancit-page-padding);
   max-width: 100%;
   /* min-height: calc(100vh - 64px); */
   min-height: 100vh;
@@ -216,17 +202,23 @@ onMounted(fetchList)
   flex-direction: column;
 }
 
+.page-header {
+  margin-bottom: var(--lancit-page-header-margin);
+}
+
 .page-title {
   font-size: 28px;
   font-weight: 700;
   color: #1a233d;
   margin: 0 0 4px;
+  line-height: 1.3;
 }
 
 .page-sub {
   font-size: 14px;
-  color: #6c757d;
-  margin: 0 0 20px;
+  color: var(--lancit-page-description-color);
+  margin: 0;
+  line-height: 1.5;
 }
 
 /* 탭 */
@@ -327,7 +319,7 @@ onMounted(fetchList)
 .talent-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--lancit-list-gap);
   flex: 1;
 }
 
@@ -468,5 +460,11 @@ onMounted(fetchList)
 .page-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+@media (max-width: 800px) {
+  .page {
+    padding: var(--lancit-page-mobile-padding);
+  }
 }
 </style>

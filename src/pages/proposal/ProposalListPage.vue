@@ -1,43 +1,41 @@
 <template>
   <div class="page">
-    <h1 class="page-title">제안 관리</h1>
-    <p class="page-sub">제안 온 프로젝트를 확인하고 수락/거절하세요</p>
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">제안 관리</h1>
+        <p class="page-description page-sub">제안 온 프로젝트를 확인하고 수락/거절하세요</p>
+      </div>
+    </header>
 
     <!-- 검색 + 정렬 -->
-    <div class="search-bar">
-      <select v-model="keywordType" class="keyword-type-select">
+    <BaseFilterBar aria-label="제안 검색 및 정렬">
+      <BaseSelect v-model="keywordType" width="110px" aria-label="검색 유형">
         <option value="">전체</option>
         <option value="title">제목</option>
         <option value="companyName">회사명</option>
-      </select>
-      <select v-model="sortType" class="sort-select" @change="fetchList">
+      </BaseSelect>
+      <BaseSelect v-model="sortType" aria-label="정렬 방식" @change="fetchList">
         <option value="latest">최신순</option>
         <option value="oldest">오래된순</option>
-      </select>
-      <div class="search-input-wrap">
-        <input
-          v-model="keyword"
-          type="text"
-          class="search-input"
-          placeholder="검색어를 입력하세요"
-          @keyup.enter="handleSearch"
-        />
-      </div>
-      <button class="btn-search" @click="handleSearch">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
+      </BaseSelect>
+      <BaseSearchInput
+        v-model="keyword"
+        type="text"
+        placeholder="검색어를 입력하세요"
+        :with-icon="false"
+        aria-label="제안 검색어"
+        @search="handleSearch"
+      />
+      <BaseButton @click="handleSearch">
+        <template #icon>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </template>
         검색
-      </button>
-    </div>
+      </BaseButton>
+    </BaseFilterBar>
 
     <!-- 목록 -->
     <div v-if="isLoading" class="loading">불러오는 중...</div>
@@ -102,66 +100,47 @@
 
         <!-- 액션 버튼 -->
         <div class="card-actions">
-          <button
-            class="btn-accept"
+          <BaseButton
+            size="lg"
+            block
             :disabled="processingId === item.contractId"
             @click="handleAccept(item)"
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+            <template #icon>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </template>
             수락하기
-          </button>
-          <button
-            class="btn-reject"
+          </BaseButton>
+          <BaseButton
+            variant="danger"
+            size="lg"
+            block
             :disabled="processingId === item.contractId"
             @click="handleReject(item)"
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <template #icon>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </template>
             거절하기
-          </button>
+          </BaseButton>
         </div>
       </div>
     </div>
 
     <!-- 페이지네이션 -->
-    <div class="pagination">
-      <button class="page-btn" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
-        ‹
-      </button>
-      <button
-        v-for="p in totalPages"
-        :key="p"
-        :class="['page-btn', p === currentPage ? 'active' : '']"
-        @click="changePage(p)"
-      >
-        {{ p }}
-      </button>
-      <button
-        class="page-btn"
-        :disabled="currentPage === totalPages"
-        @click="changePage(currentPage + 1)"
-      >
-        ›
-      </button>
-    </div>
+    <BasePagination
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :total-elements="totalElements"
+      :page-size="pageSize"
+      :disabled="isLoading"
+      @change="changePage"
+    />
   </div>
 </template>
 
@@ -174,6 +153,11 @@ import {
   rejectContract,
 } from '@/features/contract/api/contractApi.js'
 import { jobCategoryLabel } from '@/shared/constants/jobCategory.js'
+import BaseButton from '@/shared/ui/BaseButton.vue'
+import BaseFilterBar from '@/shared/ui/BaseFilterBar.vue'
+import BasePagination from '@/shared/ui/BasePagination.vue'
+import BaseSearchInput from '@/shared/ui/BaseSearchInput.vue'
+import BaseSelect from '@/shared/ui/BaseSelect.vue'
 
 const router = useRouter()
 
@@ -185,6 +169,7 @@ const isLoading = ref(false)
 const processingId = ref(null)
 const currentPage = ref(1)
 const totalPages = ref(1)
+const totalElements = ref(0)
 const pageSize = 5
 
 function formatDate(dateStr) {
@@ -209,9 +194,12 @@ async function fetchList() {
     })
     const data = res.data.data
     proposals.value = data.content || data.list || []
-    totalPages.value = data.totalPages || 1
+    totalPages.value = Math.max(1, Number(data.totalPages) || 1)
+    totalElements.value = Number(data.totalElements ?? data.totalCount ?? proposals.value.length)
   } catch (err) {
     proposals.value = []
+    totalPages.value = 1
+    totalElements.value = 0
   } finally {
     isLoading.value = false
   }
@@ -284,7 +272,7 @@ onMounted(fetchList)
 
 <style scoped>
 .page {
-  padding: 32px 32px 48px;
+  padding: var(--lancit-page-padding);
   max-width: 100%;
   /* min-height: calc(100vh - 15px); /* 헤더 높이만큼 빼기, 환경에 맞게 조정 */
   min-height: 100vh;
@@ -292,17 +280,23 @@ onMounted(fetchList)
   flex-direction: column;
 }
 
+.page-header {
+  margin-bottom: var(--lancit-page-header-margin);
+}
+
 .page-title {
   font-size: 28px;
   font-weight: 700;
   color: #1a233d;
   margin: 0 0 4px;
+  line-height: 1.3;
 }
 
 .page-sub {
   font-size: 14px;
-  color: #6c757d;
-  margin: 0 0 25px;
+  color: var(--lancit-page-description-color);
+  margin: 0;
+  line-height: 1.5;
 }
 
 /* 검색바 */
@@ -383,7 +377,7 @@ onMounted(fetchList)
 .proposal-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--lancit-list-gap);
 }
 
 .proposal-card {
@@ -587,5 +581,11 @@ onMounted(fetchList)
   gap: 4px;
   margin-top: 24px;
   padding-bottom: 16px;
+}
+
+@media (max-width: 800px) {
+  .page {
+    padding: var(--lancit-page-mobile-padding);
+  }
 }
 </style>

@@ -1,9 +1,9 @@
 <template>
-  <div class="dashboard-page">
-    <header class="dashboard-header">
+  <div class="dashboard-page page">
+    <header class="dashboard-header page-header">
       <div>
-        <h1>대시보드</h1>
-        <p>프로젝트 현황을 한눈에 확인하세요</p>
+        <h1 class="page-title">대시보드</h1>
+        <p class="page-description">프로젝트 현황을 한눈에 확인하세요</p>
       </div>
     </header>
 
@@ -106,26 +106,26 @@ defineProps({
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  padding: 32px 32px 48px;
+  padding: var(--lancit-page-padding);
   color: #1a233d;
 }
 
 .dashboard-header {
-  margin-bottom: 28px;
+  margin-bottom: var(--lancit-page-header-margin);
 }
 
 .dashboard-header h1 {
-  margin: 0;
+  margin: 0 0 4px;
   font-size: 28px;
   font-weight: 700;
   line-height: 1.3;
-  letter-spacing: -0.04em;
 }
 
 .dashboard-header p {
-  margin: 8px 0 0;
-  color: #7b8494;
+  margin: 0;
+  color: var(--lancit-page-description-color);
   font-size: 14px;
+  line-height: 1.5;
 }
 
 .dashboard-state {
@@ -184,8 +184,8 @@ defineProps({
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 22px;
-  margin-bottom: 30px;
+  gap: 20px;
+  margin-bottom: var(--lancit-section-gap);
 }
 
 .summary-card {
@@ -236,7 +236,7 @@ defineProps({
   font-size: 25px;
   line-height: 1;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .summary-icon {
@@ -282,7 +282,7 @@ defineProps({
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 30px 22px;
+  gap: var(--lancit-section-gap) 20px;
 }
 
 .dashboard-panel--wide {
@@ -307,7 +307,7 @@ defineProps({
 
 @media (max-width: 800px) {
   .dashboard-page {
-    padding: 24px 18px 40px;
+    padding: var(--lancit-page-mobile-padding);
   }
 }
 

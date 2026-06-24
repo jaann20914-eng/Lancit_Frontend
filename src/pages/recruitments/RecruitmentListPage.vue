@@ -2,8 +2,8 @@
   <div class="page">
     <header class="page-header">
       <div>
-        <h1>공고 찾기</h1>
-        <p>나에게 맞는 프로젝트를 찾고 관심 있는 공고를 찜해보세요.</p>
+        <h1 class="page-title">공고 찾기</h1>
+        <p class="page-description">나에게 맞는 프로젝트를 찾고 관심 있는 공고를 찜해보세요.</p>
       </div>
     </header>
 
@@ -24,22 +24,18 @@
     <ExternalJobListPanel v-if="isExternalTab" />
 
     <template v-else>
-      <section class="filter-panel" aria-label="공고 검색 및 필터">
-        <form class="search-row" @submit.prevent="applySearch">
-          <input
-            v-model.trim="searchKeyword"
-            type="search"
-            class="control search-input"
-            placeholder="공고 제목이나 내용으로 검색"
-            aria-label="공고 검색어"
-          />
-          <button type="submit" class="search-button">검색</button>
-        </form>
+      <BaseFilterBar as="form" panel aria-label="공고 검색 및 필터" @submit.prevent="applySearch">
+        <BaseSearchInput
+          v-model.trim="searchKeyword"
+          placeholder="공고 제목이나 내용으로 검색"
+          aria-label="공고 검색어"
+        />
+        <BaseButton type="submit">검색</BaseButton>
 
-        <div class="filter-row">
-          <select
+        <template #secondary>
+          <BaseSelect
             v-model="filters.jobCategory"
-            class="control filter-select"
+            min-width="160px"
             aria-label="직종 카테고리"
             @change="resetAndLoad"
           >
@@ -51,11 +47,11 @@
             >
               {{ option.label }}
             </option>
-          </select>
+          </BaseSelect>
 
-          <select
+          <BaseSelect
             v-model="filters.recruitmentCategory"
-            class="control filter-select"
+            min-width="160px"
             aria-label="공고 카테고리"
             @change="resetAndLoad"
           >
@@ -67,24 +63,24 @@
             >
               {{ option.label }}
             </option>
-          </select>
+          </BaseSelect>
 
-          <select
+          <BaseSelect
             v-model="filters.sort"
-            class="control sort-select"
+            min-width="160px"
             aria-label="정렬 방식"
             @change="resetAndLoad"
           >
             <option value="LATEST">최신순</option>
             <option value="DEADLINE">마감 임박순</option>
             <option value="BUDGET">예산 높은순</option>
-          </select>
+          </BaseSelect>
 
-          <button v-if="hasActiveFilters" type="button" class="reset-button" @click="resetFilters">
+          <BaseButton v-if="hasActiveFilters" variant="outline" type="button" @click="resetFilters">
             필터 초기화
-          </button>
-        </div>
-      </section>
+          </BaseButton>
+        </template>
+      </BaseFilterBar>
 
       <div v-if="isLoading" class="state-card">
         <span class="spinner" aria-hidden="true"></span>
@@ -93,7 +89,7 @@
 
       <div v-else-if="errorMessage" class="state-card error-state">
         <p>{{ errorMessage }}</p>
-        <button type="button" class="retry-button" @click="loadRecruitments">다시 시도</button>
+        <BaseButton variant="outline" size="sm" @click="loadRecruitments">다시 시도</BaseButton>
       </div>
 
       <section v-else-if="!recruitments.length" class="empty-state">
@@ -219,44 +215,38 @@
                 <p v-else class="tech-stack-empty">등록된 기술 스택이 없습니다.</p>
 
                 <div class="action-buttons">
-                  <button
-                    type="button"
+                  <BaseButton
                     class="detail-button"
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     @click="goToDetail(item.recruitmentId)"
                   >
                     상세 보기
-                  </button>
-                  <button
-                    type="button"
+                  </BaseButton>
+                  <BaseButton
                     class="apply-button"
+                    type="button"
+                    size="sm"
                     :disabled="!item.isApplied && !item.canApply"
                     @click="handleApplicationAction(item)"
                   >
                     {{ item.isApplied ? '지원서 보기' : item.canApply ? '지원하기' : '지원 불가' }}
-                  </button>
+                  </BaseButton>
                 </div>
               </div>
             </div>
           </article>
         </div>
 
-        <nav v-if="pagination.totalPages > 1" class="pagination" aria-label="공고 목록 페이지">
-          <button
-            type="button"
-            :disabled="!pagination.hasPrev"
-            @click="changePage(pagination.page - 1)"
-          >
-            이전
-          </button>
-          <span>{{ pagination.page }} / {{ pagination.totalPages }}</span>
-          <button
-            type="button"
-            :disabled="!pagination.hasNext"
-            @click="changePage(pagination.page + 1)"
-          >
-            다음
-          </button>
-        </nav>
+        <BasePagination
+          :current-page="pagination.page"
+          :total-pages="pagination.totalPages"
+          :total-elements="pagination.totalElements"
+          :page-size="pagination.size"
+          :disabled="isLoading"
+          @change="changePage"
+        />
       </template>
     </template>
   </div>
@@ -276,6 +266,11 @@ import {
   JOB_CATEGORY_OPTIONS,
   RECRUITMENT_CATEGORY_OPTIONS,
 } from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
+import BaseButton from '@/shared/ui/BaseButton.vue'
+import BaseFilterBar from '@/shared/ui/BaseFilterBar.vue'
+import BasePagination from '@/shared/ui/BasePagination.vue'
+import BaseSearchInput from '@/shared/ui/BaseSearchInput.vue'
+import BaseSelect from '@/shared/ui/BaseSelect.vue'
 
 const TABS = [
   { value: 'ALL', label: '전체' },
@@ -490,21 +485,24 @@ function getRecruitmentError(error, fallback) {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  padding: 32px;
+  padding: var(--lancit-page-padding);
   color: #1f2937;
 }
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: var(--lancit-page-header-margin);
 }
 .page-header h1 {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   color: #1a233d;
-  font-size: 24px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 .page-header p {
   margin: 0;
-  color: #6b7280;
+  color: var(--lancit-page-description-color);
   font-size: 14px;
+  line-height: 1.5;
 }
 .scope-tabs {
   margin-bottom: 16px;
@@ -528,7 +526,7 @@ function getRecruitmentError(error, fallback) {
   color: #1a233d;
 }
 .filter-panel {
-  margin-bottom: 22px;
+  margin-bottom: 20px;
   padding: 18px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -592,7 +590,7 @@ function getRecruitmentError(error, fallback) {
 }
 .recruitment-list {
   display: grid;
-  gap: 14px;
+  gap: var(--lancit-list-gap);
 }
 .recruitment-card {
   border: 1px solid #e5e7eb;
@@ -913,7 +911,7 @@ function getRecruitmentError(error, fallback) {
 }
 @media (max-width: 800px) {
   .page {
-    padding: 24px 18px;
+    padding: var(--lancit-page-mobile-padding);
   }
   .information-panel {
     grid-template-columns: repeat(2, minmax(0, 1fr));

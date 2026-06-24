@@ -1,7 +1,11 @@
 <template>
   <div class="page">
-    <h1 class="page-title">계약서</h1>
-    <p class="page-sub">계약 내용을 확인하고 관리하세요</p>
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">계약 관리</h1>
+        <p class="page-description page-sub">계약 내용을 확인하고 관리하세요</p>
+      </div>
+    </header>
 
     <!-- 탭 -->
     <div class="tab-bar">
@@ -16,36 +20,30 @@
     </div>
 
     <!-- 검색 -->
-    <div class="search-bar">
-      <select v-model="keywordType" class="keyword-type-select">
+    <BaseFilterBar aria-label="계약 검색">
+      <BaseSelect v-model="keywordType" width="150px" aria-label="검색 유형">
         <option value="">전체</option>
         <option value="title">공고명</option>
         <option value="freelancer">프리랜서 이름</option>
-      </select>
-      <div class="search-input-wrap">
-        <input
-          v-model="keyword"
-          type="text"
-          class="search-input"
-          placeholder="검색 내용을 입력하세요"
-          @keyup.enter="handleSearch"
-        />
-      </div>
-      <button class="btn-search" @click="handleSearch">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
+      </BaseSelect>
+      <BaseSearchInput
+        v-model="keyword"
+        type="text"
+        placeholder="검색 내용을 입력하세요"
+        :with-icon="false"
+        aria-label="계약 검색어"
+        @search="handleSearch"
+      />
+      <BaseButton @click="handleSearch">
+        <template #icon>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </template>
         검색
-      </button>
-    </div>
+      </BaseButton>
+    </BaseFilterBar>
 
     <!-- 목록 -->
     <div v-if="isLoading" class="loading">불러오는 중...</div>
@@ -106,26 +104,14 @@
     </div>
 
     <!-- 페이지네이션 -->
-    <div class="pagination">
-      <button class="page-btn" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
-        ‹
-      </button>
-      <button
-        v-for="p in totalPages"
-        :key="p"
-        :class="['page-btn', p === currentPage ? 'active' : '']"
-        @click="changePage(p)"
-      >
-        {{ p }}
-      </button>
-      <button
-        class="page-btn"
-        :disabled="currentPage === totalPages"
-        @click="changePage(currentPage + 1)"
-      >
-        ›
-      </button>
-    </div>
+    <BasePagination
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :total-elements="totalElements"
+      :page-size="pageSize"
+      :disabled="isLoading"
+      @change="changePage"
+    />
   </div>
 </template>
 
@@ -135,6 +121,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { getContracts } from '@/features/contract/api/contractApi.js'
 import { useAuthStore } from '@/features/auth/model/authStore.js'
 import { useNotificationStore } from '@/features/notification/model/useNotificationStore.js'
+import BaseButton from '@/shared/ui/BaseButton.vue'
+import BaseFilterBar from '@/shared/ui/BaseFilterBar.vue'
+import BasePagination from '@/shared/ui/BasePagination.vue'
+import BaseSearchInput from '@/shared/ui/BaseSearchInput.vue'
+import BaseSelect from '@/shared/ui/BaseSelect.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -162,6 +153,7 @@ const contracts = ref([])
 const isLoading = ref(false)
 const currentPage = ref(route.query.page ? Number(route.query.page) : 1)
 const totalPages = ref(1)
+const totalElements = ref(0)
 const pageSize = 5
 const notificationStore = useNotificationStore()
 
@@ -257,10 +249,12 @@ async function fetchList() {
         ['NEGOTIATING_A', 'NEGOTIATING_B', 'NEGOTIATING_C'].includes(item.status),
       )
       // 클라이언트 페이지네이션 직접 처리
+      totalElements.value = content.length
       totalPages.value = Math.max(1, Math.ceil(content.length / pageSize))
       const start = (currentPage.value - 1) * pageSize
       content = content.slice(start, start + pageSize)
     } else {
+      totalElements.value = Number(data.totalElements ?? data.totalCount ?? content.length)
       totalPages.value = Math.max(1, data.totalPages || 1)
     }
 
@@ -268,6 +262,7 @@ async function fetchList() {
   } catch (err) {
     contracts.value = []
     totalPages.value = 1
+    totalElements.value = 0
   } finally {
     isLoading.value = false
   }
@@ -307,7 +302,7 @@ onMounted(fetchList)
 
 <style scoped>
 .page {
-  padding: 32px 32px 48px;
+  padding: var(--lancit-page-padding);
   max-width: 100%;
   box-sizing: border-box;
   height: 100vh;
@@ -317,17 +312,23 @@ onMounted(fetchList)
   overflow-x: hidden;
 }
 
+.page-header {
+  margin-bottom: var(--lancit-page-header-margin);
+}
+
 .page-title {
   font-size: 28px;
   font-weight: 700;
   color: #1a233d;
   margin: 0 0 4px;
+  line-height: 1.3;
 }
 
 .page-sub {
   font-size: 14px;
-  color: #6c757d;
-  margin: 0 0 15px;
+  color: var(--lancit-page-description-color);
+  margin: 0;
+  line-height: 1.5;
 }
 
 /* 탭 - overflow-x 제거, flex-wrap으로 줄바꿈 허용 */
@@ -424,7 +425,7 @@ onMounted(fetchList)
 .contract-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--lancit-list-gap);
   flex: 1;
 }
 
@@ -570,5 +571,11 @@ onMounted(fetchList)
 .page-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+@media (max-width: 800px) {
+  .page {
+    padding: var(--lancit-page-mobile-padding);
+  }
 }
 </style>
