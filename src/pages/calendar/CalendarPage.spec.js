@@ -64,11 +64,16 @@ vi.mock('@/features/calendar/api/calendarApi.js', () => ({
   getCalendarCategories: vi.fn(),
   getCalendarHolidays: vi.fn(),
   getCalendarTasks: vi.fn(),
+  parseCalendarTask: vi.fn(),
   updateCalendarCategory: vi.fn(),
   updateCalendarTask: vi.fn(),
 }))
 
 vi.mock('@/features/calendar/api/calendarMapper.js', () => ({
+  TASK_STATUS_OPTIONS: [
+    { value: 'IN_PROGRESS', label: '진행중' },
+    { value: 'COMPLETED', label: '완료' },
+  ],
   UNKNOWN_CATEGORY_META: {
     key: 'unknown',
     label: '미분류',
@@ -106,9 +111,6 @@ vi.mock('@/features/calendar/ui/CalendarEventModal.vue', () => ({
 vi.mock('@/features/calendar/ui/CalendarCategoryCreateModal.vue', () => ({
   default: { name: 'CalendarCategoryCreateModal', template: '<div data-test="category-create-modal" />' },
 }))
-vi.mock('@/features/calendar/ui/CalendarTaskCreateModal.vue', () => ({
-  default: { name: 'CalendarTaskCreateModal', template: '<div data-test="task-create-modal" />' },
-}))
 vi.mock('@/features/calendar/ui/CalendarCategoryManageModal.vue', () => ({
   default: { name: 'CalendarCategoryManageModal', template: '<div data-test="category-manage-modal" />' },
 }))
@@ -118,9 +120,11 @@ vi.mock('@/features/calendar/ui/CalendarConfirmModal.vue', () => ({
 
 import CalendarPage from './CalendarPage.vue'
 import {
+  createCalendarTask,
   getCalendarCategories,
   getCalendarHolidays,
   getCalendarTasks,
+  parseCalendarTask,
 } from '@/features/calendar/api/calendarApi.js'
 
 const sampleCategories = [
@@ -152,7 +156,33 @@ async function flushCalendarPage() {
 }
 
 function mountCalendarPage() {
-  return mount(CalendarPage)
+  return mount(CalendarPage, {
+    global: {
+      stubs: {
+        Teleport: true,
+      },
+    },
+  })
+}
+
+async function openTaskCreateModal(wrapper) {
+  await wrapper.get('.primary-action').trigger('click')
+  await flushPromises()
+}
+
+async function parseAiText(wrapper, response) {
+  parseCalendarTask.mockResolvedValueOnce(response)
+  await wrapper.get('.ai-source-field textarea').setValue('내일 오후 2시 역삼역에서 점심식사')
+  await wrapper.get('.parse-button').trigger('click')
+  await flushPromises()
+}
+
+function getDateTimeInputs(wrapper) {
+  return wrapper.findAll('input[type="datetime-local"]')
+}
+
+function getManualTextareas(wrapper) {
+  return wrapper.findAll('.form-grid textarea')
 }
 
 describe('CalendarPage', () => {
@@ -161,6 +191,8 @@ describe('CalendarPage', () => {
     getCalendarCategories.mockResolvedValue(sampleCategories)
     getCalendarTasks.mockResolvedValue(sampleTasks)
     getCalendarHolidays.mockResolvedValue([])
+    createCalendarTask.mockResolvedValue({})
+    parseCalendarTask.mockResolvedValue({})
   })
 
   it('카테고리 API만 실패하면 필터 영역에만 카테고리 오류를 표시한다', async () => {
@@ -270,5 +302,85 @@ describe('CalendarPage', () => {
     expect(wrapper.text()).toContain('표시할 일정이 없습니다.')
     expect(getCalendarCategories).toHaveBeenCalledTimes(2)
     expect(getCalendarTasks).toHaveBeenCalledTimes(2)
+  })
+
+  it('AI 파싱 결과에서 null 필드를 임의 기본값으로 채우지 않고 확인 필요 상태를 표시한다', async () => {
+    const wrapper = mountCalendarPage()
+    await flushCalendarPage()
+    await openTaskCreateModal(wrapper)
+
+    await getManualTextareas(wrapper)[0].setValue('기존 설명')
+    await parseAiText(wrapper, {
+      title: '점심식사',
+      content: null,
+      memo: '장소: 역삼역',
+      startAt: '2026-06-24T14:00:00',
+      endAt: null,
+      requiresConfirmation: true,
+      confidence: 0.8,
+      warnings: ['종료 시간을 인식하지 못했습니다.'],
+    })
+
+    const dateTimeInputs = getDateTimeInputs(wrapper)
+    const manualTextareas = getManualTextareas(wrapper)
+    const parseResult = wrapper.get('.parse-result')
+
+    expect(dateTimeInputs[0].element.value).toBe('2026-06-24T14:00')
+    expect(dateTimeInputs[1].element.value).toBe('')
+    expect(manualTextareas[0].element.value).toBe('')
+    expect(manualTextareas[1].element.value).toBe('장소: 역삼역')
+    expect(parseResult.text()).toContain('확인 필요')
+    expect(parseResult.text()).toContain('신뢰도 80%')
+    expect(parseResult.text()).toContain('확인할 내용')
+    expect(parseResult.text()).toContain('종료 시간을 인식하지 못했습니다.')
+    expect(parseResult.text()).toContain('시작 및 종료 일시를 확인해주세요.')
+    expect(parseResult.text()).not.toContain('분석 완료')
+
+    await wrapper.get('form').trigger('submit')
+
+    expect(createCalendarTask).not.toHaveBeenCalled()
+    expect(wrapper.get('.form-error').text()).toContain('시작 일시와 종료 일시를 확인해주세요.')
+  })
+
+  it('AI 파싱 결과에 시작과 종료 일시가 모두 있으면 경고가 있어도 저장할 수 있다', async () => {
+    const wrapper = mountCalendarPage()
+    await flushCalendarPage()
+    await openTaskCreateModal(wrapper)
+
+    await parseAiText(wrapper, {
+      title: '킥오프 미팅',
+      content: '프로젝트 범위 논의',
+      memo: '장소: Zoom',
+      startAt: '2026-06-24T14:00:00',
+      endAt: '2026-06-24T15:00:00',
+      requiresConfirmation: false,
+      confidence: 0.95,
+      warnings: ['참석자를 확인해주세요.'],
+    })
+
+    const dateTimeInputs = getDateTimeInputs(wrapper)
+    const parseResult = wrapper.get('.parse-result')
+    expect(dateTimeInputs[0].element.value).toBe('2026-06-24T14:00')
+    expect(dateTimeInputs[1].element.value).toBe('2026-06-24T15:00')
+    expect(parseResult.text()).toContain('확인 필요')
+    expect(parseResult.text()).toContain('확인할 내용')
+    expect(parseResult.text()).toContain('참석자를 확인해주세요.')
+    expect(parseResult.text()).toContain('신뢰도 95%')
+    expect(parseResult.text()).not.toContain('분석 완료')
+    expect(parseResult.text()).not.toContain('시작 및 종료 일시를 확인해주세요.')
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(createCalendarTask).toHaveBeenCalledWith(expect.objectContaining({
+      categoryId: 1,
+      title: '킥오프 미팅',
+      status: 'IN_PROGRESS',
+      startAt: '2026-06-24T14:00',
+      endAt: '2026-06-24T15:00',
+      content: '프로젝트 범위 논의',
+      memo: '장소: Zoom',
+    }))
+    expect(wrapper.find('.form-error').exists()).toBe(false)
   })
 })
