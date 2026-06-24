@@ -86,7 +86,7 @@
             <dd>{{ application.portfolioProfile.displayName || '미등록' }}</dd>
           </div>
           <div>
-            <dt>직무</dt>
+            <dt>업종</dt>
             <dd>{{ jobCategoryLabel(application.portfolioProfile.jobCategory) }}</dd>
           </div>
           <div class="full">
