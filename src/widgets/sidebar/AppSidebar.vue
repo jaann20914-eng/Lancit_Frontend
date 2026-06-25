@@ -54,7 +54,7 @@
             <line x1="16" y1="13" x2="8" y2="13" />
             <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
-          계약관리
+          계약 관리
           <span v-if="hasUnread" class="nav-badge"></span>
         </RouterLink>
         <RouterLink to="/freelancer/proposals" class="nav-item" active-class="active">
@@ -146,7 +146,7 @@
             <line x1="16" y1="13" x2="8" y2="13" />
             <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
-          계약관리
+          계약 관리
           <span v-if="hasUnread" class="nav-badge"></span>
         </RouterLink>
         <RouterLink to="/company/talents" class="nav-item" active-class="active">

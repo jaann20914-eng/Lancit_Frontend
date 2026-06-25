@@ -12,7 +12,7 @@
       <div class="profile-body">
         <div class="profile-head">
           <h2 class="profile-name">프로필</h2>
-          <button class="btn-propose" @click="goPropose">제안하기</button>
+          <BaseButton size="sm" @click="goPropose">제안하기</BaseButton>
         </div>
 
         <div class="tag-row">
@@ -24,39 +24,29 @@
     </div>
 
     <!-- 검색 + 정렬 -->
-    <div class="search-bar">
-      <select v-model="categoryFilter" class="filter-select" @change="fetchPortfolios">
+    <BaseFilterBar aria-label="포트폴리오 검색 및 정렬">
+      <BaseSelect
+        v-model="categoryFilter"
+        aria-label="포트폴리오 카테고리"
+        @change="fetchPortfolios"
+      >
         <option value="">전체</option>
         <option value="WEB_APP">웹/앱</option>
         <option value="DESIGN">디자인</option>
         <option value="VIDEO">영상</option>
-      </select>
-      <select v-model="sortType" class="filter-select" @change="fetchPortfolios">
+      </BaseSelect>
+      <BaseSelect v-model="sortType" aria-label="포트폴리오 정렬" @change="fetchPortfolios">
         <option value="LATEST">최신순</option>
         <option value="OLDEST">오래된순</option>
-      </select>
-      <div class="search-input-wrap">
-        <svg
-          class="search-icon"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          v-model="keyword"
-          type="text"
-          class="search-input"
-          placeholder="프로젝트로 검색..."
-          @keyup.enter="fetchPortfolios"
-        />
-      </div>
-    </div>
+      </BaseSelect>
+      <BaseSearchInput
+        v-model="keyword"
+        type="text"
+        placeholder="프로젝트로 검색..."
+        aria-label="포트폴리오 검색어"
+        @search="fetchPortfolios"
+      />
+    </BaseFilterBar>
 
     <!-- 포트폴리오 그리드 (공개 프로젝트만) -->
     <div v-if="isLoading" class="loading">불러오는 중...</div>
@@ -102,26 +92,14 @@
     </div>
 
     <!-- 페이지네이션 -->
-    <div class="pagination">
-      <button class="page-btn" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
-        ‹
-      </button>
-      <button
-        v-for="p in totalPages"
-        :key="p"
-        :class="['page-btn', p === currentPage ? 'active' : '']"
-        @click="changePage(p)"
-      >
-        {{ p }}
-      </button>
-      <button
-        class="page-btn"
-        :disabled="currentPage === totalPages"
-        @click="changePage(currentPage + 1)"
-      >
-        ›
-      </button>
-    </div>
+    <BasePagination
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :total-elements="totalElements"
+      :page-size="pageSize"
+      :disabled="isLoading"
+      @change="changePage"
+    />
   </div>
 </template>
 
@@ -130,6 +108,11 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getTalentProfile, getTalentPublicPortfolios } from '@/features/talent/api/talentApi.js'
 import httpClient from '@/shared/api/httpClient.js'
+import BaseButton from '@/shared/ui/BaseButton.vue'
+import BaseFilterBar from '@/shared/ui/BaseFilterBar.vue'
+import BasePagination from '@/shared/ui/BasePagination.vue'
+import BaseSearchInput from '@/shared/ui/BaseSearchInput.vue'
+import BaseSelect from '@/shared/ui/BaseSelect.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -154,6 +137,7 @@ const categoryFilter = ref('')
 const sortType = ref('LATEST')
 const currentPage = ref(1)
 const totalPages = ref(1)
+const totalElements = ref(0)
 const pageSize = 4
 
 const jobCategoryMap = {
@@ -221,6 +205,7 @@ async function fetchPortfolios() {
     const data = res.data.data
     const list = data.content || data.list || []
     totalPages.value = data.totalPages || 1
+    totalElements.value = Number(data.totalElements ?? data.totalCount ?? list.length)
 
     // 배너 URL 병렬로 가져오기
     portfolios.value = await Promise.all(
@@ -238,6 +223,7 @@ async function fetchPortfolios() {
     )
   } catch {
     portfolios.value = []
+    totalElements.value = 0
   } finally {
     isLoading.value = false
   }
@@ -272,9 +258,9 @@ onMounted(() => {
 
 <style scoped>
 .page {
-  padding: 32px;
+  padding: var(--lancit-page-padding);
   max-width: 100%;
-  min-height: calc(100vh - 64px);
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -299,7 +285,7 @@ onMounted(() => {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 24px;
-  margin-bottom: 20px;
+  margin-bottom: var(--lancit-section-gap);
 }
 
 .profile-avatar {
@@ -550,6 +536,12 @@ onMounted(() => {
   gap: 4px;
   font-size: 10px;
   color: #9ca3af;
+}
+
+@media (max-width: 800px) {
+  .page {
+    padding: var(--lancit-page-mobile-padding);
+  }
 }
 
 /* 페이지네이션 */

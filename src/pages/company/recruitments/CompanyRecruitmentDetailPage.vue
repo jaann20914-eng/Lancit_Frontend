@@ -3,7 +3,7 @@
     <div class="top-actions">
       <button type="button" class="back-button" @click="goBack">← {{ backButtonText }}</button>
       <div
-        v-if="recruitment && isOwner && route.query.from !== 'proposal-select'"
+        v-if="recruitment && isOwner && routeQuery.from !== 'proposal-select'"
         class="management-actions"
       >
         <button type="button" class="copy-button" @click="goToCopy">재등록</button>
@@ -161,7 +161,7 @@
 
         <div v-else-if="applicationsError" class="applicant-state error-state">
           <p>{{ applicationsError }}</p>
-          <button type="button" class="retry-button" @click="loadApplications">다시 시도</button>
+          <BaseButton variant="outline" size="sm" @click="loadApplications">다시 시도</BaseButton>
         </div>
 
         <div v-else-if="!applications.length" class="applicant-state empty-applicant-state">
@@ -199,37 +199,24 @@
                   }}</span>
                 </div>
               </div>
-              <button
-                type="button"
-                class="application-detail-button"
+              <BaseButton
+                variant="secondary"
+                size="sm"
                 @click="goToApplicationDetail(application.applicationId)"
               >
                 상세 보기
-              </button>
+              </BaseButton>
             </article>
           </div>
 
-          <nav
-            v-if="applicationsPagination.totalPages > 1"
-            class="pagination"
-            aria-label="지원자 목록 페이지"
-          >
-            <button
-              type="button"
-              :disabled="!applicationsPagination.hasPrev"
-              @click="changeApplicationsPage(applicationsPagination.page - 1)"
-            >
-              이전
-            </button>
-            <span>{{ applicationsPagination.page }} / {{ applicationsPagination.totalPages }}</span>
-            <button
-              type="button"
-              :disabled="!applicationsPagination.hasNext"
-              @click="changeApplicationsPage(applicationsPagination.page + 1)"
-            >
-              다음
-            </button>
-          </nav>
+          <BasePagination
+            :current-page="applicationsPagination.page"
+            :total-pages="applicationsPagination.totalPages"
+            :total-elements="applicationsPagination.totalElements"
+            :page-size="applicationsPagination.size"
+            :disabled="isApplicationsLoading"
+            @change="changeApplicationsPage"
+          />
         </template>
       </section>
     </template>
@@ -254,10 +241,13 @@ import {
   formatDateTime,
   getRecruitmentStatusMeta,
 } from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
+import BaseButton from '@/shared/ui/BaseButton.vue'
+import BasePagination from '@/shared/ui/BasePagination.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const routeQuery = computed(() => route.query || {})
 const DETAIL_STATUS_OPTIONS = [
   { value: 'OPEN', label: '모집중', className: 'status-choice-open' },
   { value: 'CLOSED', label: '마감', className: 'status-choice-closed' },
@@ -294,7 +284,7 @@ const isOwner = computed(() => {
 })
 
 const backButtonText = computed(() => {
-  switch (route.query.from) {
+  switch (routeQuery.value.from) {
     case 'proposal-select':
       return '공고 선택 목록'
 
@@ -427,14 +417,16 @@ function changeApplicationsPage(page) {
 }
 
 function goBack() {
-  switch (route.query.from) {
+  const query = routeQuery.value
+
+  switch (query.from) {
     case 'proposal-select':
       router.push({
         name: 'ProposalSelect',
         query: {
-          freelancerEmail: route.query.freelancerEmail,
-          page: route.query.page,
-          selectedRecruitmentId: route.query.selectedRecruitmentId,
+          freelancerEmail: query.freelancerEmail,
+          page: query.page,
+          selectedRecruitmentId: query.selectedRecruitmentId,
         },
       })
       break
@@ -442,7 +434,7 @@ function goBack() {
     default:
       router.push({
         name: 'CompanyRecruitmentList',
-        query: route.query.scope === 'all' ? { scope: 'all' } : {},
+        query: query.scope === 'all' ? { scope: 'all' } : {},
       })
   }
 }
@@ -471,11 +463,11 @@ function goToApplicationDetail(applicationId) {
   width: 100%;
   max-width: 1000px;
   margin: 0 auto;
-  padding: 32px;
+  padding: var(--lancit-page-padding);
   color: #1f2937;
 }
 .top-actions {
-  margin-bottom: 18px;
+  margin-bottom: 20px;
   display: flex;
   justify-content: space-between;
   gap: 14px;
@@ -697,7 +689,7 @@ function goToApplicationDetail(applicationId) {
   color: #b45309;
 }
 .applicant-section {
-  margin-top: 22px;
+  margin-top: var(--lancit-section-gap);
   padding: 28px 32px 32px;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
@@ -770,7 +762,7 @@ function goToApplicationDetail(applicationId) {
 }
 .application-list {
   display: grid;
-  gap: 11px;
+  gap: var(--lancit-list-gap);
 }
 .application-card {
   padding: 20px;
@@ -920,7 +912,7 @@ function goToApplicationDetail(applicationId) {
 }
 @media (max-width: 760px) {
   .page {
-    padding: 24px 18px;
+    padding: var(--lancit-page-mobile-padding);
   }
   .top-actions {
     flex-direction: column;

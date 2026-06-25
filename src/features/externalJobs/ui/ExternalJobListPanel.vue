@@ -1,70 +1,42 @@
 <template>
   <section class="external-job-panel" aria-label="외부 공고 목록">
-    <section class="filter-panel" aria-label="외부 공고 검색 및 필터">
-      <form class="search-row" @submit.prevent="applySearch">
-        <input
-          v-model.trim="searchKeyword"
-          type="search"
-          class="control search-input"
-          placeholder="제목이나 회사명으로 검색"
-          aria-label="외부 공고 검색어"
-        />
-        <button type="submit" class="search-button">검색</button>
-      </form>
-
-      <div class="filter-row">
-        <select
-          v-model="filters.source"
-          class="control filter-select"
-          aria-label="외부 공고 출처"
-          @change="resetAndLoad"
+    <BaseFilterBar as="form" aria-label="외부 공고 검색 및 필터" @submit.prevent="applySearch">
+      <BaseSelect
+        v-model="filters.recommendationType"
+        width="150px"
+        aria-label="추천 분류"
+        @change="resetAndLoad"
+      >
+        <option value="">전체 추천 분류</option>
+        <option
+          v-for="option in EXTERNAL_JOB_RECOMMENDATION_OPTIONS"
+          :key="option.value"
+          :value="option.value"
         >
-          <option value="">전체 출처</option>
-          <option
-            v-for="option in EXTERNAL_JOB_SOURCE_OPTIONS"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </option>
-        </select>
-
-        <select
-          v-model="filters.recommendationType"
-          class="control filter-select"
-          aria-label="추천 분류"
-          @change="resetAndLoad"
-        >
-          <option value="">전체 추천 분류</option>
-          <option
-            v-for="option in EXTERNAL_JOB_RECOMMENDATION_OPTIONS"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </option>
-        </select>
-
-        <select
-          v-model="filters.sort"
-          class="control sort-select"
-          aria-label="정렬 방식"
-          @change="resetAndLoad"
-        >
-          <option
-            v-for="option in EXTERNAL_JOB_SORT_OPTIONS"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </option>
-        </select>
-
-        <button v-if="hasActiveFilters" type="button" class="reset-button" @click="resetFilters">
-          필터 초기화
-        </button>
-      </div>
-    </section>
+          {{ option.label }}
+        </option>
+      </BaseSelect>
+      <BaseSelect v-model="filters.sort" width="91px" aria-label="정렬 방식" @change="resetAndLoad">
+        <option value="RECOMMENDED">추천순</option>
+        <option value="LATEST">최신순</option>
+      </BaseSelect>
+      <BaseSearchInput
+        v-model.trim="searchKeyword"
+        type="text"
+        placeholder="제목이나 회사명으로 검색"
+        :with-icon="false"
+        aria-label="외부 공고 검색어"
+      />
+      <BaseButton type="submit">
+        <template #icon>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </template>
+        검색
+      </BaseButton>
+    </BaseFilterBar>
 
     <p class="source-notice">
       외부 공고는 공공 채용 API를 기반으로 수집된 정보입니다. 지원은 원문 사이트에서 진행해주세요.
@@ -77,7 +49,7 @@
 
     <div v-else-if="errorMessage" class="state-card error-state">
       <p>{{ errorMessage }}</p>
-      <button type="button" class="retry-button" @click="loadExternalJobs">다시 시도</button>
+      <BaseButton variant="outline" size="sm" @click="loadExternalJobs">다시 시도</BaseButton>
     </div>
 
     <section v-else-if="!externalJobs.length" class="empty-state">
@@ -92,11 +64,17 @@
       </div>
 
       <div class="recruitment-list">
-        <article v-for="item in externalJobs" :key="item.externalJobId" class="recruitment-card">
+        <article
+          v-for="(item, index) in externalJobs"
+          :key="item.externalJobId"
+          class="recruitment-card"
+        >
           <div class="card-main">
             <div class="card-heading">
               <div class="title-area">
-                <h2 class="card-title">{{ item.title || '제목 없는 공고' }}</h2>
+                <button type="button" class="title-button" @click="goToDetail(item.externalJobId)">
+                  {{ item.title || '제목 없는 공고' }}
+                </button>
                 <div class="meta-row">
                   <span class="meta-item">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -118,6 +96,9 @@
               </div>
 
               <div class="badge-row">
+                <span v-if="shouldShowAiRecommendation(index)" class="ai-recommendation-badge">
+                  AI가 추천하는 공고입니다.
+                </span>
                 <span
                   v-if="item.recommendationLabel"
                   :class="['recommendation-badge', item.recommendationClassName]"
@@ -137,7 +118,7 @@
                   <path d="M7 8h10M7 12h10M7 16h6" />
                 </svg>
                 <div>
-                  <dt>직무 카테고리</dt>
+                  <dt>업종 카테고리</dt>
                   <dd>{{ displayText(item.jobCategoryRaw, '-') }}</dd>
                 </div>
               </div>
@@ -177,6 +158,15 @@
 
             <div class="card-footer">
               <div class="action-buttons">
+                <BaseButton
+                  class="detail-button"
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  @click="goToDetail(item.externalJobId)"
+                >
+                  {{ item.detailButtonLabel || '상세 보기' }}
+                </BaseButton>
                 <a
                   v-if="item.sourceUrl"
                   class="source-link"
@@ -184,7 +174,7 @@
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  원문 보기
+                  {{ item.sourceButtonLabel || '사이트에서 확인' }}
                 </a>
                 <button v-else type="button" class="source-link disabled-link" disabled>
                   원문 없음
@@ -195,41 +185,37 @@
         </article>
       </div>
 
-      <nav v-if="pagination.totalPages > 1" class="pagination" aria-label="외부 공고 목록 페이지">
-        <button
-          type="button"
-          :disabled="!pagination.hasPrev"
-          @click="changePage(pagination.page - 1)"
-        >
-          이전
-        </button>
-        <span>{{ pagination.page }} / {{ pagination.totalPages }}</span>
-        <button
-          type="button"
-          :disabled="!pagination.hasNext"
-          @click="changePage(pagination.page + 1)"
-        >
-          다음
-        </button>
-      </nav>
+      <BasePagination
+        :current-page="pagination.page"
+        :total-pages="pagination.totalPages"
+        :total-elements="pagination.totalElements"
+        :page-size="pagination.size"
+        :disabled="isLoading"
+        @change="changePage"
+      />
     </template>
   </section>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   EXTERNAL_JOB_RECOMMENDATION_OPTIONS,
-  EXTERNAL_JOB_SORT_OPTIONS,
-  EXTERNAL_JOB_SOURCE_OPTIONS,
   getExternalJobs,
 } from '@/features/externalJobs/api/externalJobApi.js'
+import BaseButton from '@/shared/ui/BaseButton.vue'
+import BaseFilterBar from '@/shared/ui/BaseFilterBar.vue'
+import BasePagination from '@/shared/ui/BasePagination.vue'
+import BaseSearchInput from '@/shared/ui/BaseSearchInput.vue'
+import BaseSelect from '@/shared/ui/BaseSelect.vue'
 
+const router = useRouter()
 const externalJobs = ref([])
 const isLoading = ref(true)
 const errorMessage = ref('')
 const searchKeyword = ref('')
-const filters = reactive({ keyword: '', source: '', recommendationType: '', sort: 'LATEST' })
+const filters = reactive({ keyword: '', recommendationType: '', sort: 'RECOMMENDED' })
 const pagination = reactive({
   page: 1,
   size: 10,
@@ -239,10 +225,6 @@ const pagination = reactive({
   hasPrev: false,
 })
 let latestRequestId = 0
-
-const hasActiveFilters = computed(() =>
-  Boolean(filters.keyword || filters.source || filters.recommendationType),
-)
 
 onMounted(() => {
   loadExternalJobs()
@@ -256,7 +238,6 @@ async function loadExternalJobs() {
   try {
     const data = await getExternalJobs({
       keyword: filters.keyword,
-      source: filters.source,
       recommendationType: filters.recommendationType,
       sort: filters.sort,
       page: pagination.page,
@@ -296,20 +277,20 @@ function resetAndLoad() {
   loadExternalJobs()
 }
 
-function resetFilters() {
-  searchKeyword.value = ''
-  filters.keyword = ''
-  filters.source = ''
-  filters.recommendationType = ''
-  pagination.page = 1
-  loadExternalJobs()
-}
-
 function changePage(page) {
   if (page < 1 || page > pagination.totalPages || page === pagination.page) return
   pagination.page = page
   loadExternalJobs()
   window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function goToDetail(externalJobId) {
+  if (externalJobId === null || externalJobId === undefined) return
+  router.push({
+    name: 'ExternalJobDetail',
+    params: { externalJobId },
+    query: { from: 'external' },
+  })
 }
 
 function displayText(value, fallback = '-') {
@@ -319,6 +300,16 @@ function displayText(value, fallback = '-') {
 function formatExternalDate(value) {
   if (!value) return '-'
   return String(value).slice(0, 10).replaceAll('-', '.')
+}
+
+function shouldShowAiRecommendation(index) {
+  const pageNumber = Number(pagination.page)
+  return (
+    filters.sort === 'RECOMMENDED' &&
+    index === 0 &&
+    !pagination.hasPrev &&
+    (pageNumber === 0 || pageNumber === 1)
+  )
 }
 
 function getExternalJobError(error, fallback) {
@@ -436,13 +427,20 @@ function getExternalJobError(error, fallback) {
 .title-area {
   min-width: 0;
 }
-.card-title {
-  margin: 0;
+.title-button {
+  padding: 0;
+  border: 0;
+  background: none;
   color: #1a233d;
   font-size: 19px;
   font-weight: 700;
   line-height: 1.4;
+  text-align: left;
   overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.title-button:hover {
+  text-decoration: underline;
 }
 .badge-row {
   display: flex;
@@ -453,6 +451,7 @@ function getExternalJobError(error, fallback) {
   flex: 0 0 auto;
 }
 .recommendation-badge,
+.ai-recommendation-badge,
 .freelance-badge {
   min-height: 25px;
   padding: 0 9px;
@@ -461,6 +460,10 @@ function getExternalJobError(error, fallback) {
   align-items: center;
   font-size: 11px;
   font-weight: 600;
+}
+.ai-recommendation-badge {
+  background: #1a233d;
+  color: #ffffff;
 }
 .recommendation-high {
   background: #fef3c7;
@@ -566,6 +569,13 @@ function getExternalJobError(error, fallback) {
   display: flex;
   gap: 8px;
   flex: 0 0 auto;
+}
+.detail-button {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
 }
 .source-link {
   min-height: 36px;

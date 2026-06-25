@@ -24,14 +24,6 @@ vi.mock('@/features/externalJobs/api/externalJobApi.js', () => ({
     { value: 'RECOMMENDED', label: '추천' },
     { value: 'POSSIBLE', label: '검토 가능' },
   ],
-  EXTERNAL_JOB_SORT_OPTIONS: [
-    { value: 'LATEST', label: '최신순' },
-    { value: 'DEADLINE', label: '마감 임박순' },
-  ],
-  EXTERNAL_JOB_SOURCE_OPTIONS: [
-    { value: 'SEOUL', label: '서울시 일자리플러스센터' },
-    { value: 'GYEONGGI', label: '경기도 잡아바' },
-  ],
   getExternalJobs: mocks.getExternalJobs,
 }))
 
@@ -55,6 +47,7 @@ beforeEach(() => {
         deadlineAt: '2026-07-01T00:00:00',
         sourceLabel: '서울시 일자리플러스센터',
         sourceUrl: 'https://example.com/job/1',
+        sourceButtonLabel: '사이트에서 확인',
         freelanceTypeLabel: '프리랜서 적합',
         recommendationLabel: '추천',
         recommendationClassName: 'recommendation-recommended',
@@ -121,9 +114,8 @@ describe('RecruitmentListPage', () => {
 
     expect(mocks.getExternalJobs).toHaveBeenCalledWith({
       keyword: '',
-      source: '',
       recommendationType: '',
-      sort: 'LATEST',
+      sort: 'RECOMMENDED',
       page: 1,
       size: 10,
     })
@@ -133,7 +125,7 @@ describe('RecruitmentListPage', () => {
     expect(wrapper.find('.bookmark-button').exists()).toBe(false)
 
     const sourceLink = wrapper.get('a.source-link')
-    expect(sourceLink.text()).toBe('원문 보기')
+    expect(sourceLink.text()).toBe('사이트에서 확인')
     expect(sourceLink.attributes('href')).toBe('https://example.com/job/1')
     expect(sourceLink.attributes('target')).toBe('_blank')
     expect(sourceLink.attributes('rel')).toBe('noopener noreferrer')

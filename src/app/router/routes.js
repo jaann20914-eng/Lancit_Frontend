@@ -73,6 +73,11 @@ const routes = [
         beforeEnter: requireFreelancer,
       },
       {
+        path: 'external-jobs/:externalJobId',
+        name: 'ExternalJobDetail',
+        component: () => import('@/pages/recruitments/ExternalJobDetailPage.vue'),
+      },
+      {
         path: 'recruitments/:id',
         name: 'RecruitmentDetail',
         component: () => import('@/pages/recruitments/RecruitmentDetailPage.vue'),

@@ -2,8 +2,8 @@
   <div class="page">
     <header class="page-header">
       <div>
-        <h1>포트폴리오</h1>
-        <p>나의 역량을 소개하고 진행한 프로젝트를 관리할 수 있습니다.</p>
+        <h1 class="page-title">포트폴리오</h1>
+        <p class="page-description">나의 역량을 소개하고 진행한 프로젝트를 관리할 수 있습니다.</p>
       </div>
     </header>
 
@@ -54,16 +54,16 @@
           <h2 id="project-section-title">내 프로젝트</h2>
           <p>프로젝트별 공개 여부는 각 프로젝트에서 따로 설정합니다.</p>
         </div>
-        <button type="button" class="primary-button" @click="goToCreate">
+        <BaseButton @click="goToCreate">
           <span aria-hidden="true">＋</span>
           프로젝트 등록
-        </button>
+        </BaseButton>
       </div>
 
-      <div class="project-toolbar" role="search">
-        <select
+      <BaseFilterBar role="search" aria-label="프로젝트 검색 및 정렬">
+        <BaseSelect
           v-model="categoryFilter"
-          class="filter-select"
+          width="110px"
           aria-label="프로젝트 카테고리"
           @change="resetPortfolioPage"
         >
@@ -73,32 +73,35 @@
           <option value="BRANDING">브랜딩</option>
           <option value="MARKETING">마케팅</option>
           <option value="PLANNING">기획</option>
-        </select>
-        <select
+        </BaseSelect>
+        <BaseSelect
           v-model="sortType"
-          class="filter-select"
+          width="91px"
           aria-label="프로젝트 정렬"
           @change="resetPortfolioPage"
         >
           <option value="LATEST">최신순</option>
           <option value="OLDEST">오래된순</option>
-        </select>
+        </BaseSelect>
 
-        <div class="search-input-wrap">
-          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
-            v-model="keyword"
-            type="search"
-            class="search-input"
-            placeholder="프로젝트로 검색..."
-            aria-label="프로젝트 검색"
-            @keyup.enter="submitPortfolioSearch"
-          />
-        </div>
-      </div>
+        <BaseSearchInput
+          v-model="keyword"
+          type="text"
+          placeholder="검색어를 입력하세요"
+          :with-icon="false"
+          aria-label="프로젝트 검색어"
+          @search="submitPortfolioSearch"
+        />
+        <BaseButton @click="submitPortfolioSearch">
+          <template #icon>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </template>
+          검색
+        </BaseButton>
+      </BaseFilterBar>
 
       <div v-if="isLoading" class="state-card">
         <span class="spinner" aria-hidden="true"></span>
@@ -107,7 +110,7 @@
 
       <div v-else-if="errorMessage" class="state-card error-state">
         <p>{{ errorMessage }}</p>
-        <button type="button" class="retry-button" @click="loadPortfolios">다시 시도</button>
+        <BaseButton variant="outline" size="sm" @click="loadPortfolios">다시 시도</BaseButton>
       </div>
 
       <PortfolioEmptyState
@@ -136,23 +139,14 @@
           />
         </div>
 
-        <nav v-if="totalPages > 1" class="pagination" aria-label="포트폴리오 페이지">
-          <button
-            type="button"
-            :disabled="currentPage <= 1 || isLoading"
-            @click="changePage(currentPage - 1)"
-          >
-            이전
-          </button>
-          <span>{{ currentPage }} / {{ totalPages }}</span>
-          <button
-            type="button"
-            :disabled="currentPage >= totalPages || isLoading"
-            @click="changePage(currentPage + 1)"
-          >
-            다음
-          </button>
-        </nav>
+        <BasePagination
+          :current-page="currentPage"
+          :total-pages="totalPages"
+          :total-elements="totalElements"
+          :page-size="pageSize"
+          :disabled="isLoading"
+          @change="changePage"
+        />
       </template>
     </section>
   </div>
@@ -177,6 +171,11 @@ import PortfolioCard from '@/features/portfolio/ui/PortfolioCard.vue'
 import PortfolioEmptyState from '@/features/portfolio/ui/PortfolioEmptyState.vue'
 import PortfolioProfileCard from '@/features/portfolio/ui/PortfolioProfileCard.vue'
 import PortfolioProfileForm from '@/features/portfolio/ui/PortfolioProfileForm.vue'
+import BaseButton from '@/shared/ui/BaseButton.vue'
+import BaseFilterBar from '@/shared/ui/BaseFilterBar.vue'
+import BasePagination from '@/shared/ui/BasePagination.vue'
+import BaseSearchInput from '@/shared/ui/BaseSearchInput.vue'
+import BaseSelect from '@/shared/ui/BaseSelect.vue'
 
 const router = useRouter()
 
@@ -195,6 +194,8 @@ const categoryFilter = ref('')
 const sortType = ref('LATEST')
 const currentPage = ref(1)
 const totalPages = ref(0)
+const totalElements = ref(0)
+const pageSize = 10
 const isLoading = ref(true)
 const errorMessage = ref('')
 const deletingId = ref(null)
@@ -325,10 +326,11 @@ async function loadPortfolios() {
       sort: 'created_at',
       direction: sortType.value === 'OLDEST' ? 'ASC' : 'DESC',
       page: currentPage.value,
-      size: 10,
+      size: pageSize,
     })
     portfolios.value = extractPortfolioList(data)
     totalPages.value = Number(data?.totalPages) || 0
+    totalElements.value = Number(data?.totalElements ?? data?.totalCount ?? portfolios.value.length)
 
     if (currentPage.value > 1 && currentPage.value > totalPages.value) {
       currentPage.value = Math.max(1, totalPages.value)
@@ -341,6 +343,7 @@ async function loadPortfolios() {
       error,
       '포트폴리오를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
     )
+    totalElements.value = 0
   } finally {
     isLoading.value = false
   }
@@ -444,11 +447,11 @@ function getRequestError(error, fallback) {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  padding: 32px;
+  padding: var(--lancit-page-padding);
 }
 
 .page-header {
-  margin-bottom: 32px;
+  margin-bottom: var(--lancit-page-header-margin);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -456,20 +459,22 @@ function getRequestError(error, fallback) {
 }
 
 .page-header h1 {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   color: #1a233d;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
+  line-height: 1.3;
 }
 
 .page-header p {
   margin: 0;
-  color: #6c757d;
+  color: var(--lancit-page-description-color);
   font-size: 14px;
+  line-height: 1.5;
 }
 
 .profile-section {
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
 
 .section-heading {
@@ -687,7 +692,7 @@ function getRequestError(error, fallback) {
 
 @media (max-width: 800px) {
   .page {
-    padding: 24px 18px;
+    padding: var(--lancit-page-mobile-padding);
   }
 }
 

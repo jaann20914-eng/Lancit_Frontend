@@ -47,9 +47,9 @@
 
         <div class="form-grid">
           <div class="form-group">
-            <label for="job-category">직무 카테고리 <span class="required">*</span></label>
+            <label for="job-category">업종 카테고리 <span class="required">*</span></label>
             <select id="job-category" v-model="form.jobCategory" class="form-control" :class="{ invalid: errors.jobCategory }" :aria-invalid="Boolean(errors.jobCategory)" :aria-describedby="errors.jobCategory ? 'job-category-error' : undefined">
-              <option value="">직무를 선택하세요</option>
+              <option value="">업종을 선택하세요</option>
               <option v-for="option in JOB_CATEGORY_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
             </select>
             <p v-if="errors.jobCategory" id="job-category-error" class="form-error" role="alert">{{ errors.jobCategory }}</p>
@@ -272,7 +272,7 @@ function validateForm() {
   if (!form.title.trim()) errors.title = '공고 제목을 입력해주세요.'
   if (!form.summary.trim()) errors.summary = '한 줄 요약을 입력해주세요.'
   if (!form.content.trim()) errors.content = '공고 내용을 입력해주세요.'
-  if (!form.jobCategory) errors.jobCategory = '직무 카테고리를 선택해주세요.'
+  if (!form.jobCategory) errors.jobCategory = '업종 카테고리를 선택해주세요.'
   if (!form.recruitmentCategory) errors.recruitmentCategory = '공고 카테고리를 선택해주세요.'
   if (!Number.isFinite(Number(form.budget)) || Number(form.budget) < 0) errors.budget = '예산은 0 이상이어야 합니다.'
 

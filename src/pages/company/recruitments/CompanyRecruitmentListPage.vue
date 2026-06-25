@@ -2,10 +2,10 @@
   <div class="page">
     <header class="page-header">
       <div>
-        <h1>공고 관리</h1>
-        <p>{{ activeTabDescription }}</p>
+        <h1 class="page-title">공고 관리</h1>
+        <p class="page-description">{{ activeTabDescription }}</p>
       </div>
-      <button type="button" class="primary-button" @click="goToCreate">＋ 공고 등록</button>
+      <BaseButton @click="goToCreate">＋ 공고 등록</BaseButton>
     </header>
 
     <div class="scope-tabs" role="tablist" aria-label="공고 조회 범위">
@@ -39,26 +39,24 @@
         </button>
       </div>
 
-      <form class="search-row" @submit.prevent="applySearch">
-        <input
+      <BaseFilterBar as="form" class="recruitment-search-row" flush @submit.prevent="applySearch">
+        <BaseSearchInput
           v-model.trim="searchKeyword"
-          type="search"
-          class="control search-input"
           placeholder="제목, 내용으로 검색"
           aria-label="공고 검색어"
         />
-        <select
+        <BaseSelect
           v-model="filters.sort"
-          class="control sort-select"
+          width="140px"
           aria-label="정렬 방식"
           @change="resetAndLoad"
         >
           <option value="LATEST">최신순</option>
           <option value="DEADLINE">마감 임박순</option>
           <option value="BUDGET">예산 높은순</option>
-        </select>
-        <button type="submit" class="search-button">검색</button>
-      </form>
+        </BaseSelect>
+        <BaseButton type="submit">검색</BaseButton>
+      </BaseFilterBar>
     </section>
 
     <div v-if="isLoading" class="state-card">
@@ -68,16 +66,14 @@
 
     <div v-else-if="errorMessage" class="state-card error-state">
       <p>{{ errorMessage }}</p>
-      <button type="button" class="retry-button" @click="loadRecruitments">다시 시도</button>
+      <BaseButton variant="outline" size="sm" @click="loadRecruitments">다시 시도</BaseButton>
     </div>
 
     <section v-else-if="!recruitments.length" class="empty-state">
       <div class="empty-icon" aria-hidden="true">＋</div>
       <h2>{{ activeTab === 'MY' ? '등록한 공고가 없습니다.' : '조회된 공고가 없습니다.' }}</h2>
       <p>{{ emptyStateDescription }}</p>
-      <button v-if="activeTab === 'MY'" type="button" class="primary-button" @click="goToCreate">
-        공고 등록
-      </button>
+      <BaseButton v-if="activeTab === 'MY'" @click="goToCreate"> 공고 등록 </BaseButton>
     </section>
 
     <template v-else>
@@ -195,60 +191,51 @@
               <p v-else class="tech-stack-empty">등록된 기술 스택이 없습니다.</p>
 
               <div class="footer-actions">
-                <button type="button" class="detail-button" @click="goToDetail(item.recruitmentId)">
+                <BaseButton variant="outline" size="sm" @click="goToDetail(item.recruitmentId)">
                   상세 보기
-                </button>
-                <button
+                </BaseButton>
+                <BaseButton
                   v-if="canManage(item)"
-                  type="button"
-                  class="footer-button edit-button"
+                  variant="outline"
+                  size="sm"
                   :disabled="!item.canEdit"
                   :title="item.canEdit ? '' : '지원자가 있는 공고는 수정할 수 없습니다.'"
                   @click="goToEdit(item)"
                 >
                   수정
-                </button>
-                <button
+                </BaseButton>
+                <BaseButton
                   v-if="canManage(item)"
-                  type="button"
-                  class="footer-button copy-button"
+                  variant="secondary"
+                  size="sm"
                   @click="goToCopy(item)"
                 >
                   재등록
-                </button>
-                <button
+                </BaseButton>
+                <BaseButton
                   v-if="canManage(item)"
-                  type="button"
-                  class="footer-button delete-button"
+                  variant="danger"
+                  size="sm"
                   :disabled="!item.canDelete || deletingId === item.recruitmentId"
                   :title="item.canDelete ? '' : '지원자가 있는 공고는 삭제할 수 없습니다.'"
                   @click="handleDelete(item)"
                 >
                   {{ deletingId === item.recruitmentId ? '삭제 중...' : '삭제' }}
-                </button>
+                </BaseButton>
               </div>
             </div>
           </div>
         </article>
       </div>
 
-      <nav v-if="pagination.totalPages > 1" class="pagination" aria-label="공고 목록 페이지">
-        <button
-          type="button"
-          :disabled="!pagination.hasPrev"
-          @click="changePage(pagination.page - 1)"
-        >
-          이전
-        </button>
-        <span>{{ pagination.page }} / {{ pagination.totalPages }}</span>
-        <button
-          type="button"
-          :disabled="!pagination.hasNext"
-          @click="changePage(pagination.page + 1)"
-        >
-          다음
-        </button>
-      </nav>
+      <BasePagination
+        :current-page="pagination.page"
+        :total-pages="pagination.totalPages"
+        :total-elements="pagination.totalElements"
+        :page-size="pagination.size"
+        :disabled="isLoading"
+        @change="changePage"
+      />
     </template>
   </div>
 </template>
@@ -270,6 +257,11 @@ import {
   getRecruitmentStatusMeta,
   RECRUITMENT_STATUS_OPTIONS,
 } from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
+import BaseButton from '@/shared/ui/BaseButton.vue'
+import BaseFilterBar from '@/shared/ui/BaseFilterBar.vue'
+import BasePagination from '@/shared/ui/BasePagination.vue'
+import BaseSearchInput from '@/shared/ui/BaseSearchInput.vue'
+import BaseSelect from '@/shared/ui/BaseSelect.vue'
 
 const SCOPE_TABS = [
   { value: 'MY', label: '내 공고' },
@@ -471,25 +463,28 @@ function goToCopy(item) {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  padding: 32px;
+  padding: var(--lancit-page-padding);
   color: #1f2937;
 }
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: var(--lancit-page-header-margin);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
 }
 .page-header h1 {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   color: #1a233d;
   font-size: 28px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 .page-header p {
   margin: 0;
-  color: #6b7280;
+  color: var(--lancit-page-description-color);
   font-size: 14px;
+  line-height: 1.5;
 }
 .primary-button {
   min-height: 42px;
@@ -535,7 +530,7 @@ function goToCopy(item) {
   font-size: 13px;
 }
 .filter-panel {
-  margin-bottom: 22px;
+  margin-bottom: 20px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: white;
@@ -565,6 +560,9 @@ function goToCopy(item) {
   padding: 16px 18px;
   display: flex;
   gap: 8px;
+}
+.recruitment-search-row {
+  padding: 16px 18px;
 }
 .control {
   height: 40px;
@@ -608,7 +606,7 @@ function goToCopy(item) {
 }
 .recruitment-list {
   display: grid;
-  gap: 14px;
+  gap: var(--lancit-list-gap);
 }
 .recruitment-card {
   border: 1px solid #e5e7eb;
@@ -945,7 +943,7 @@ function goToCopy(item) {
 }
 @media (max-width: 800px) {
   .page {
-    padding: 24px 18px;
+    padding: var(--lancit-page-mobile-padding);
   }
   .page-header {
     align-items: center;

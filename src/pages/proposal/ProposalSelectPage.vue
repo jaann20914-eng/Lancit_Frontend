@@ -5,9 +5,9 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">제안할 공고 선택</h1>
-        <p class="page-sub">프리랜서에게 제안할 공고문을 선택하세요</p>
+        <p class="page-description page-sub">프리랜서에게 제안할 공고문을 선택하세요</p>
       </div>
-      <button class="btn-propose" :disabled="!selectedId" @click="handlePropose">제안하기</button>
+      <BaseButton :disabled="!selectedId" @click="handlePropose">제안하기</BaseButton>
     </div>
 
     <div v-if="isLoading" class="loading">불러오는 중...</div>
@@ -39,18 +39,22 @@
 
         <div class="item-actions">
           <!-- 상세보기는 항상 가능 -->
-          <button class="btn-detail" @click.stop="goRecruitmentDetail(item.recruitmentId)">
+          <BaseButton
+            variant="outline"
+            size="sm"
+            @click.stop="goRecruitmentDetail(item.recruitmentId)"
+          >
             상세보기
-          </button>
+          </BaseButton>
 
           <!-- 선택은 가능할 때만 -->
-          <button
-            class="btn-select"
+          <BaseButton
+            size="sm"
             :disabled="!item.isProposable"
             @click.stop="selectedId = item.recruitmentId"
           >
             선택
-          </button>
+          </BaseButton>
         </div>
       </div>
 
@@ -93,26 +97,14 @@
     </div>
 
     <!-- 페이지네이션 -->
-    <div class="pagination" v-if="totalPages > 1">
-      <button class="page-btn" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
-        ‹
-      </button>
-      <button
-        v-for="p in totalPages"
-        :key="p"
-        :class="['page-btn', p === currentPage ? 'active' : '']"
-        @click="changePage(p)"
-      >
-        {{ p }}
-      </button>
-      <button
-        class="page-btn"
-        :disabled="currentPage === totalPages"
-        @click="changePage(currentPage + 1)"
-      >
-        ›
-      </button>
-    </div>
+    <BasePagination
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :total-elements="totalElements"
+      :page-size="pageSize"
+      :disabled="isLoading"
+      @change="changePage"
+    />
   </div>
 </template>
 
@@ -121,6 +113,8 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getMyActiveRecruitments } from '@/features/recruitment/api/recruitmentApi.js'
 import { createContract } from '@/features/contract/api/contractApi.js'
+import BaseButton from '@/shared/ui/BaseButton.vue'
+import BasePagination from '@/shared/ui/BasePagination.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -133,6 +127,7 @@ const selectedId = ref(
   route.query.selectedRecruitmentId ? Number(route.query.selectedRecruitmentId) : null,
 )
 const totalPages = ref(1)
+const totalElements = ref(0)
 const pageSize = 5
 
 const jobCategoryMap = {
@@ -185,8 +180,10 @@ async function fetchRecruitments() {
     const data = res.data.data
     recruitments.value = data.content || data.list || []
     totalPages.value = data.totalPages || 1
+    totalElements.value = Number(data.totalElements ?? data.totalCount ?? recruitments.value.length)
   } catch (err) {
     recruitments.value = []
+    totalElements.value = 0
   } finally {
     isLoading.value = false
   }
@@ -202,7 +199,7 @@ async function handlePropose() {
   if (!selectedId.value) return
 
   try {
-    const res = await createContract({
+    await createContract({
       recruitmentId: selectedId.value,
       freelancerEmail: freelancerEmail,
     })
@@ -219,7 +216,7 @@ onMounted(fetchRecruitments)
 
 <style scoped>
 .page {
-  padding: 32px;
+  padding: var(--lancit-page-padding);
   max-width: 100%;
 }
 
@@ -239,20 +236,23 @@ onMounted(fetchRecruitments)
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 24px;
+  margin-bottom: var(--lancit-page-header-margin);
+  gap: 20px;
 }
 
 .page-title {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
   color: #1a233d;
   margin: 0 0 4px;
+  line-height: 1.3;
 }
 
 .page-sub {
-  font-size: 13px;
-  color: #6c757d;
+  font-size: 14px;
+  color: var(--lancit-page-description-color);
   margin: 0;
+  line-height: 1.5;
 }
 
 .btn-propose {
@@ -281,7 +281,7 @@ onMounted(fetchRecruitments)
 .recruitment-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--lancit-list-gap);
 }
 
 .recruitment-item {
@@ -380,6 +380,12 @@ onMounted(fetchRecruitments)
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+}
+
+@media (max-width: 800px) {
+  .page {
+    padding: var(--lancit-page-mobile-padding);
+  }
 }
 
 .btn-detail,
