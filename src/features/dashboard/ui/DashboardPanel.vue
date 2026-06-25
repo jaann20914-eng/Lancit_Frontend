@@ -76,6 +76,10 @@ defineProps({
 })
 
 function goToPortfolio(portfolio) {
+  if (portfolio?.portfolioId === null || portfolio?.portfolioId === undefined) {
+    router.push({ name: 'PortfolioList' })
+    return
+  }
   router.push({ name: 'PortfolioDetail', params: { id: portfolio.portfolioId } })
 }
 </script>
@@ -160,17 +164,18 @@ function goToPortfolio(portfolio) {
   gap: 18px;
   transition:
     border-color 0.15s ease,
-    background-color 0.15s ease;
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
-.panel-item:hover {
-  border-color: #c7d2e1;
-  background: #f7f9fc;
-}
-
+.panel-item:hover,
 .panel-item:focus-visible {
-  outline: 3px solid rgba(59, 130, 246, 0.2);
-  outline-offset: 1px;
+  border-color: #7f89a1;
+  background: #f7f9fc;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+  outline: none;
 }
 
 .item-main {

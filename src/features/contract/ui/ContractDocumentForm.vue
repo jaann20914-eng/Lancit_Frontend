@@ -424,7 +424,7 @@
         </li>
         <li>
           <span class="num">3.</span
-          ><span>신체 또는 정신상 병으로 업종을 감당할 수 없다고 인정되는 경우</span>
+          ><span>신체 또는 정신상 병으로 직종을 감당할 수 없다고 인정되는 경우</span>
         </li>
         <li>
           <span class="num">4.</span

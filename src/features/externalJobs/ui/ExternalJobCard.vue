@@ -54,7 +54,7 @@
             <path d="M7 8h10M7 12h10M7 16h6" />
           </svg>
           <div>
-            <dt>업종 카테고리</dt>
+            <dt>직종 카테고리</dt>
             <dd>{{ displayText(job.jobCategoryRaw, '-') }}</dd>
           </div>
         </div>
@@ -148,12 +148,14 @@ function formatExternalDate(value) {
   cursor: pointer;
   transition:
     border-color 0.15s,
-    box-shadow 0.15s;
+    box-shadow 0.15s,
+    transform 0.15s;
 }
 .recruitment-card:hover,
 .recruitment-card:focus-visible {
-  border-color: #d1d5db;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  border-color: #7f89a1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
   outline: none;
 }
 .card-main {

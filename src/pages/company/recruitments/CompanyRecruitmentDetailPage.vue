@@ -773,12 +773,14 @@ function goToApplicationDetail(applicationId) {
   cursor: pointer;
   transition:
     border-color 0.15s,
-    box-shadow 0.15s;
+    box-shadow 0.15s,
+    transform 0.15s;
 }
 .application-card:hover,
 .application-card:focus-visible {
-  border-color: #d1d5db;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  border-color: #7f89a1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
   outline: none;
 }
 .applicant-avatar {

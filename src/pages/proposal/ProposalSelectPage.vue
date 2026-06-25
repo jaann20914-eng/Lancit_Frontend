@@ -314,7 +314,9 @@ onMounted(fetchRecruitments)
 
 .recruitment-item:hover,
 .recruitment-item:focus-visible {
-  border-color: #5466cc;
+  border-color: #7f89a1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
   outline: none;
 }
 .recruitment-item.selected {

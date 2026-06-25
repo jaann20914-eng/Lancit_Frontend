@@ -98,7 +98,6 @@ defineProps({
     default: '',
   },
 })
-
 </script>
 
 <style scoped>
@@ -208,15 +207,12 @@ defineProps({
     border-color 0.16s ease;
 }
 
-.summary-card:hover {
-  transform: translateY(-2px);
-  border-color: #cfd5df;
-  box-shadow: 0 7px 18px rgba(26, 35, 61, 0.12);
-}
-
+.summary-card:hover,
 .summary-card:focus-visible {
-  outline: 3px solid rgba(59, 130, 246, 0.24);
-  outline-offset: 2px;
+  transform: translateY(-1px);
+  border-color: #7f89a1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  outline: none;
 }
 
 .summary-copy {

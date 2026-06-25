@@ -64,7 +64,11 @@
         v-for="talent in talents"
         :key="talent.email"
         class="talent-item"
+        role="link"
+        tabindex="0"
         @click="goDetail(talent.email)"
+        @keydown.enter.prevent="goDetail(talent.email)"
+        @keydown.space.prevent="goDetail(talent.email)"
       >
         <!-- 아바타 -->
         <div class="talent-avatar">
@@ -85,7 +89,7 @@
         </div>
 
         <!-- 액션 -->
-        <div class="talent-actions" @click.stop>
+        <div class="talent-actions" @click.stop @keydown.stop>
           <BaseButton
             size="sm"
             :variant="talent.bookmarked ? 'danger' : 'outline'"
@@ -335,10 +339,12 @@ onMounted(fetchList)
   transition: all 0.15s;
 }
 
-.talent-item:hover {
+.talent-item:hover,
+.talent-item:focus-visible {
   border-color: #1a233d;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
+  outline: none;
 }
 
 .talent-avatar {

@@ -22,7 +22,8 @@ describe('dashboardMapper', () => {
       recentProposals: [
         {
           contractId: 12,
-          title: '신규 제안',
+          recruitmentId: 22,
+          recruitmentTitle: '신규 제안 공고',
           companyName: '제안 기업',
           proposedAt: '2026-06-18T10:00:00',
           status: 'WAITING',
@@ -54,16 +55,22 @@ describe('dashboardMapper', () => {
     expect(result.panels[0].items[0]).toMatchObject({
       badge: '진행중',
       meta: '마감일: 2026-07-15',
-      to: '/freelancer/contracts/11',
+      to: { name: 'ContractDetail', params: { id: 11 } },
     })
-    expect(result.panels[1].items[0].to).toBe('/freelancer/contracts/12')
-    expect(result.panels[2].items[0].to).toBe('/freelancer/applications/21')
+    expect(result.panels[1].items[0]).toMatchObject({
+      title: '신규 제안 공고',
+      to: { name: 'RecruitmentDetail', params: { id: 22 }, query: { from: 'proposal' } },
+    })
+    expect(result.panels[2].items[0].to).toEqual({
+      name: 'ApplicationDetail',
+      params: { id: 21 },
+    })
     expect(result.panels[3].type).toBe('portfolio')
     expect(result.panels[3].items[0]).toMatchObject({
       portfolio: expect.objectContaining({ portfolioId: 41 }),
       subtitle: '웹/앱 · 프로젝트 소개',
       trailing: '공개',
-      to: '/freelancer/portfolio/41',
+      to: { name: 'PortfolioDetail', params: { id: 41 } },
     })
   })
 
@@ -107,16 +114,22 @@ describe('dashboardMapper', () => {
     })
 
     expect(result.summaryItems.map((item) => item.count)).toEqual([1, 2, 3, 4])
-    expect(result.panels[0].items[0].to).toBe('/company/contracts/51')
+    expect(result.panels[0].items[0].to).toEqual({
+      name: 'CompanyContractDetail',
+      params: { id: 51 },
+    })
     expect(result.panels[1].items[0]).toMatchObject({
       subtitle: 'IT · 개발자 모집',
       badge: '수락',
-      to: '/company/recruitments/62/applicants/61',
+      to: {
+        name: 'CompanyApplicantDetail',
+        params: { recruitmentId: 62, applicationId: 61 },
+      },
     })
     expect(result.panels[2].items[0]).toMatchObject({
       badge: '모집중',
       trailing: '지원자 8명',
-      to: '/company/recruitments/71',
+      to: { name: 'CompanyRecruitmentDetail', params: { recruitmentId: 71 } },
     })
   })
 

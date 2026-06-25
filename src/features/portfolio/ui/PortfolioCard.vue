@@ -20,7 +20,9 @@
         <span>{{ selected ? '선택됨' : '선택' }}</span>
       </label>
       <div v-else-if="!readonly" class="card-actions">
-        <button type="button" class="edit-button" @click.stop="$emit('edit', portfolio)">수정</button>
+        <button type="button" class="edit-button" @click.stop="$emit('edit', portfolio)">
+          수정
+        </button>
         <button
           type="button"
           class="delete-button"
@@ -59,36 +61,36 @@ import { computed } from 'vue'
 const props = defineProps({
   portfolio: {
     type: Object,
-    required: true
+    required: true,
   },
   isDeleting: {
     type: Boolean,
-    default: false
+    default: false,
   },
   bannerUrl: {
     type: String,
-    default: ''
+    default: '',
   },
   selectable: {
     type: Boolean,
-    default: false
+    default: false,
   },
   selected: {
     type: Boolean,
-    default: false
+    default: false,
   },
   disabled: {
     type: Boolean,
-    default: false
+    default: false,
   },
   readonly: {
     type: Boolean,
-    default: false
+    default: false,
   },
   showVisibility: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 })
 
 const emit = defineEmits(['view', 'edit', 'delete', 'select'])
@@ -99,12 +101,12 @@ const CATEGORY_LABELS = {
   VIDEO: '영상',
   BRANDING: '브랜딩',
   MARKETING: '마케팅',
-  PLANNING: '기획'
+  PLANNING: '기획',
 }
 
 const title = computed(() => props.portfolio.title || props.portfolio.projectTitle || '제목 없음')
 const summary = computed(
-  () => props.portfolio.summary || props.portfolio.description || '설명이 없습니다.'
+  () => props.portfolio.summary || props.portfolio.description || '설명이 없습니다.',
 )
 const resolvedBannerUrl = computed(
   () =>
@@ -112,7 +114,7 @@ const resolvedBannerUrl = computed(
     props.portfolio.bannerImageUrl ||
     props.portfolio.bannerUrl ||
     props.portfolio.imageUrl ||
-    ''
+    '',
 )
 const categoryLabel = computed(() => {
   const category = props.portfolio.category
@@ -157,14 +159,17 @@ function handleCardClick() {
   background: var(--color-bg-surface, #ffffff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
 }
 
 .portfolio-card:hover,
 .portfolio-card:focus-visible {
-  border-color: var(--color-primary, #1a233d);
-  box-shadow: 0 6px 16px rgba(26, 35, 61, 0.08);
-  transform: translateY(-2px);
+  border-color: #7f89a1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
   outline: none;
 }
 
