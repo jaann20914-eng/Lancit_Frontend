@@ -1,7 +1,7 @@
 <template>
   <div :class="['message-row', isMine ? 'mine' : 'theirs']">
     <!-- 상대방 메시지일 때만 아바타 표시 -->
-    <div v-if="!isMine" class="avatar">{{ senderInitial }}</div>
+    <div v-if="!isMine" class="avatar">{{ senderDisplay }}</div>
 
     <div class="message-col">
       <!-- 말풍선 -->
@@ -73,9 +73,17 @@ defineEmits(['edit', 'delete'])
 
 const isMine = computed(() => props.message.senderEmail === props.currentUserEmail)
 
-const senderInitial = computed(() => {
+// const senderInitial = computed(() => {
+//   const name = props.message.senderName || props.message.sender_name || ''
+//   const email = props.message.senderEmail || ''
+//   const target = name || email
+//   return target.charAt(0).toUpperCase() || '?'
+// })
+const senderDisplay = computed(() => {
+  const name = props.message.senderName || props.message.sender_name || ''
+  if (name) return name.length > 3 ? name.slice(0, 3) : name
   const email = props.message.senderEmail || ''
-  return email.charAt(0).toUpperCase()
+  return email.charAt(0).toUpperCase() || '?'
 })
 
 function formatTime(dateStr) {
@@ -123,18 +131,26 @@ async function handleDownloadFile() {
 }
 
 .avatar {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   border-radius: 50%;
-  background: #d1d5db;
-  color: #6b7280;
+  background: #e8edf5;
+  color: #1a233d;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   flex-shrink: 0;
   margin-top: 2px;
+  overflow: hidden;
+  text-align: center;
+  word-break: keep-all;
+  line-height: 1.2;
+  padding: 4px;
+  box-sizing: border-box;
 }
 
 .message-col {

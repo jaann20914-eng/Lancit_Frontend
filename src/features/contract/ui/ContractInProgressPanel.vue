@@ -53,30 +53,39 @@
 
         <div v-if="confirmFiles.length === 0" class="empty-mini">업로드된 파일이 없습니다</div>
 
-        <div v-else class="file-list">
-          <div v-for="file in confirmFiles" :key="file.contractFileId" class="file-item">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
-            <span class="file-name" @click="handleDownloadFile(file.fileId, file.oriName)">
-              {{ file.oriName || `파일_${file.fileId}` }}
-            </span>
-            <span class="file-date">{{ formatDate(file.createdAt) }}</span>
-            <button
-              v-if="isFreelancer && !isPending"
-              class="btn-delete-file"
-              @click="handleDeleteFile(file.contractFileId)"
-            >
-              ×
-            </button>
+        <div v-else class="file-groups">
+          <div v-for="[date, files] in groupedConfirmFiles" :key="date" class="file-group">
+            <!-- 날짜 구분선 -->
+            <div class="file-date-divider">
+              <span>{{ date }}</span>
+            </div>
+            <!-- 파일 목록 -->
+            <div class="file-list">
+              <div v-for="file in files" :key="file.contractFileId" class="file-item">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <span class="file-name" @click="handleDownloadFile(file.fileId, file.oriName)">
+                  {{ file.oriName || `파일_${file.fileId}` }}
+                </span>
+                <span class="file-date">{{ String(file.createdAt).slice(11, 16) }}</span>
+                <button
+                  v-if="isFreelancer && !isPending"
+                  class="btn-delete-file"
+                  @click="handleDeleteFile(file.contractFileId)"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -180,6 +189,18 @@ const {
 } = useContractCancel(detailRef, emit)
 
 const fileInputRef = ref(null)
+const groupedConfirmFiles = computed(() => {
+  const sorted = [...confirmFiles.value].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+  )
+  const groups = {}
+  for (const file of sorted) {
+    const date = String(file.createdAt).slice(0, 10)
+    if (!groups[date]) groups[date] = []
+    groups[date].push(file)
+  }
+  return Object.entries(groups) // [['2026-06-25', [...]], ...]
+})
 
 // 컨펌파일 탭 알림 표시
 const hasConfirmNotif = computed(() =>
@@ -607,5 +628,33 @@ async function handleComplete() {
   border-radius: 6px;
   font-size: 12px;
   cursor: pointer;
+}
+
+.file-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.file-date-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.file-date-divider::before,
+.file-date-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.file-date-divider span {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+  padding: 0 4px;
 }
 </style>

@@ -223,6 +223,8 @@ function goBack() {
 }
 
 function handleApplicationAction() {
+  console.log('businessNumberVerified:', recruitment.value?.businessNumberVerified)
+
   if (recruitment.value?.isApplied) {
     router.push({
       name: 'ApplicationDetail',
@@ -231,6 +233,15 @@ function handleApplicationAction() {
     return
   }
   if (!recruitment.value?.canApply) return
+
+  // 사업자 번호 미인증 체크
+  if (!recruitment.value?.businessNumberVerified) {
+    const proceed = confirm(
+      `'${recruitment.value.companyName || '해당 회사'}' 는 인증되지 않은 사업자입니다.\n그래도 지원하시겠습니까?`,
+    )
+    if (!proceed) return
+  }
+
   router.push({
     name: 'RecruitmentApply',
     params: { recruitmentId: recruitment.value.recruitmentId },

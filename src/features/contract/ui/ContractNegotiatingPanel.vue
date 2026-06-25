@@ -563,7 +563,7 @@ async function handleApprove() {
   font-size: 11px;
   color: #ef4444;
   margin: 0;
-  padding: 10px 20px 0;
+  padding: 10px;
 }
 
 .document-wrap {

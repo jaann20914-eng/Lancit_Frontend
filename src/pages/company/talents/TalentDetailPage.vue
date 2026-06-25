@@ -11,15 +11,19 @@
 
       <div class="profile-body">
         <div class="profile-head">
-          <h2 class="profile-name">프로필</h2>
+          <div>
+            <h2 class="profile-name">{{ profile.displayName || '이름 없음' }}</h2>
+            <div class="tag-row">
+              <span class="tag">{{ jobCategoryLabel(profile.jobCategory) }}</span>
+            </div>
+          </div>
           <BaseButton size="sm" @click="goPropose">제안하기</BaseButton>
         </div>
 
-        <div class="tag-row">
-          <span class="tag">{{ jobCategoryLabel(profile.jobCategory) }}</span>
-        </div>
+        <p v-if="profile.intro" class="profile-intro">{{ profile.intro }}</p>
+        <p v-else class="profile-intro muted">소개글이 없습니다.</p>
 
-        <p class="profile-intro">{{ profile.intro || '소개글이 없습니다.' }}</p>
+        <p v-if="profile.description" class="profile-desc">{{ profile.description }}</p>
       </div>
     </div>
 
@@ -50,8 +54,25 @@
 
     <!-- 포트폴리오 그리드 (공개 프로젝트만) -->
     <div v-if="isLoading" class="loading">불러오는 중...</div>
+    <!-- 변경 -->
     <div v-else-if="portfolios.length === 0" class="empty-state">
-      <p>공개된 포트폴리오가 없습니다</p>
+      <div class="empty-icon-wrap">
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#c0c6d4"
+          stroke-width="1.5"
+        >
+          <rect x="3" y="3" width="18" height="14" rx="2" />
+          <path d="M3 9h18" />
+          <circle cx="7.5" cy="6" r="0.5" fill="#c0c6d4" />
+          <circle cx="10.5" cy="6" r="0.5" fill="#c0c6d4" />
+        </svg>
+      </div>
+      <p class="empty-title">공개된 포트폴리오가 없습니다.</p>
+      <p class="empty-sub">이 프리랜서는 아직 포트폴리오를 공개하지 않았습니다.</p>
     </div>
 
     <div v-else class="portfolio-grid">
@@ -182,9 +203,8 @@ async function fetchProfile() {
   try {
     const res = await getTalentProfile(freelancerEmail)
     Object.assign(profile, res.data.data)
-    // profileFileId로 이미지 URL 가져오기
     if (profile.profileFileId) {
-      const urlRes = await httpClient.get(`/files/${profile.profileFileId}/url`)
+      const urlRes = await httpClient.get(`/portfolios/${profile.profileFileId}/public-url`)
       profile.profileImageUrl = urlRes.data.data
     }
   } catch {
@@ -419,8 +439,7 @@ onMounted(() => {
 }
 
 /* 그리드 */
-.loading,
-.empty-state {
+.loading {
   flex: 1;
   text-align: center;
   padding: 60px 0;
@@ -577,5 +596,53 @@ onMounted(() => {
 .page-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  flex: 1;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.empty-icon-wrap {
+  width: 80px;
+  height: 80px;
+  background: #f3f4f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.empty-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1a233d;
+  margin: 0 0 8px;
+}
+
+.empty-sub {
+  font-size: 13.5px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.profile-intro.muted {
+  color: #d1d5db;
+}
+
+.profile-desc {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 6px 0 0;
+  line-height: 1.6;
 }
 </style>

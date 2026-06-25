@@ -25,7 +25,9 @@ export const RECRUITMENT_STATUS_OPTIONS = [
   { value: 'CANCELLED', label: '취소' },
 ]
 
-const JOB_CATEGORY_LABELS = Object.fromEntries(JOB_CATEGORY_OPTIONS.map((item) => [item.value, item.label]))
+const JOB_CATEGORY_LABELS = Object.fromEntries(
+  JOB_CATEGORY_OPTIONS.map((item) => [item.value, item.label]),
+)
 const RECRUITMENT_CATEGORY_LABELS = Object.fromEntries(
   RECRUITMENT_CATEGORY_OPTIONS.map((item) => [item.value, item.label]),
 )
@@ -46,11 +48,17 @@ export function getRecruitmentCategoryLabel(value) {
 }
 
 export function getRecruitmentStatusMeta(value) {
-  return RECRUITMENT_STATUS_META[value] || { label: value || '상태 미정', className: 'status-unknown' }
+  return (
+    RECRUITMENT_STATUS_META[value] || { label: value || '상태 미정', className: 'status-unknown' }
+  )
 }
 
 export function normalizeTechStacks(value) {
-  const source = Array.isArray(value) ? value : typeof value === 'string' ? value.split(/[,\n]/) : []
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(/[,\n]/)
+      : []
   return [...new Set(source.map((item) => String(item).trim()).filter(Boolean))]
 }
 
@@ -122,6 +130,7 @@ export function mapRecruitmentFromApi(dto) {
     canEdit: Boolean(dto.canEdit ?? dto.permission?.canEdit),
     canDelete: Boolean(dto.canDelete ?? dto.permission?.canDelete),
     canChangeStatus: Boolean(dto.canChangeStatus ?? dto.permission?.canChangeStatus),
+    businessNumberVerified: dto.businessNumberVerified ?? null,
   }
 }
 

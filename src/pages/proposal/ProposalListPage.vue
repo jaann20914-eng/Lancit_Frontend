@@ -41,7 +41,27 @@
     <div v-if="isLoading" class="loading">불러오는 중...</div>
 
     <div v-else-if="proposals.length === 0" class="empty-state">
-      <p>받은 제안이 없습니다</p>
+      <div class="empty-icon-wrap">
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#c0c6d4"
+          stroke-width="1.5"
+        >
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
+        </svg>
+      </div>
+      <p class="empty-title">아직 받은 제안이 없습니다.</p>
+      <p class="empty-sub">포트폴리오를 작성하면 더 많은 제안을 받을 수 있어요.</p>
+      <button class="btn-go-empty" @click="router.push({ name: 'PortfolioList' })">
+        포트폴리오 작성하러 가기
+      </button>
     </div>
 
     <div v-else class="proposal-list">
@@ -51,50 +71,51 @@
         class="proposal-card"
         @click="goRecruitment(item)"
       >
-        <!-- 안읽음 표시 -->
-        <!-- <span v-if="!item.isRead" class="unread-dot"></span> -->
+        <!-- 상단: 회사 정보 + 배지 -->
+        <div class="card-top">
+          <div class="company-row">
+            <div class="company-avatar">
+              {{ (item.companyName || item.companyEmail)?.charAt(0)?.toUpperCase() }}
+            </div>
+            <div class="company-text">
+              <p class="company-name">{{ item.companyName || item.companyEmail }}</p>
+              <p class="company-email">{{ item.companyEmail }}</p>
+            </div>
+          </div>
+          <div class="badge-row">
+            <span v-if="!item.businessNumberVerified" class="badge-unverified">미인증</span>
+            <span class="badge-proposal">제안</span>
+            <span class="badge-category">{{ jobCategoryLabel(item.jobCategory) }}</span>
+          </div>
+        </div>
 
-        <!-- 제목 + 태그 -->
-        <div class="card-head">
+        <!-- 공고 제목 + 요약 -->
+        <div class="card-title-block">
           <h3 class="card-title">{{ item.recruitmentTitle }}</h3>
-          <span class="tag-category">{{ jobCategoryLabel(item.jobCategory) }}</span>
+          <p v-if="item.summary" class="card-summary">{{ item.summary }}</p>
         </div>
 
-        <!-- 회사명 -->
-        <p class="card-company">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4" />
-          </svg>
-          {{ item.companyName || item.companyEmail }}
-          <span class="proposal-badge">제안</span>
-        </p>
-
-        <!-- 서머리 -->
-        <div class="tag-row" v-if="item.summary">
-          <!-- <span v-for="tech in item.techStacks" :key="tech" class="tech-tag">{{ tech }}</span> -->
-          <span>{{ item.summary }}</span>
-        </div>
-
-        <!-- 예산/기간/수신일 -->
-        <div class="card-info-row">
-          <div class="info-item">
+        <!-- 정보 그리드 -->
+        <div class="card-info-grid">
+          <div class="info-cell">
             <span class="info-label">예산</span>
-            <strong>{{ formatMoney(item.budget) }}</strong>
+            <strong class="info-value">{{ formatMoney(item.budget) }}</strong>
           </div>
-          <div class="info-item">
+          <div class="info-cell">
             <span class="info-label">예상 기간</span>
-            <strong>{{ item.durationMonths ? item.durationMonths + '개월' : '협의' }}</strong>
+            <strong class="info-value">{{
+              item.durationMonths ? item.durationMonths + '개월' : '협의'
+            }}</strong>
           </div>
-          <div class="info-item">
+          <div class="info-cell">
+            <span class="info-label">시작일</span>
+            <strong class="info-value">{{
+              item.contractStartAt ? formatDate(item.contractStartAt) : '협의'
+            }}</strong>
+          </div>
+          <div class="info-cell">
             <span class="info-label">수신일</span>
-            <strong>{{ formatDate(item.createdAt) }}</strong>
+            <strong class="info-value">{{ formatDate(item.createdAt) }}</strong>
           </div>
         </div>
 
@@ -104,7 +125,7 @@
             size="lg"
             block
             :disabled="processingId === item.contractId"
-            @click="handleAccept(item)"
+            @click.stop="handleAccept(item)"
           >
             <template #icon>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -118,7 +139,7 @@
             size="lg"
             block
             :disabled="processingId === item.contractId"
-            @click="handleReject(item)"
+            @click.stop="handleReject(item)"
           >
             <template #icon>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -225,7 +246,12 @@ function changePage(p) {
 }
 
 async function handleAccept(item) {
-  if (!confirm(`'${item.recruitmentTitle}' 제안을 수락하시겠습니까?`)) return
+  // 미인증 사업자면 경고 포함 confirm, 인증됐으면 일반 confirm
+  const message = !item.businessNumberVerified
+    ? `'${item.companyName || item.companyEmail}' 회사는 인증되지 않은 사업자입니다.\n그래도 '${item.recruitmentTitle}' 제안을 수락하시겠습니까?`
+    : `'${item.recruitmentTitle}' 제안을 수락하시겠습니까?`
+
+  if (!confirm(message)) return
 
   processingId.value = item.contractId
   try {
@@ -274,7 +300,6 @@ onMounted(fetchList)
 .page {
   padding: var(--lancit-page-padding);
   max-width: 100%;
-  /* min-height: calc(100vh - 15px); /* 헤더 높이만큼 빼기, 환경에 맞게 조정 */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -299,282 +324,242 @@ onMounted(fetchList)
   line-height: 1.5;
 }
 
-/* 검색바 */
-.search-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.keyword-type-select {
-  width: 110px;
-  height: 40px;
-  padding: 0 10px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #1a233d;
-  background: white;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.search-input-wrap {
-  flex: 1;
-}
-
-.search-input {
-  width: 100%;
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: #1a233d;
-}
-
-.btn-search {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 16px;
-  height: 40px;
-  background: #1a233d;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.sort-select {
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #1a233d;
-  background: white;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-/* 목록 */
-
-.loading,
-.empty-state {
+/* 로딩 */
+.loading {
   text-align: center;
   padding: 60px 0;
   color: #9ca3af;
+  flex: 1;
 }
 
+/* 빈 상태 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  flex: 1;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.empty-icon-wrap {
+  width: 80px;
+  height: 80px;
+  background: #f3f4f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.empty-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1a233d;
+  margin: 0 0 8px;
+}
+
+.empty-sub {
+  font-size: 13.5px;
+  color: #9ca3af;
+  margin: 0 0 24px;
+}
+
+.btn-go-empty {
+  padding: 12px 28px;
+  background: #1a233d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-go-empty:hover {
+  opacity: 0.85;
+}
+
+/* 목록 */
 .proposal-list {
   display: flex;
   flex-direction: column;
   gap: var(--lancit-list-gap);
+  flex: 1;
 }
 
+/* 카드 */
 .proposal-card {
-  position: relative;
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 18px 20px;
-  transition: all 0.15s;
+  border-radius: 14px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
 }
+
 .proposal-card:hover {
   border-color: #1a233d;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(26, 35, 61, 0.08);
+  transform: translateY(-1px);
 }
 
-.unread-dot {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ef4444;
-}
-
-.card-head {
+/* 상단: 회사 + 배지 */
+.card-top {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.company-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.company-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #e8edf5;
+  color: #1a233d;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.company-text {
+  min-width: 0;
+}
+
+.company-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1a233d;
+  margin: 0 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.company-email {
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.badge-proposal {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  padding: 3px 9px;
+  border-radius: 5px;
+}
+
+.badge-category {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: #dbeafe;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+/* 제목 블록 */
+.card-title-block {
+  padding-left: 14px;
+  border-left: 3px solid #1a233d;
 }
 
 .card-title {
   font-size: 16px;
   font-weight: 700;
   color: #1a233d;
+  margin: 0 0 5px;
+  line-height: 1.4;
+}
+
+.card-summary {
+  font-size: 13px;
+  color: #6b7280;
   margin: 0;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.tag-category {
-  font-size: 11px;
-  font-weight: 600;
-  color: #1d4ed8;
-  background: #dbeafe;
-  padding: 2px 8px;
-  border-radius: 999px;
-  flex-shrink: 0;
+/* 정보 그리드 */
+.card-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  background: #f9fafb;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-.card-company {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-  color: #6c757d;
-  margin: 0 0 10px;
-}
-
-.proposal-badge {
-  font-size: 10px;
-  font-weight: 700;
-  color: #92400e;
-  background: #fef3c7;
-  padding: 2px 7px;
-  border-radius: 4px;
-  margin-left: 4px;
-}
-
-.tag-row {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.tech-tag {
-  font-size: 11px;
-  color: #1a233d;
-  background: #f3f4f6;
-  padding: 2px 9px;
-  border-radius: 999px;
-}
-
-.card-info-row {
-  display: flex;
-  gap: 24px;
-  padding: 12px 0;
-  border-top: 1px solid #f3f4f6;
-  border-bottom: 1px solid #f3f4f6;
-  margin-bottom: 14px;
-}
-
-.info-item {
+.info-cell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  padding: 12px 16px;
+  border-right: 1px solid #f0f0f0;
+}
+
+.info-cell:last-child {
+  border-right: none;
 }
 
 .info-label {
   font-size: 11px;
   color: #9ca3af;
+  font-weight: 500;
 }
 
-.info-item strong {
-  font-size: 13px;
+.info-value {
+  font-size: 13.5px;
   color: #1a233d;
-  font-weight: 600;
+  font-weight: 700;
 }
 
+/* 액션 */
 .card-actions {
   display: flex;
   gap: 8px;
 }
 
-.btn-accept {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 42px;
-  background: #1a233d;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-accept:hover:not(:disabled) {
-  background: #253a63;
-}
-.btn-accept:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-reject {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 42px;
-  background: white;
-  color: #ef4444;
-  border: 1px solid #fee2e2;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-reject:hover:not(:disabled) {
-  background: #fef2f2;
-}
-.btn-reject:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 /* 페이지네이션 */
-
-.page-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #6c757d;
-  cursor: pointer;
-}
-
-.page-btn:hover:not(:disabled) {
-  background: #f3f4f6;
-}
-.page-btn.active {
-  background: #1a233d;
-  color: white;
-  font-weight: 600;
-}
-.page-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-/* 목록 영역이 남은 공간을 채우도록 */
-.proposal-list,
-.loading,
-.empty-state {
-  flex: 1;
-}
-
-/* 페이지네이션: 항상 하단 */
 .pagination {
   display: flex;
   justify-content: center;
@@ -587,5 +572,27 @@ onMounted(fetchList)
   .page {
     padding: var(--lancit-page-mobile-padding);
   }
+
+  .card-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .info-cell:nth-child(2) {
+    border-right: none;
+  }
+
+  .info-cell:nth-child(1),
+  .info-cell:nth-child(2) {
+    border-bottom: 1px solid #f0f0f0;
+  }
+}
+
+.badge-unverified {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #991b1b;
+  background: #fee2e2;
+  padding: 3px 9px;
+  border-radius: 5px;
 }
 </style>

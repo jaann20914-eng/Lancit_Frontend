@@ -48,8 +48,32 @@
     <!-- 목록 -->
     <div v-if="isLoading" class="loading">불러오는 중...</div>
 
+    <!-- 변경 -->
     <div v-else-if="contracts.length === 0" class="empty-state">
-      <p>해당 조건의 계약이 없습니다</p>
+      <div class="empty-icon-wrap">
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#c0c6d4"
+          stroke-width="1.5"
+        >
+          <rect x="2" y="7" width="20" height="14" rx="2" />
+          <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+        </svg>
+      </div>
+      <p class="empty-title">아직 등록된 계약이 없습니다.</p>
+      <p class="empty-sub">
+        {{
+          isCompanyView
+            ? '공고를 등록하고 프리랜서와 계약을 시작해보세요.'
+            : '공고를 확인하고 첫 계약을 시작해보세요.'
+        }}
+      </p>
+      <button class="btn-go-recruitment" @click="goRecruitment">
+        {{ isCompanyView ? '공고 등록하러 가기' : '공고 확인하러 가기' }}
+      </button>
     </div>
 
     <div v-else class="contract-list">
@@ -134,17 +158,35 @@ const authStore = useAuthStore()
 const isCompanyView = computed(() => authStore.role === 'COMPANY')
 
 // 탭: status=''(전체) | NEGOTIATING(협의중 묶음, A/B/C 클라이언트 필터링) | IN_PROGRESS | COMPLETED_PENDING | COMPLETED | CANCELLED
-const statusTabs = [
-  { value: '', label: '전체' },
+// const statusTabs = [
+//   { value: '', label: '전체' },
 
-  { value: 'WAITING', label: '논의중' },
-  { value: 'NEGOTIATING', label: '계약 협의중' },
-  { value: 'IN_PROGRESS', label: '진행중' },
-  { value: 'COMPLETED_PENDING', label: '완료대기' },
-  { value: 'COMPLETED', label: '완료' },
-  { value: 'CANCELLED', label: '파기' },
-  { value: 'PROPOSAL', label: '제안발송' },
-]
+//   { value: 'WAITING', label: '논의중' },
+//   { value: 'NEGOTIATING', label: '계약 협의중' },
+//   { value: 'IN_PROGRESS', label: '진행중' },
+//   { value: 'COMPLETED_PENDING', label: '완료대기' },
+//   { value: 'COMPLETED', label: '완료' },
+//   { value: 'CANCELLED', label: '파기' },
+//   { value: 'PROPOSAL', label: '제안발송' },
+// ]
+const statusTabs = computed(() => {
+  const tabs = [
+    { value: '', label: '전체' },
+    { value: 'WAITING', label: '논의중' },
+    { value: 'NEGOTIATING', label: '계약 협의중' },
+    { value: 'IN_PROGRESS', label: '진행중' },
+    { value: 'COMPLETED_PENDING', label: '완료대기' },
+    { value: 'COMPLETED', label: '완료' },
+    { value: 'CANCELLED', label: '파기' },
+  ]
+
+  // 회사만 제안발송 탭 표시
+  if (isCompanyView.value) {
+    tabs.push({ value: 'PROPOSAL', label: '제안발송' })
+  }
+
+  return tabs
+})
 
 const activeStatus = ref('')
 const keywordType = ref('')
@@ -258,6 +300,11 @@ async function fetchList() {
       totalPages.value = Math.max(1, data.totalPages || 1)
     }
 
+    // 프리랜서는 PROPOSAL 계약 노출 X
+    if (!isCompanyView.value) {
+      content = content.filter((item) => item.status !== 'PROPOSAL')
+    }
+
     contracts.value = content
   } catch (err) {
     contracts.value = []
@@ -295,6 +342,14 @@ function goDetail(item) {
     params: { id: contractId },
     query: { page: currentPage.value },
   })
+}
+
+function goRecruitment() {
+  if (isCompanyView.value) {
+    router.push({ name: 'CompanyRecruitmentList' })
+  } else {
+    router.push({ name: 'RecruitmentList' })
+  }
 }
 
 onMounted(fetchList)
@@ -414,8 +469,7 @@ onMounted(fetchList)
 }
 
 /* 목록 */
-.loading,
-.empty-state {
+.loading {
   text-align: center;
   padding: 60px 0;
   color: #9ca3af;
@@ -571,6 +625,60 @@ onMounted(fetchList)
 .page-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  flex: 1;
+  gap: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.empty-icon-wrap {
+  width: 80px;
+  height: 80px;
+  background: #f3f4f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.empty-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1a233d;
+  margin: 0 0 8px;
+}
+
+.empty-sub {
+  font-size: 13.5px;
+  color: #9ca3af;
+  margin: 0 0 24px;
+  text-align: center;
+}
+
+.btn-go-recruitment {
+  padding: 12px 28px;
+  background: #1a233d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-go-recruitment:hover {
+  opacity: 0.85;
 }
 
 @media (max-width: 800px) {
