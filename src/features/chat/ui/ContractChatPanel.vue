@@ -20,7 +20,12 @@
     <div v-if="editingMessage" class="edit-modal-overlay" @click.self="cancelEdit">
       <div class="edit-modal">
         <h4 class="edit-modal-title">메시지 수정</h4>
-        <textarea v-model="editContent" class="edit-textarea" rows="3"></textarea>
+        <textarea
+          v-model="editContent"
+          class="edit-textarea"
+          rows="3"
+          @keydown.enter.exact.prevent="confirmEdit"
+        ></textarea>
         <div class="edit-modal-actions">
           <button class="btn-cancel-edit" @click="cancelEdit">취소</button>
           <button class="btn-confirm-edit" @click="confirmEdit">수정완료</button>

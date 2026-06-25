@@ -24,9 +24,9 @@ const errorMessage = ref('')
 async function loadDashboard() {
   isLoading.value = true
   errorMessage.value = ''
-
   try {
     const data = await getFreelancerDashboard()
+    console.log('dashboard data:', data) // ← 여기 추가
     dashboard.value = mapFreelancerDashboardToView(data)
   } catch (error) {
     errorMessage.value = getDashboardErrorMessage(error)

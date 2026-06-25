@@ -40,8 +40,23 @@
     <!-- 목록 -->
     <div v-if="isLoading" class="loading">불러오는 중...</div>
 
+    <!-- 변경 -->
     <div v-else-if="talents.length === 0" class="empty-state">
-      <p class="empty-title">표시할 인재가 없습니다</p>
+      <div class="empty-icon-wrap">
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#c0c6d4"
+          stroke-width="1.5"
+        >
+          <circle cx="11" cy="8" r="4" />
+          <path d="M3 20c0-4 3.6-7 8-7s8 3 8 7" />
+        </svg>
+      </div>
+      <p class="empty-title">검색된 인재가 없습니다.</p>
+      <p class="empty-sub">다른 키워드나 카테고리로 검색해보세요.</p>
     </div>
 
     <div v-else class="talent-list">
@@ -51,19 +66,25 @@
         class="talent-item"
         @click="goDetail(talent.email)"
       >
+        <!-- 아바타 -->
         <div class="talent-avatar">
           <img v-if="talent.profileImageUrl" :src="talent.profileImageUrl" />
-          <span v-else>{{ talent.name?.charAt(0) }}</span>
+          <span v-else>{{ (talent.displayName || talent.name)?.charAt(0) }}</span>
         </div>
 
+        <!-- 정보 -->
         <div class="talent-info">
-          <p class="talent-name">{{ talent.name }}</p>
-          <p class="talent-meta">
-            {{ jobCategoryLabel(talent.jobCategory) }}
-          </p>
+          <div class="talent-name-row">
+            <p class="talent-name">{{ talent.displayName || talent.name }}</p>
+            <span class="talent-category">{{ jobCategoryLabel(talent.jobCategory) }}</span>
+          </div>
+          <p v-if="talent.shortIntro" class="talent-intro">{{ talent.shortIntro }}</p>
+          <p v-else class="talent-intro muted">소개글이 없습니다.</p>
+          <p v-if="talent.description" class="talent-desc">{{ talent.description }}</p>
           <p class="talent-meta">가입일: {{ formatDate(talent.createdAt) }}</p>
         </div>
 
+        <!-- 액션 -->
         <div class="talent-actions" @click.stop>
           <BaseButton
             size="sm"
@@ -196,7 +217,6 @@ onMounted(fetchList)
 .page {
   padding: var(--lancit-page-padding);
   max-width: 100%;
-  /* min-height: calc(100vh - 64px); */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -248,74 +268,53 @@ onMounted(fetchList)
   font-weight: 600;
 }
 
-/* 검색바 */
-.search-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.search-input-wrap {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  color: #9ca3af;
-}
-
-.search-input {
-  width: 100%;
-  height: 40px;
-  padding: 0 12px 0 36px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: #1a233d;
-}
-
-.btn-search {
-  padding: 0 20px;
-  height: 40px;
-  background: #1a233d;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.sort-select {
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #1a233d;
-  background: white;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-/* 목록 */
-.loading,
-.empty-state {
+/* 로딩 */
+.loading {
   flex: 1;
   text-align: center;
   padding: 60px 0;
   color: #9ca3af;
 }
 
+/* 빈 상태 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  flex: 1;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.empty-icon-wrap {
+  width: 80px;
+  height: 80px;
+  background: #f3f4f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.empty-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1a233d;
+  margin: 0 0 8px;
+}
+
+.empty-sub {
+  font-size: 13.5px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* 목록 */
 .talent-list {
   display: flex;
   flex-direction: column;
@@ -323,11 +322,12 @@ onMounted(fetchList)
   flex: 1;
 }
 
+/* 카드 */
 .talent-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 16px;
+  padding: 16px 20px;
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -337,20 +337,21 @@ onMounted(fetchList)
 
 .talent-item:hover {
   border-color: #1a233d;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
 }
 
 .talent-avatar {
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: #d1d5db;
+  background: #e8edf5;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  font-weight: 600;
-  color: #6b7280;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a233d;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -364,67 +365,65 @@ onMounted(fetchList)
 .talent-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.talent-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .talent-name {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: #1a233d;
-  margin: 0 0 2px;
-}
-
-.talent-meta {
-  font-size: 12px;
-  color: #9ca3af;
   margin: 0;
 }
 
-.talent-stats {
-  display: flex;
-  gap: 12px;
+.talent-category {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: #dbeafe;
+  padding: 2px 8px;
+  border-radius: 999px;
   flex-shrink: 0;
 }
 
-.stat {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.talent-intro {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.talent-intro.muted {
+  color: #d1d5db;
+  font-weight: 400;
+}
+
+.talent-desc {
   font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talent-meta {
+  font-size: 11px;
   color: #9ca3af;
+  margin: 0;
 }
 
 .talent-actions {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
-}
-
-.btn-bookmark,
-.btn-propose {
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-bookmark {
-  background: white;
-  color: #6c757d;
-  border: 1px solid #e5e7eb;
-}
-
-.btn-bookmark.active {
-  background: #fee2e2;
-  color: #ef4444;
-  border-color: #ef4444;
-}
-
-.btn-propose {
-  background: #1a233d;
-  color: white;
-  border: none;
 }
 
 /* 페이지네이션 */
@@ -434,32 +433,6 @@ onMounted(fetchList)
   gap: 4px;
   margin-top: auto;
   padding-top: 24px;
-}
-
-.page-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #6c757d;
-  cursor: pointer;
-}
-
-.page-btn:hover:not(:disabled) {
-  background: #f3f4f6;
-}
-
-.page-btn.active {
-  background: #1a233d;
-  color: white;
-  font-weight: 600;
-}
-
-.page-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
 }
 
 @media (max-width: 800px) {

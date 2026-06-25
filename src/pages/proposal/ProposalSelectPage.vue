@@ -11,8 +11,27 @@
     </div>
 
     <div v-if="isLoading" class="loading">불러오는 중...</div>
+    <!-- 변경 -->
     <div v-else-if="recruitments.length === 0" class="empty-state">
-      <p>등록한 공고가 없습니다</p>
+      <div class="empty-icon-wrap">
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#c0c6d4"
+          stroke-width="1.5"
+        >
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+          <line x1="12" y1="8" x2="12" y2="16" />
+        </svg>
+      </div>
+      <p class="empty-title">등록한 공고가 없습니다.</p>
+      <p class="empty-sub">공고를 먼저 등록하고 프리랜서에게 제안해보세요.</p>
+      <button class="btn-go-empty" @click="router.push({ name: 'CompanyRecruitmentCreate' })">
+        공고 작성하러 가기
+      </button>
     </div>
 
     <div v-else class="recruitment-list">
@@ -218,6 +237,7 @@ onMounted(fetchRecruitments)
 .page {
   padding: var(--lancit-page-padding);
   max-width: 100%;
+  height: 100vh;
 }
 
 .back-link {
@@ -271,8 +291,7 @@ onMounted(fetchRecruitments)
   cursor: not-allowed;
 }
 
-.loading,
-.empty-state {
+.loading {
   text-align: center;
   padding: 60px 0;
   color: #9ca3af;
@@ -418,5 +437,57 @@ onMounted(fetchRecruitments)
 .btn-select:disabled {
   background: #d1d5db;
   cursor: not-allowed;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.empty-icon-wrap {
+  width: 80px;
+  height: 80px;
+  background: #f3f4f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.empty-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1a233d;
+  margin: 0 0 8px;
+}
+
+.empty-sub {
+  font-size: 13.5px;
+  color: #9ca3af;
+  margin: 0 0 24px;
+}
+
+.btn-go-empty {
+  padding: 12px 28px;
+  background: #1a233d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-go-empty:hover {
+  opacity: 0.85;
 }
 </style>

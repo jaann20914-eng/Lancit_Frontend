@@ -440,12 +440,29 @@ function goToDetail(recruitmentId) {
   })
 }
 
+// function handleApplicationAction(item) {
+//   if (item.isApplied) {
+//     router.push({ name: 'ApplicationDetail', params: { id: item.recruitmentId } })
+//     return
+//   }
+//   if (item.canApply) {
+//     router.push({ name: 'RecruitmentApply', params: { recruitmentId: item.recruitmentId } })
+//   }
+// }
 function handleApplicationAction(item) {
+  console.log('businessNumberVerified:', item.businessNumberVerified)
   if (item.isApplied) {
     router.push({ name: 'ApplicationDetail', params: { id: item.recruitmentId } })
     return
   }
   if (item.canApply) {
+    // 사업자 번호 미인증 체크
+    if (!item.businessNumberVerified) {
+      const proceed = confirm(
+        `'${item.companyName || '해당 회사'}' 는 인증되지 않은 사업자입니다.\n그래도 지원하시겠습니까?`,
+      )
+      if (!proceed) return
+    }
     router.push({ name: 'RecruitmentApply', params: { recruitmentId: item.recruitmentId } })
   }
 }
