@@ -43,6 +43,11 @@
           selectedId === item.recruitmentId ? 'selected' : '',
           !item.isProposable ? 'disabled' : '',
         ]"
+        role="link"
+        tabindex="0"
+        @click="goRecruitmentDetail(item.recruitmentId)"
+        @keydown.enter.prevent="goRecruitmentDetail(item.recruitmentId)"
+        @keydown.space.prevent="goRecruitmentDetail(item.recruitmentId)"
       >
         <div class="item-body">
           <p class="item-title">{{ item.title }}</p>
@@ -56,16 +61,7 @@
           </p>
         </div>
 
-        <div class="item-actions">
-          <!-- 상세보기는 항상 가능 -->
-          <BaseButton
-            variant="outline"
-            size="sm"
-            @click.stop="goRecruitmentDetail(item.recruitmentId)"
-          >
-            상세보기
-          </BaseButton>
-
+        <div class="item-actions" @click.stop @keydown.stop>
           <!-- 선택은 가능할 때만 -->
           <BaseButton
             size="sm"
@@ -316,8 +312,10 @@ onMounted(fetchRecruitments)
   transition: all 0.15s;
 }
 
-.recruitment-item:not(.disabled):hover {
+.recruitment-item:hover,
+.recruitment-item:focus-visible {
   border-color: #5466cc;
+  outline: none;
 }
 .recruitment-item.selected {
   border-color: #5466cc;
@@ -385,7 +383,7 @@ onMounted(fetchRecruitments)
 }
 .recruitment-item.disabled {
   opacity: 0.5;
-  cursor: not-allowed;
+  cursor: pointer;
   background: #f9fafb;
 }
 
@@ -407,7 +405,6 @@ onMounted(fetchRecruitments)
   }
 }
 
-.btn-detail,
 .btn-select {
   height: 34px;
   padding: 0 14px;
@@ -415,17 +412,6 @@ onMounted(fetchRecruitments)
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-}
-
-.btn-detail {
-  background: white;
-  border: 1px solid #d1d5db;
-  color: #374151;
-}
-
-.btn-detail:hover {
-  border-color: #1a233d;
-  color: #1a233d;
 }
 
 .btn-select {

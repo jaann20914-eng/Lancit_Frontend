@@ -104,17 +104,20 @@
         </div>
 
         <div class="recruitment-list">
-          <article v-for="item in recruitments" :key="item.recruitmentId" class="recruitment-card">
+          <article
+            v-for="item in recruitments"
+            :key="item.recruitmentId"
+            class="recruitment-card"
+            role="link"
+            tabindex="0"
+            @click="goToDetail(item.recruitmentId)"
+            @keydown.enter.prevent="goToDetail(item.recruitmentId)"
+            @keydown.space.prevent="goToDetail(item.recruitmentId)"
+          >
             <div class="card-main">
               <div class="card-heading">
                 <div class="title-area">
-                  <button
-                    type="button"
-                    class="title-button"
-                    @click="goToDetail(item.recruitmentId)"
-                  >
-                    {{ item.title || '제목 없는 공고' }}
-                  </button>
+                  <h2 class="card-title">{{ item.title || '제목 없는 공고' }}</h2>
                   <div class="meta-row">
                     <span class="meta-item">
                       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -137,14 +140,14 @@
                   </div>
                 </div>
 
-                <div class="status-actions">
+                <div class="status-actions" @click.stop @keydown.stop>
                   <button
                     type="button"
                     :class="['bookmark-button', { bookmarked: item.isBookmarked }]"
                     :aria-label="item.isBookmarked ? '찜 해제' : '찜하기'"
                     :aria-pressed="item.isBookmarked"
                     :disabled="bookmarkingIds.has(item.recruitmentId)"
-                    @click="handleBookmark(item)"
+                    @click.stop="handleBookmark(item)"
                   >
                     <span aria-hidden="true">
                       {{
@@ -214,22 +217,13 @@
                 </div>
                 <p v-else class="tech-stack-empty">등록된 기술 스택이 없습니다.</p>
 
-                <div class="action-buttons">
-                  <BaseButton
-                    class="detail-button"
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    @click="goToDetail(item.recruitmentId)"
-                  >
-                    상세 보기
-                  </BaseButton>
+                <div class="action-buttons" @click.stop @keydown.stop>
                   <BaseButton
                     class="apply-button"
                     type="button"
                     size="sm"
                     :disabled="!item.isApplied && !item.canApply"
-                    @click="handleApplicationAction(item)"
+                    @click.stop="handleApplicationAction(item)"
                   >
                     {{ item.isApplied ? '지원서 보기' : item.canApply ? '지원하기' : '지원 불가' }}
                   </BaseButton>
@@ -615,13 +609,16 @@ function getRecruitmentError(error, fallback) {
   background: white;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+  cursor: pointer;
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
 }
-.recruitment-card:hover {
+.recruitment-card:hover,
+.recruitment-card:focus-visible {
   border-color: #d1d5db;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  outline: none;
 }
 .card-main {
   padding: 22px 24px 16px;
@@ -698,19 +695,13 @@ function getRecruitmentError(error, fallback) {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.title-button {
-  padding: 0;
-  border: 0;
-  background: none;
+.card-title {
+  margin: 0;
   color: #1a233d;
   font-size: 19px;
   font-weight: 700;
   line-height: 1.4;
   text-align: left;
-  cursor: pointer;
-}
-.title-button:hover {
-  text-decoration: underline;
 }
 .meta-row {
   margin-top: 8px;
@@ -820,7 +811,6 @@ function getRecruitmentError(error, fallback) {
   display: flex;
   gap: 8px;
 }
-.detail-button,
 .apply-button {
   min-height: 36px;
   padding: 0 14px;
@@ -828,11 +818,6 @@ function getRecruitmentError(error, fallback) {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-}
-.detail-button {
-  border: 1px solid #cbd5e1;
-  background: white;
-  color: #334155;
 }
 .apply-button {
   border: 1px solid #1a233d;

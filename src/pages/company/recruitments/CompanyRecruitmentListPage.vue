@@ -2,7 +2,7 @@
   <div class="page">
     <header class="page-header">
       <div>
-        <h1 class="page-title">공고 관리</h1>
+        <h1 class="page-title">공고문</h1>
         <p class="page-description">{{ activeTabDescription }}</p>
       </div>
       <BaseButton @click="goToCreate">＋ 공고 등록</BaseButton>
@@ -117,13 +117,20 @@
       </div>
 
       <div class="recruitment-list">
-        <article v-for="item in recruitments" :key="item.recruitmentId" class="recruitment-card">
+        <article
+          v-for="item in recruitments"
+          :key="item.recruitmentId"
+          class="recruitment-card"
+          role="link"
+          tabindex="0"
+          @click="goToDetail(item.recruitmentId)"
+          @keydown.enter.prevent="goToDetail(item.recruitmentId)"
+          @keydown.space.prevent="goToDetail(item.recruitmentId)"
+        >
           <div class="card-main">
             <div class="card-heading">
               <div class="title-area">
-                <button type="button" class="title-button" @click="goToDetail(item.recruitmentId)">
-                  {{ item.title || '제목 없는 공고' }}
-                </button>
+                <h2 class="card-title">{{ item.title || '제목 없는 공고' }}</h2>
                 <div class="meta-row">
                   <span class="meta-item">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -146,7 +153,7 @@
                 </div>
               </div>
 
-              <div class="status-actions">
+              <div class="status-actions" @click.stop @keydown.stop>
                 <template v-if="canManage(item) && item.canChangeStatus">
                   <button
                     v-for="statusOption in CARD_STATUS_OPTIONS"
@@ -159,7 +166,7 @@
                     ]"
                     :aria-pressed="item.status === statusOption.value"
                     :disabled="changingStatusId === item.recruitmentId"
-                    @click="handleStatusChange(item, statusOption.value)"
+                    @click.stop="handleStatusChange(item, statusOption.value)"
                   >
                     {{ statusOption.label }}
                   </button>
@@ -225,10 +232,7 @@
               </div>
               <p v-else class="tech-stack-empty">등록된 기술 스택이 없습니다.</p>
 
-              <div class="footer-actions">
-                <BaseButton variant="outline" size="sm" @click="goToDetail(item.recruitmentId)">
-                  상세 보기
-                </BaseButton>
+              <div class="footer-actions" @click.stop @keydown.stop>
                 <BaseButton
                   v-if="canManage(item)"
                   variant="secondary"
@@ -659,13 +663,16 @@ function goToCopy(item) {
   background: white;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+  cursor: pointer;
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
 }
-.recruitment-card:hover {
+.recruitment-card:hover,
+.recruitment-card:focus-visible {
   border-color: #d1d5db;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  outline: none;
 }
 .card-main {
   padding: 22px 24px 16px;
@@ -752,19 +759,13 @@ function goToCopy(item) {
   background: #fee2e2;
   color: #991b1b;
 }
-.title-button {
-  padding: 0;
-  border: 0;
-  background: none;
+.card-title {
+  margin: 0;
   color: #1a233d;
   font-size: 19px;
   font-weight: 700;
   line-height: 1.4;
   text-align: left;
-  cursor: pointer;
-}
-.title-button:hover {
-  text-decoration: underline;
 }
 .meta-row {
   margin-top: 8px;
@@ -879,7 +880,6 @@ function goToCopy(item) {
   gap: 8px;
   flex: 0 0 auto;
 }
-.detail-button,
 .footer-button {
   min-height: 36px;
   padding: 0 14px;
@@ -888,10 +888,6 @@ function goToCopy(item) {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-}
-.detail-button {
-  border: 1px solid #cbd5e1;
-  color: #334155;
 }
 .edit-button {
   border: 1px solid #cbd5e1;
