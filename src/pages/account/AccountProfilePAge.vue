@@ -191,7 +191,7 @@ const info = reactive({
 const editForm = reactive({ ...info })
 const nameInitial = computed(() => info.name?.charAt(0) || '?')
 
-async function fetchMe() {
+async function fetchMe({ markExternalJobsStale = false } = {}) {
   isLoading.value = true
   try {
     const res = await getUserMe()
@@ -204,6 +204,7 @@ async function fetchMe() {
       pushable: data.pushable,
       profileFileId: data.profileFileId,
     })
+    authStore.updateJobCategory(info.jobCategory, { markExternalJobsStale })
 
     if (info.profileFileId) {
       const urlRes = await getFileUrl(info.profileFileId)
@@ -276,7 +277,7 @@ async function handleSave() {
     }
 
     await updateUserMe(payload)
-    await fetchMe()
+    await fetchMe({ markExternalJobsStale: true })
     isEditing.value = false
   } catch (err) {
     errorMsg.value = err.response?.data?.message || '저장에 실패했습니다.'
