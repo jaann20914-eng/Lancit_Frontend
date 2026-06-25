@@ -52,7 +52,7 @@
             <span class="info-value">{{ formatPhoneNumber(info.phone) }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">업종</span>
+            <span class="info-label">직종</span>
             <span class="info-value">{{ jobCategoryLabel(info.jobCategory) }}</span>
           </div>
           <div class="info-row">
@@ -149,7 +149,7 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">업종</label>
+          <label class="form-label">직종</label>
           <select v-model="editForm.jobCategory" class="form-input">
             <option v-for="opt in JOB_CATEGORY_OPTIONS" :key="opt.value" :value="opt.value">
               {{ opt.label }}

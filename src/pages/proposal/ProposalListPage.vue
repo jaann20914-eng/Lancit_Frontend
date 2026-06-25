@@ -69,7 +69,11 @@
         v-for="item in proposals"
         :key="item.contractId"
         class="proposal-card"
+        role="link"
+        tabindex="0"
         @click="goRecruitment(item)"
+        @keydown.enter.prevent="goRecruitment(item)"
+        @keydown.space.prevent="goRecruitment(item)"
       >
         <!-- 상단: 회사 정보 + 배지 -->
         <div class="card-top">
@@ -120,7 +124,7 @@
         </div>
 
         <!-- 액션 버튼 -->
-        <div class="card-actions">
+        <div class="card-actions" @click.stop @keydown.stop>
           <BaseButton
             size="lg"
             block
@@ -410,10 +414,12 @@ onMounted(fetchList)
     transform 0.15s;
 }
 
-.proposal-card:hover {
-  border-color: #1a233d;
-  box-shadow: 0 6px 20px rgba(26, 35, 61, 0.08);
+.proposal-card:hover,
+.proposal-card:focus-visible {
+  border-color: #7f89a1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
+  outline: none;
 }
 
 /* 상단: 회사 + 배지 */

@@ -1,5 +1,6 @@
 import httpClient from '@/shared/api/httpClient.js'
 import {
+  isDeletedRecruitment,
   mapRecruitmentFromApi,
   mapRecruitmentPageResponse,
 } from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
@@ -29,7 +30,7 @@ export async function getRecruitments({
     },
   })
 
-  return mapRecruitmentPageResponse(unwrapResponse(response))
+  return excludeDeletedRecruitments(mapRecruitmentPageResponse(unwrapResponse(response)))
 }
 
 export async function getRecruitment(recruitmentId) {
@@ -46,4 +47,22 @@ export async function getRecruitmentFileUrl(fileId) {
 export async function toggleRecruitmentBookmark(recruitmentId) {
   const response = await httpClient.post(`/recruitments/${recruitmentId}/bookmark`)
   return unwrapResponse(response)
+}
+
+function excludeDeletedRecruitments(pageData) {
+  const content = pageData.content.filter((item) => !isDeletedRecruitment(item))
+  const removedCount = pageData.content.length - content.length
+  if (!removedCount) return pageData
+
+  const totalElements = Math.max(0, pageData.totalElements - removedCount)
+  const totalPages = totalElements > 0 ? Math.ceil(totalElements / pageData.size) : 0
+
+  return {
+    ...pageData,
+    content,
+    totalElements,
+    totalPages,
+    hasNext: pageData.page < totalPages,
+    hasPrev: pageData.page > 1,
+  }
 }

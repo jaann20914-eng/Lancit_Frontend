@@ -1,11 +1,16 @@
 <template>
-  <article class="recruitment-card">
+  <article
+    class="recruitment-card"
+    role="link"
+    tabindex="0"
+    @click="emitViewDetail"
+    @keydown.enter.prevent="emitViewDetail"
+    @keydown.space.prevent="emitViewDetail"
+  >
     <div class="card-main">
       <div class="card-heading">
         <div class="title-area">
-          <button type="button" class="title-button" @click="emitViewDetail">
-            {{ job.title || '제목 없는 공고' }}
-          </button>
+          <h2 class="card-title">{{ job.title || '제목 없는 공고' }}</h2>
           <div class="meta-row">
             <span class="meta-item">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -49,7 +54,7 @@
             <path d="M7 8h10M7 12h10M7 16h6" />
           </svg>
           <div>
-            <dt>업종 카테고리</dt>
+            <dt>직종 카테고리</dt>
             <dd>{{ displayText(job.jobCategoryRaw, '-') }}</dd>
           </div>
         </div>
@@ -77,9 +82,7 @@
         </div>
         <div class="information-item">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M4 19V5a2 2 0 0 1 2-2h11l3 3v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"
-            />
+            <path d="M4 19V5a2 2 0 0 1 2-2h11l3 3v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
             <path d="M14 3v5h5M8 13h8M8 17h5" />
           </svg>
           <div>
@@ -90,16 +93,7 @@
       </dl>
 
       <div class="card-footer">
-        <div class="action-buttons">
-          <BaseButton
-            class="detail-button"
-            type="button"
-            variant="outline"
-            size="sm"
-            @click="emitViewDetail"
-          >
-            {{ job.detailButtonLabel || '상세 보기' }}
-          </BaseButton>
+        <div class="action-buttons" @click.stop @keydown.stop>
           <a
             v-if="job.sourceUrl"
             class="source-link"
@@ -109,9 +103,7 @@
           >
             {{ job.sourceButtonLabel || '사이트에서 확인' }}
           </a>
-          <button v-else type="button" class="source-link disabled-link" disabled>
-            원문 없음
-          </button>
+          <button v-else type="button" class="source-link disabled-link" disabled>원문 없음</button>
         </div>
       </div>
     </div>
@@ -119,8 +111,6 @@
 </template>
 
 <script setup>
-import BaseButton from '@/shared/ui/BaseButton.vue'
-
 const props = defineProps({
   job: {
     type: Object,
@@ -155,13 +145,18 @@ function formatExternalDate(value) {
   background: white;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+  cursor: pointer;
   transition:
     border-color 0.15s,
-    box-shadow 0.15s;
+    box-shadow 0.15s,
+    transform 0.15s;
 }
-.recruitment-card:hover {
-  border-color: #d1d5db;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+.recruitment-card:hover,
+.recruitment-card:focus-visible {
+  border-color: #7f89a1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+  outline: none;
 }
 .card-main {
   padding: 22px 24px 16px;
@@ -175,20 +170,14 @@ function formatExternalDate(value) {
 .title-area {
   min-width: 0;
 }
-.title-button {
-  padding: 0;
-  border: 0;
-  background: none;
+.card-title {
+  margin: 0;
   color: #1a233d;
   font-size: 19px;
   font-weight: 700;
   line-height: 1.4;
   text-align: left;
   overflow-wrap: anywhere;
-  cursor: pointer;
-}
-.title-button:hover {
-  text-decoration: underline;
 }
 .badge-row {
   display: flex;
@@ -317,13 +306,6 @@ function formatExternalDate(value) {
   display: flex;
   gap: 8px;
   flex: 0 0 auto;
-}
-.detail-button {
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
 }
 .source-link {
   min-height: 36px;

@@ -46,9 +46,7 @@
       </BaseButton>
     </BaseFilterBar>
 
-    <p class="source-notice">
-      원문 출처: 서울시 일자리플러스센터
-    </p>
+    <p class="source-notice">원문 출처: 서울시 일자리플러스센터</p>
 
     <div v-if="isLoading" class="state-card">
       <span class="spinner" aria-hidden="true"></span>
@@ -265,6 +263,8 @@ function normalizeJobCategory(value) {
 }
 
 function shouldShowAiRecommendation(item) {
+  if (Number(pagination.page) !== 1) return false
+
   const externalJobId = getExternalJobId(item)
 
   return (

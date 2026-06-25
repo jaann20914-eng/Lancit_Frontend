@@ -160,12 +160,12 @@
           <PhoneNumberInput v-model="form.phone" />
         </div>
 
-        <!-- 직군/업종 -->
+        <!-- 직군/직종 -->
         <div class="form-group">
-          <label class="form-label">{{ selectedRole === 'COMPANY' ? '업종' : '직군' }}</label>
+          <label class="form-label">{{ selectedRole === 'COMPANY' ? '직종' : '직군' }}</label>
           <select v-model="form.jobCategory" class="form-input">
             <option value="">
-              {{ selectedRole === 'COMPANY' ? '업종을 선택하세요' : '직군 선택' }}
+              {{ selectedRole === 'COMPANY' ? '직종을 선택하세요' : '직군 선택' }}
             </option>
             <option v-for="opt in JOB_CATEGORY_OPTIONS" :key="opt.value" :value="opt.value">
               {{ opt.label }}

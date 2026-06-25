@@ -26,7 +26,6 @@ async function loadDashboard() {
   errorMessage.value = ''
   try {
     const data = await getFreelancerDashboard()
-    console.log('dashboard data:', data) // ← 여기 추가
     dashboard.value = mapFreelancerDashboardToView(data)
   } catch (error) {
     errorMessage.value = getDashboardErrorMessage(error)

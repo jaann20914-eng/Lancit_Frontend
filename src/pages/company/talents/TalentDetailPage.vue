@@ -80,7 +80,11 @@
         v-for="item in portfolios"
         :key="item.portfolioId"
         class="portfolio-card"
+        role="link"
+        tabindex="0"
         @click="goPortfolioDetail(item.portfolioId)"
+        @keydown.enter.prevent="goPortfolioDetail(item.portfolioId)"
+        @keydown.space.prevent="goPortfolioDetail(item.portfolioId)"
       >
         <div class="portfolio-thumb">
           <img v-if="item.bannerUrl" :src="item.bannerUrl" />
@@ -469,10 +473,12 @@ onMounted(() => {
   transition: all 0.15s;
 }
 
-.portfolio-card:hover {
-  border-color: #1a233d;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+.portfolio-card:hover,
+.portfolio-card:focus-visible {
+  border-color: #7f89a1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+  outline: none;
 }
 
 .portfolio-thumb {

@@ -171,12 +171,17 @@
         </div>
 
         <template v-else>
-          <p class="view-note">상세 보기를 열면 최초 열람 시간이 기록됩니다.</p>
+          <p class="view-note">지원자 카드를 선택하면 최초 열람 시간이 기록됩니다.</p>
           <div class="application-list">
             <article
               v-for="application in applications"
               :key="application.applicationId"
               class="application-card"
+              role="link"
+              tabindex="0"
+              @click="goToApplicationDetail(application.applicationId)"
+              @keydown.enter.prevent="goToApplicationDetail(application.applicationId)"
+              @keydown.space.prevent="goToApplicationDetail(application.applicationId)"
             >
               <div class="applicant-avatar" aria-hidden="true">{{ getInitial(application) }}</div>
               <div class="applicant-main">
@@ -199,13 +204,6 @@
                   }}</span>
                 </div>
               </div>
-              <BaseButton
-                variant="secondary"
-                size="sm"
-                @click="goToApplicationDetail(application.applicationId)"
-              >
-                상세 보기
-              </BaseButton>
             </article>
           </div>
 
@@ -769,9 +767,21 @@ function goToApplicationDetail(applicationId) {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 17px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.application-card:hover,
+.application-card:focus-visible {
+  border-color: #7f89a1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+  outline: none;
 }
 .applicant-avatar {
   width: 44px;
@@ -844,17 +854,6 @@ function goToApplicationDetail(applicationId) {
   gap: 13px;
   color: #9ca3af;
   font-size: 10px;
-}
-.application-detail-button {
-  min-height: 36px;
-  padding: 0 13px;
-  border: 1px solid #1a233d;
-  border-radius: 6px;
-  background: white;
-  color: #1a233d;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
 }
 .pagination {
   margin-top: 20px;
@@ -932,9 +931,6 @@ function goToApplicationDetail(applicationId) {
   }
   .application-card {
     grid-template-columns: auto minmax(0, 1fr);
-  }
-  .application-detail-button {
-    grid-column: 1 / -1;
   }
 }
 @media (max-width: 480px) {

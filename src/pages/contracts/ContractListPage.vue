@@ -82,7 +82,11 @@
         :key="item.contractId || item.contract_id"
         class="contract-item"
         :class="{ disabled: item.status === 'PROPOSAL' }"
+        role="link"
+        :tabindex="item.status === 'PROPOSAL' ? -1 : 0"
         @click="item.status !== 'PROPOSAL' && goDetail(item)"
+        @keydown.enter.prevent="item.status !== 'PROPOSAL' && goDetail(item)"
+        @keydown.space.prevent="item.status !== 'PROPOSAL' && goDetail(item)"
       >
         <span :class="['status-badge', statusBadgeClass(item.status)]">
           {{ statusLabel(item.status) }}
@@ -496,10 +500,12 @@ onMounted(fetchList)
   height: 140px;
 }
 
-.contract-item:hover {
+.contract-item:hover,
+.contract-item:focus-visible {
   border-color: #7f89a1;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
+  outline: none;
 }
 .status-badge {
   flex-shrink: 0;

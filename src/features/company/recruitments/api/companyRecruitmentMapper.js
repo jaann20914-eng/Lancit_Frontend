@@ -53,6 +53,21 @@ export function getRecruitmentStatusMeta(value) {
   )
 }
 
+export function isDeletedRecruitment(recruitment) {
+  if (!recruitment || typeof recruitment !== 'object') return false
+
+  const statusValues = [recruitment.status, recruitment.viewStatus]
+    .map((value) => (typeof value === 'string' ? value.trim().toUpperCase() : ''))
+    .filter(Boolean)
+
+  return (
+    Boolean(recruitment.isDeleted || recruitment.deletedAt) ||
+    statusValues.some(
+      (status) => status === 'DELETED' || status === 'DELETE' || status === 'REMOVED',
+    )
+  )
+}
+
 export function normalizeTechStacks(value) {
   const source = Array.isArray(value)
     ? value
@@ -116,6 +131,8 @@ export function mapRecruitmentFromApi(dto) {
     status: dto.status ?? null,
     viewStatus,
     statusMeta: getRecruitmentStatusMeta(viewStatus),
+    isDeleted: Boolean(dto.isDeleted ?? dto.deleted ?? false),
+    deletedAt: dto.deletedAt ?? null,
     recruitmentStartAt: dto.recruitmentStartAt ?? null,
     recruitmentEndAt: dto.recruitmentEndAt ?? null,
     contractStartAt: dto.contractStartAt ?? null,

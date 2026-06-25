@@ -94,7 +94,7 @@ describe('ExternalJobListPanel', () => {
       page: 1,
       size: 10,
     })
-    expect(wrapper.get('.detail-button').text()).toBe('상세 보기')
+    expect(wrapper.find('.detail-button').exists()).toBe(false)
     expect(wrapper.get('a.source-link').text()).toBe('사이트에서 확인')
     expect(textCount(wrapper.text(), 'AI가 추천하는 공고입니다.')).toBe(1)
   })
@@ -126,7 +126,7 @@ describe('ExternalJobListPanel', () => {
     expect(sourceLink.attributes('rel')).toBe('noopener noreferrer')
   })
 
-  it('opens the external job detail page from title and detail button', async () => {
+  it('opens the external job detail page from card selection', async () => {
     mocks.getExternalJobs.mockResolvedValueOnce({
       content: [externalJob(5, '상세 이동 공고')],
       page: 1,
@@ -140,14 +140,14 @@ describe('ExternalJobListPanel', () => {
     const wrapper = mount(ExternalJobListPanel)
     await flushPromises()
 
-    await wrapper.get('.title-button').trigger('click')
+    await wrapper.get('.recruitment-card').trigger('click')
     expect(mocks.push).toHaveBeenCalledWith({
       name: 'ExternalJobDetail',
       params: { externalJobId: 5 },
       query: { from: 'external' },
     })
 
-    await wrapper.get('.detail-button').trigger('click')
+    await wrapper.get('.recruitment-card').trigger('keydown.enter')
     expect(mocks.push).toHaveBeenLastCalledWith({
       name: 'ExternalJobDetail',
       params: { externalJobId: 5 },
@@ -158,7 +158,7 @@ describe('ExternalJobListPanel', () => {
   it('does not show the AI recommendation copy when a later page is returned', async () => {
     mocks.getExternalJobs.mockResolvedValueOnce({
       content: [externalJob(3, '다음 페이지 공고')],
-      page: 1,
+      page: 2,
       size: 10,
       totalElements: 11,
       totalPages: 2,
@@ -344,9 +344,9 @@ describe('ExternalJobListPanel', () => {
     await flushPromises()
 
     expect(mocks.refreshExternalJobRecommendations).toHaveBeenCalledWith('IT')
-    expect(
-      mocks.refreshExternalJobRecommendations.mock.invocationCallOrder[0],
-    ).toBeLessThan(mocks.getExternalJobs.mock.invocationCallOrder[0])
+    expect(mocks.refreshExternalJobRecommendations.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getExternalJobs.mock.invocationCallOrder[0],
+    )
     expect(mocks.authStore.isExternalJobRecommendationStale).toBe(false)
     expect(wrapper.text()).toContain('갱신 후 추천 공고')
   })
