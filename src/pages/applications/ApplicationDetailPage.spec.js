@@ -72,20 +72,21 @@ describe('ApplicationDetailPage', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('프론트엔드 개발자 모집')
-    await wrapper.get('.section-heading .secondary-button').trigger('click')
+    expect(wrapper.text()).not.toContain('지원 소개')
+    await wrapper.get('.top-action-buttons .secondary-button').trigger('click')
     await flushPromises()
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
     expect(checkboxes).toHaveLength(2)
     expect(checkboxes[0].element.checked).toBe(true)
-    await wrapper.get('.intro-input').setValue('수정한 지원 소개')
     await checkboxes[1].setValue(true)
     await wrapper.get('.action-panel .primary-button').trigger('click')
     await flushPromises()
 
     expect(mocks.updateMyApplication).toHaveBeenCalledWith('7', {
-      intro: '수정한 지원 소개',
+      intro: '기존 지원 소개',
       portfolioIds: [11, 12],
+      portfolioProfile: application.portfolioProfile,
     })
     expect(wrapper.text()).toContain('지원서가 수정되었습니다.')
   })
@@ -112,7 +113,7 @@ describe('ApplicationDetailPage', () => {
     const wrapper = mount(ApplicationDetailPage)
     await flushPromises()
 
-    const editButton = wrapper.get('.section-heading .secondary-button')
+    const editButton = wrapper.get('.top-action-buttons .secondary-button')
     const cancelButton = wrapper.get('.danger-button')
     expect(editButton.attributes('disabled')).toBeDefined()
     expect(cancelButton.attributes('disabled')).toBeDefined()
@@ -135,7 +136,7 @@ describe('ApplicationDetailPage', () => {
     const wrapper = mount(ApplicationDetailPage)
     await flushPromises()
 
-    await wrapper.get('.section-heading .secondary-button').trigger('click')
+    await wrapper.get('.top-action-buttons .secondary-button').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('선택에서 제외했습니다')
     await wrapper.get('.action-panel .primary-button').trigger('click')
@@ -144,6 +145,7 @@ describe('ApplicationDetailPage', () => {
     expect(mocks.updateMyApplication).toHaveBeenCalledWith('7', {
       intro: '기존 지원 소개',
       portfolioIds: [11],
+      portfolioProfile: application.portfolioProfile,
     })
   })
 
