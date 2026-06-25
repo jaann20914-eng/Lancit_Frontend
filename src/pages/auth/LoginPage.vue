@@ -86,6 +86,7 @@ async function handleLogin() {
       role: data.role, // 백엔드가 'USER' | 'COMPANY'로 반환
       chatRoomIds: data.chatRoomIds,
       profileImageUrl: data.profileImageUrl, // 백엔드 로그인 응답에 추가될 필드
+      jobCategory: data.jobCategory,
     })
 
     if (data.role === 'USER') {

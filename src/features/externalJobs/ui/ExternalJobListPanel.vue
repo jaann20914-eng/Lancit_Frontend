@@ -5,6 +5,7 @@
         v-model="filters.recommendationType"
         width="150px"
         aria-label="추천 분류"
+        :disabled="isLoading"
         @change="resetAndLoad"
       >
         <option value="">전체 추천 분류</option>
@@ -16,7 +17,13 @@
           {{ option.label }}
         </option>
       </BaseSelect>
-      <BaseSelect v-model="filters.sort" width="91px" aria-label="정렬 방식" @change="resetAndLoad">
+      <BaseSelect
+        v-model="filters.sort"
+        width="91px"
+        aria-label="정렬 방식"
+        :disabled="isLoading"
+        @change="resetAndLoad"
+      >
         <option value="RECOMMENDED">추천순</option>
         <option value="LATEST">최신순</option>
       </BaseSelect>
@@ -25,9 +32,10 @@
         type="text"
         placeholder="제목이나 회사명으로 검색"
         :with-icon="false"
+        :disabled="isLoading"
         aria-label="외부 공고 검색어"
       />
-      <BaseButton type="submit">
+      <BaseButton type="submit" :disabled="isLoading">
         <template #icon>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8" />
@@ -39,7 +47,7 @@
     </BaseFilterBar>
 
     <p class="source-notice">
-      외부 공고는 공공 채용 API를 기반으로 수집된 정보입니다. 지원은 원문 사이트에서 진행해주세요.
+      원문 출처: 서울시 일자리플러스센터
     </p>
 
     <div v-if="isLoading" class="state-card">
@@ -198,12 +206,15 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   EXTERNAL_JOB_RECOMMENDATION_OPTIONS,
   getExternalJobs,
+  refreshExternalJobRecommendations,
 } from '@/features/externalJobs/api/externalJobApi.js'
+import { getUserMe } from '@/features/account/api/accountApi.js'
+import { useAuthStore } from '@/features/auth/model/authStore.js'
 import BaseButton from '@/shared/ui/BaseButton.vue'
 import BaseFilterBar from '@/shared/ui/BaseFilterBar.vue'
 import BasePagination from '@/shared/ui/BasePagination.vue'
@@ -211,6 +222,7 @@ import BaseSearchInput from '@/shared/ui/BaseSearchInput.vue'
 import BaseSelect from '@/shared/ui/BaseSelect.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const externalJobs = ref([])
 const isLoading = ref(true)
 const errorMessage = ref('')
@@ -224,19 +236,44 @@ const pagination = reactive({
   hasNext: false,
   hasPrev: false,
 })
+const currentJobCategory = computed(() => normalizeJobCategory(authStore.jobCategory))
 let latestRequestId = 0
+let isMounted = false
 
-onMounted(() => {
-  loadExternalJobs()
+onMounted(async () => {
+  await ensureCurrentUserJobCategory()
+  isMounted = true
+  loadExternalJobs({
+    refreshRecommendations: Boolean(
+      currentJobCategory.value && authStore.isExternalJobRecommendationStale,
+    ),
+  })
 })
 
-async function loadExternalJobs() {
+watch(currentJobCategory, (nextJobCategory, previousJobCategory) => {
+  if (!isMounted || nextJobCategory === previousJobCategory) return
+  resetAndLoad({ refreshRecommendations: Boolean(nextJobCategory) })
+})
+
+async function loadExternalJobs({ refreshRecommendations = false } = {}) {
   const requestId = ++latestRequestId
+  const jobCategory = currentJobCategory.value
   isLoading.value = true
   errorMessage.value = ''
 
   try {
+    if (refreshRecommendations && jobCategory) {
+      try {
+        await refreshExternalJobRecommendations(jobCategory)
+        clearExternalJobRecommendationStale()
+      } catch {
+        // Refresh 실패 시에도 목록 API가 전역 fallback 기준으로 응답할 수 있어 조회는 계속한다.
+      }
+      if (requestId !== latestRequestId) return
+    }
+
     const data = await getExternalJobs({
+      jobCategory: jobCategory || undefined,
       keyword: filters.keyword,
       recommendationType: filters.recommendationType,
       sort: filters.sort,
@@ -272,9 +309,9 @@ function applySearch() {
   resetAndLoad()
 }
 
-function resetAndLoad() {
+function resetAndLoad(options = {}) {
   pagination.page = 1
-  loadExternalJobs()
+  loadExternalJobs(options)
 }
 
 function changePage(page) {
@@ -295,6 +332,35 @@ function goToDetail(externalJobId) {
 
 function displayText(value, fallback = '-') {
   return typeof value === 'string' && value.trim() ? value : fallback
+}
+
+async function ensureCurrentUserJobCategory() {
+  if (currentJobCategory.value || !authStore.isFreelancer) return
+
+  try {
+    const response = await getUserMe()
+    updateAuthJobCategory(response.data?.data?.jobCategory ?? response.data?.jobCategory ?? '')
+  } catch {
+    updateAuthJobCategory('')
+  }
+}
+
+function updateAuthJobCategory(jobCategory) {
+  if (typeof authStore.updateJobCategory === 'function') {
+    authStore.updateJobCategory(jobCategory, { markExternalJobsStale: false })
+    return
+  }
+  authStore.jobCategory = jobCategory || null
+}
+
+function clearExternalJobRecommendationStale() {
+  if (typeof authStore.clearExternalJobRecommendationStale === 'function') {
+    authStore.clearExternalJobRecommendationStale()
+  }
+}
+
+function normalizeJobCategory(value) {
+  return typeof value === 'string' && value.trim() ? value.trim() : ''
 }
 
 function formatExternalDate(value) {
