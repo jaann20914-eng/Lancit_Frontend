@@ -211,6 +211,92 @@ describe('ExternalJobListPanel', () => {
     expect(wrapper.text()).not.toContain('AI가 추천하는 공고입니다.')
   })
 
+  it.each([
+    ['HIGHLY_RECOMMENDED', '매우 추천 공고'],
+    ['RECOMMENDED', '추천 공고'],
+    ['POSSIBLE', '검토 가능 공고'],
+  ])(
+    'hides the AI recommendation copy when the %s recommendation filter is selected',
+    async (recommendationType, filteredTitle) => {
+      mocks.getExternalJobs
+        .mockResolvedValueOnce({
+          content: [externalJob(1, '전체 추천 공고')],
+          page: 1,
+          size: 10,
+          totalElements: 1,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+        })
+        .mockResolvedValueOnce({
+          content: [externalJob(2, filteredTitle)],
+          page: 1,
+          size: 10,
+          totalElements: 1,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+        })
+
+      const wrapper = mount(ExternalJobListPanel)
+      await flushPromises()
+
+      await wrapper.get('[aria-label="추천 분류"]').setValue(recommendationType)
+      await flushPromises()
+
+      expect(mocks.getExternalJobs).toHaveBeenLastCalledWith({
+        jobCategory: 'IT',
+        keyword: '',
+        recommendationType,
+        sort: 'RECOMMENDED',
+        page: 1,
+        size: 10,
+      })
+      expect(wrapper.text()).toContain(filteredTitle)
+      expect(wrapper.text()).not.toContain('AI가 추천하는 공고입니다.')
+    },
+  )
+
+  it('hides the AI recommendation copy when search keyword results are shown', async () => {
+    mocks.getExternalJobs
+      .mockResolvedValueOnce({
+        content: [externalJob(1, '전체 추천 공고')],
+        page: 1,
+        size: 10,
+        totalElements: 1,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      })
+      .mockResolvedValueOnce({
+        content: [externalJob(2, '검색 결과 공고')],
+        page: 1,
+        size: 10,
+        totalElements: 1,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      })
+
+    const wrapper = mount(ExternalJobListPanel)
+    await flushPromises()
+
+    await wrapper.get('[aria-label="외부 공고 검색어"]').setValue('검색')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(mocks.getExternalJobs).toHaveBeenLastCalledWith({
+      jobCategory: 'IT',
+      keyword: '검색',
+      recommendationType: '',
+      sort: 'RECOMMENDED',
+      page: 1,
+      size: 10,
+    })
+    expect(wrapper.text()).toContain('검색 결과 공고')
+    expect(wrapper.text()).not.toContain('AI가 추천하는 공고입니다.')
+  })
+
   it('loads the current user job category before the first external job request when the store is empty', async () => {
     mocks.authStore.jobCategory = ''
     mocks.getUserMe.mockResolvedValueOnce({
