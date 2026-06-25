@@ -60,7 +60,7 @@
           />
         </label>
       </div>
-      <p class="form-help">새 이미지는 저장 시 지원용 프로필 사진으로 등록됩니다.</p>
+      <p class="form-help">{{ imageHelpText }}</p>
     </div>
 
     <div class="form-group">
@@ -145,7 +145,7 @@
         취소
       </button>
       <button type="submit" class="submit-button" :disabled="isSubmitting">
-        {{ isSubmitting ? '저장 중...' : '프로필 저장' }}
+        {{ isSubmitting ? submittingLabel : submitLabel }}
       </button>
     </div>
   </form>
@@ -166,6 +166,12 @@ const props = defineProps({
   initialImageUrl: { type: String, default: '' },
   isSubmitting: { type: Boolean, default: false },
   errorMessage: { type: String, default: '' },
+  submitLabel: { type: String, default: '프로필 저장' },
+  submittingLabel: { type: String, default: '저장 중...' },
+  imageHelpText: {
+    type: String,
+    default: '새 이미지는 저장 시 지원용 프로필 사진으로 등록됩니다.',
+  },
 })
 
 const emit = defineEmits(['submit', 'cancel'])

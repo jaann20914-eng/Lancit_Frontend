@@ -11,6 +11,16 @@
         >
           계약 보기
         </button>
+        <button
+          v-if="isPending && !isEditing"
+          type="button"
+          class="secondary-button"
+          :disabled="!canModify"
+          :title="readOnlyReason"
+          @click="startEditing"
+        >
+          지원서 수정
+        </button>
         <button type="button" class="recruitment-button" @click="goToRecruitment">공고 보기</button>
       </div>
     </div>
@@ -26,16 +36,37 @@
     </div>
 
     <template v-else-if="application">
-      <header class="application-header">
-        <div>
-          <p class="eyebrow">지원 공고</p>
-          <h1>{{ application.recruitmentTitle || '공고 지원서' }}</h1>
-          <p>지원일 {{ formatDateTime(application.appliedAt) }}</p>
-          <p v-if="application.viewedAt">회사 열람 {{ formatDateTime(application.viewedAt) }}</p>
-          <p v-if="application.canceledAt">취소일 {{ formatDateTime(application.canceledAt) }}</p>
-        </div>
-        <span :class="['status-badge', statusMeta.className]">{{ statusMeta.label }}</span>
-      </header>
+      <article class="application-summary-card">
+        <header class="application-heading">
+          <div>
+            <p class="eyebrow">지원 정보</p>
+            <h1>{{ application.recruitmentTitle || '공고 지원서' }}</h1>
+          </div>
+          <span :class="['status-badge', statusMeta.className]">{{ statusMeta.label }}</span>
+        </header>
+        <dl class="application-meta">
+          <div>
+            <dt>지원자</dt>
+            <dd>{{ submittedProfile.displayName }}</dd>
+          </div>
+          <div>
+            <dt>지원일</dt>
+            <dd>{{ formatDateTime(application.appliedAt) }}</dd>
+          </div>
+          <div>
+            <dt>열람일</dt>
+            <dd>{{ formatDateTime(application.viewedAt) }}</dd>
+          </div>
+          <div>
+            <dt>계약</dt>
+            <dd>{{ application.contractId ? `계약 #${application.contractId}` : '없음' }}</dd>
+          </div>
+          <div v-if="application.canceledAt">
+            <dt>취소일</dt>
+            <dd>{{ formatDateTime(application.canceledAt) }}</dd>
+          </div>
+        </dl>
+      </article>
 
       <p v-if="successMessage" class="success-message" role="status">{{ successMessage }}</p>
       <p v-if="actionError" class="action-error" role="alert">{{ actionError }}</p>
@@ -43,73 +74,27 @@
         회사가 열람한 지원서는 수정하거나 취소할 수 없습니다.
       </p>
 
-      <section class="page-section">
+      <section class="content-panel" aria-labelledby="submitted-profile-title">
         <div class="section-heading">
           <div>
-            <h2>지원 소개</h2>
-            <p>공고 담당자에게 전달한 소개입니다.</p>
-          </div>
-          <button
-            v-if="isPending && !isEditing"
-            type="button"
-            class="secondary-button"
-            :disabled="!canModify"
-            :title="readOnlyReason"
-            @click="startEditing"
-          >
-            지원서 수정
-          </button>
-        </div>
-
-        <textarea
-          v-if="isEditing"
-          v-model="editForm.intro"
-          class="intro-input"
-          maxlength="1000"
-          rows="6"
-          placeholder="공고에 맞는 경험과 강점을 소개해주세요."
-        ></textarea>
-        <p v-else class="intro-text">{{ application.intro || '등록된 지원 소개가 없습니다.' }}</p>
-        <p v-if="isEditing" class="character-count">{{ editForm.intro.length }} / 1000</p>
-      </section>
-
-      <section v-if="application.portfolioProfile" class="page-section">
-        <div class="section-heading">
-          <div>
-            <h2>제출 프로필</h2>
+            <h2 id="submitted-profile-title">지원 프로필</h2>
             <p>지원 시점에 전달된 프로필 정보입니다.</p>
           </div>
         </div>
-        <dl class="profile-grid">
-          <div>
-            <dt>이름</dt>
-            <dd>{{ application.portfolioProfile.displayName || '미등록' }}</dd>
-          </div>
-          <div>
-            <dt>직종</dt>
-            <dd>{{ jobCategoryLabel(application.portfolioProfile.jobCategory) }}</dd>
-          </div>
-          <div class="full">
-            <dt>소개</dt>
-            <dd>
-              {{
-                application.portfolioProfile.description ||
-                application.portfolioProfile.intro ||
-                '미등록'
-              }}
-            </dd>
-          </div>
-          <div class="full">
-            <dt>기술 스택</dt>
-            <dd>{{ formatTechStacks(application.portfolioProfile.techStacks) }}</dd>
-          </div>
-        </dl>
+        <PortfolioProfileCard
+          :profile="submittedProfile"
+          :profile-image-url="profileImageUrl"
+          :editable="false"
+          :show-visibility="false"
+        />
       </section>
 
-      <section class="page-section">
+      <section class="content-panel" aria-labelledby="submitted-projects-title">
         <div class="section-heading">
           <div>
-            <h2>{{ isEditing ? '제출 프로젝트 선택' : '제출 프로젝트' }}</h2>
+            <h2 id="submitted-projects-title">
+              {{ isEditing ? '제출 프로젝트 선택' : '제출 프로젝트' }}
+            </h2>
             <p>
               {{
                 isEditing
@@ -118,9 +103,10 @@
               }}
             </p>
           </div>
-          <span v-if="isEditing && portfolios.length" class="selection-count">
+          <span v-if="isEditing && portfolios.length" class="project-count">
             {{ editForm.portfolioIds.length }} / {{ portfolios.length }}개 선택
           </span>
+          <span v-else class="project-count">{{ application.portfolios.length }}개</span>
         </div>
 
         <div v-if="isPortfolioLoading" class="section-state">
@@ -139,7 +125,7 @@
         <p v-if="removedPortfolioMessage" class="portfolio-notice">
           {{ removedPortfolioMessage }}
         </p>
-        <div v-else-if="displayedPortfolios.length" class="project-grid">
+        <div v-else-if="displayedPortfolios.length" class="portfolio-grid">
           <PortfolioCard
             v-for="portfolio in displayedPortfolios"
             :key="portfolio.portfolioId"
@@ -153,7 +139,7 @@
             @select="handlePortfolioSelection"
           />
         </div>
-        <div v-else class="section-state"><p>제출된 프로젝트가 없습니다.</p></div>
+        <p v-else class="empty-note">제출된 프로젝트가 없습니다.</p>
       </section>
 
       <div v-if="isEditing" class="action-panel">
@@ -195,12 +181,11 @@ import {
   getMyApplication,
   updateMyApplication,
 } from '@/features/applications/api/applicationApi.js'
-import {
-  JOB_CATEGORY_OPTIONS,
-  formatDateTime,
-} from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
+import { formatDateTime } from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
 import { getAllMyPortfolios, getPortfolioFileUrl } from '@/features/portfolio/api/portfolioApi.js'
+import { getPortfolioProfileImageUrl } from '@/features/portfolio/api/portfolioProfileApi.js'
 import PortfolioCard from '@/features/portfolio/ui/PortfolioCard.vue'
+import PortfolioProfileCard from '@/features/portfolio/ui/PortfolioProfileCard.vue'
 
 const APPLICATION_STATUS_META = {
   PENDING: { label: '검토 중', className: 'status-pending' },
@@ -214,6 +199,7 @@ const router = useRouter()
 const application = ref(null)
 const portfolios = ref([])
 const portfolioBannerUrls = ref({})
+const profileImageUrl = ref('')
 const isLoading = ref(true)
 const isEditing = ref(false)
 const isPortfolioLoading = ref(false)
@@ -224,7 +210,7 @@ const portfolioError = ref('')
 const actionError = ref('')
 const successMessage = ref('')
 const removedPortfolioMessage = ref('')
-const editForm = reactive({ intro: '', portfolioIds: [] })
+const editForm = reactive({ intro: '', portfolioIds: [], portfolioProfile: null })
 
 const recruitmentId = computed(() => route.params.id)
 const statusMeta = computed(
@@ -243,6 +229,19 @@ const readOnlyReason = computed(() =>
 const displayedPortfolios = computed(() =>
   isEditing.value ? portfolios.value : (application.value?.portfolios ?? []),
 )
+const submittedProfile = computed(() => {
+  const profile = application.value?.portfolioProfile ?? {}
+  return {
+    ...profile,
+    displayName: profile.displayName || application.value?.applicantName || '이름 미등록',
+    freelancerEmail: profile.freelancerEmail || application.value?.applicantEmail || '',
+    jobCategory: profile.jobCategory ?? null,
+    isPortfolioPublic: Boolean(profile.isPortfolioPublic),
+    intro: profile.intro || '',
+    description: profile.description || '',
+    techStacks: Array.isArray(profile.techStacks) ? profile.techStacks : [],
+  }
+})
 
 watch(recruitmentId, loadApplication, { immediate: true })
 
@@ -253,11 +252,13 @@ async function loadApplication() {
   successMessage.value = ''
   removedPortfolioMessage.value = ''
   isEditing.value = false
+  portfolioBannerUrls.value = {}
+  profileImageUrl.value = ''
   try {
     const data = await getMyApplication(recruitmentId.value)
     if (!data) throw new Error('Invalid application response')
     application.value = data
-    await loadBannerUrls(data.portfolios)
+    await Promise.all([loadBannerUrls(data.portfolios), loadProfileImage(data.portfolioProfile)])
   } catch (error) {
     application.value = null
     loadError.value = getRequestError(
@@ -269,11 +270,22 @@ async function loadApplication() {
   }
 }
 
+async function loadProfileImage(profile) {
+  const profileFileId = profile?.profileFileId
+  if (profileFileId === null || profileFileId === undefined) return
+  try {
+    profileImageUrl.value = await getPortfolioProfileImageUrl(profileFileId)
+  } catch {
+    profileImageUrl.value = ''
+  }
+}
+
 async function startEditing() {
   if (!canModify.value) return
   actionError.value = ''
   successMessage.value = ''
   editForm.intro = application.value?.intro || ''
+  editForm.portfolioProfile = application.value?.portfolioProfile ?? null
   editForm.portfolioIds = (application.value?.portfolios ?? [])
     .map((portfolio) => Number(portfolio.portfolioId))
     .filter(Number.isInteger)
@@ -401,14 +413,6 @@ function goToContract() {
   router.push({ name: 'ContractDetail', params: { id: application.value.contractId } })
 }
 
-function jobCategoryLabel(value) {
-  return JOB_CATEGORY_OPTIONS.find((option) => option.value === value)?.label || value || '미등록'
-}
-
-function formatTechStacks(value) {
-  return Array.isArray(value) && value.length ? value.join(', ') : '미등록'
-}
-
 function getRequestError(error, fallback) {
   const status = error?.response?.status
   if (status === 404) return '지원서를 찾을 수 없습니다.'
@@ -429,9 +433,8 @@ function getRequestError(error, fallback) {
 .top-actions {
   margin-bottom: 18px;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
 }
 .top-action-buttons {
   display: flex;
@@ -454,6 +457,12 @@ function getRequestError(error, fallback) {
   font-weight: 600;
   cursor: pointer;
 }
+.back-button,
+.retry-button,
+.secondary-button {
+  border-color: #d1d5db;
+  color: #4b5563;
+}
 .recruitment-button,
 .contract-button,
 .primary-button {
@@ -469,8 +478,8 @@ button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.application-header,
-.page-section,
+.application-summary-card,
+.content-panel,
 .state-card,
 .action-panel,
 .cancel-panel {
@@ -478,43 +487,63 @@ button:disabled {
   border-radius: 12px;
   background: white;
 }
-.application-header {
+.application-summary-card,
+.content-panel {
   margin-bottom: 16px;
-  padding: 28px 32px;
+  overflow: hidden;
+}
+.application-heading {
+  padding: 26px 28px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 18px;
 }
 .eyebrow {
-  margin: 0 0 7px !important;
-  color: #64748b !important;
-  font-size: 11px !important;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-.application-header h1 {
-  margin: 0 0 8px;
-  color: #1a233d;
-  font-size: 25px;
-}
-.application-header p {
-  margin: 0;
+  margin: 0 0 6px;
   color: #9ca3af;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.application-heading h1 {
+  margin: 0;
+  color: #1a233d;
+  font-size: 21px;
+  line-height: 1.4;
+}
+.application-meta {
+  margin: 0;
+  padding: 20px 28px;
+  border-top: 1px solid #e5e7eb;
+  background: #fafafa;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+.application-meta dt {
+  margin-bottom: 5px;
+  color: #9ca3af;
+  font-size: 11px;
+}
+.application-meta dd {
+  margin: 0;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .status-badge {
-  min-height: 28px;
-  padding: 0 11px;
+  min-height: 24px;
+  padding: 0 9px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
 }
 .status-pending {
-  background: #fef3c7;
+  background: #fef9c3;
   color: #92400e;
 }
 .status-accepted {
@@ -524,98 +553,69 @@ button:disabled {
 .status-rejected,
 .status-cancelled,
 .status-unknown {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: #fee2e2;
+  color: #991b1b;
 }
-.page-section {
-  margin-bottom: 16px;
-  padding: 28px 32px;
+.content-panel {
+  padding: 26px 28px 28px;
 }
 .section-heading {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
 }
 .section-heading h2 {
   margin: 0 0 5px;
   color: #1a233d;
-  font-size: 17px;
+  font-size: 19px;
 }
 .section-heading p {
   margin: 0;
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 12px;
 }
-.intro-text {
-  margin: 0;
-  color: #4b5563;
-  font-size: 14px;
-  line-height: 1.8;
-  white-space: pre-wrap;
-}
-.intro-input {
-  width: 100%;
-  padding: 13px;
-  border: 1px solid #d1d5db;
-  border-radius: 7px;
-  color: #374151;
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.6;
-  resize: vertical;
-}
-.intro-input:focus {
-  border-color: #1a233d;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(26, 35, 61, 0.08);
-}
-.character-count {
-  margin: 6px 0 0;
-  color: #9ca3af;
-  font-size: 11px;
-  text-align: right;
-}
-.profile-grid {
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-}
-.profile-grid .full {
-  grid-column: 1 / -1;
-}
-.profile-grid dt {
-  margin-bottom: 5px;
-  color: #9ca3af;
-  font-size: 11px;
-}
-.profile-grid dd {
-  margin: 0;
-  color: #374151;
-  font-size: 13px;
-  line-height: 1.6;
-}
-.project-grid {
+.portfolio-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
-.selection-count {
-  color: #64748b;
-  font-size: 12px;
+.project-count {
+  min-width: 42px;
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #e8edf5;
+  color: #1a233d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.empty-note {
+  margin: 0;
+  padding: 34px;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  color: #9ca3af;
+  font-size: 13px;
+  text-align: center;
 }
 .state-card,
 .section-state {
-  min-height: 220px;
-  padding: 36px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #6b7280;
   text-align: center;
+}
+.state-card {
+  min-height: 350px;
+  padding: 40px;
 }
 .section-state {
   min-height: 140px;
@@ -634,8 +634,8 @@ button:disabled {
   margin-top: 15px;
 }
 .spinner {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: 3px solid #dce2eb;
   border-top-color: #1a233d;
   border-radius: 50%;
@@ -672,6 +672,7 @@ button:disabled {
 }
 .action-panel,
 .cancel-panel {
+  margin-bottom: 16px;
   padding: 18px 22px;
   display: flex;
   align-items: center;
@@ -695,23 +696,43 @@ button:disabled {
   .page {
     padding: 24px 18px;
   }
-  .project-grid {
+}
+@media (max-width: 1100px) {
+  .portfolio-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@media (max-width: 520px) {
-  .application-header,
+@media (max-width: 760px) {
+  .application-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .page {
+    padding: 24px 18px;
+  }
+  .top-actions,
   .section-heading,
   .cancel-panel {
-    align-items: stretch;
     flex-direction: column;
   }
-  .profile-grid,
-  .project-grid {
+  .top-action-buttons {
+    justify-content: flex-end;
+  }
+  .application-heading,
+  .section-heading {
+    align-items: flex-start;
+  }
+  .portfolio-grid {
     grid-template-columns: 1fr;
   }
-  .profile-grid .full {
-    grid-column: auto;
+  .content-panel {
+    padding: 22px;
+  }
+}
+@media (max-width: 440px) {
+  .application-meta {
+    grid-template-columns: 1fr;
   }
 }
 </style>

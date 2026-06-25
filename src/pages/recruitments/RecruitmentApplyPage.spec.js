@@ -99,7 +99,7 @@ beforeEach(() => {
 })
 
 describe('RecruitmentApplyPage', () => {
-  it('saves the profile before submitting selected portfolio ids', async () => {
+  it('submits selected portfolio ids with the local profile snapshot', async () => {
     const wrapper = mountPage()
     await flushPromises()
 
@@ -110,22 +110,29 @@ describe('RecruitmentApplyPage', () => {
     await wrapper.get('.submit-button').trigger('click')
     await flushPromises()
 
-    expect(mocks.updatePortfolioProfile).toHaveBeenCalledWith(profile)
+    expect(mocks.updatePortfolioProfile).not.toHaveBeenCalled()
+    expect(mocks.uploadPortfolioProfileImage).not.toHaveBeenCalled()
     expect(mocks.applyToRecruitment).toHaveBeenCalledWith('7', {
       intro: '프로젝트 경험 소개',
       portfolioIds: [11],
+      portfolioProfile: {
+        displayName: '지원자',
+        jobCategory: 'IT',
+        profileFileId: null,
+        isPortfolioPublic: false,
+        intro: '한 줄 소개',
+        description: '프로젝트 경험 소개',
+        techStacks: ['Vue'],
+      },
     })
-    expect(mocks.updatePortfolioProfile.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.applyToRecruitment.mock.invocationCallOrder[0],
-    )
     expect(mocks.push).toHaveBeenCalledWith({
       name: 'RecruitmentDetail',
       params: { id: '7' },
     })
   })
 
-  it('does not call the application API when the profile save fails', async () => {
-    mocks.updatePortfolioProfile.mockRejectedValueOnce(new Error('save failed'))
+  it('does not save the source profile when the application API fails', async () => {
+    mocks.applyToRecruitment.mockRejectedValueOnce(new Error('apply failed'))
     const wrapper = mountPage()
     await flushPromises()
 
@@ -133,13 +140,14 @@ describe('RecruitmentApplyPage', () => {
     await wrapper.get('.submit-button').trigger('click')
     await flushPromises()
 
-    expect(mocks.applyToRecruitment).not.toHaveBeenCalled()
-    expect(wrapper.get('.submit-error').text()).toContain('지원이 진행되지 않았습니다')
+    expect(mocks.updatePortfolioProfile).not.toHaveBeenCalled()
+    expect(mocks.applyToRecruitment).toHaveBeenCalledTimes(1)
+    expect(wrapper.get('.submit-error').text()).toContain('지원하지 못했습니다')
   })
 
-  it('deletes a newly uploaded profile image when profile saving fails', async () => {
+  it('uploads a changed profile image for the application payload and deletes it if apply fails', async () => {
     mocks.uploadPortfolioProfileImage.mockResolvedValueOnce({ fileId: 91 })
-    mocks.updatePortfolioProfile.mockRejectedValueOnce(new Error('save failed'))
+    mocks.applyToRecruitment.mockRejectedValueOnce(new Error('apply failed'))
     const wrapper = mountPage()
     await flushPromises()
 
@@ -151,9 +159,19 @@ describe('RecruitmentApplyPage', () => {
     })
     await flushPromises()
 
+    expect(mocks.updatePortfolioProfile).not.toHaveBeenCalled()
+    expect(mocks.uploadPortfolioProfileImage).not.toHaveBeenCalled()
+
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await wrapper.get('.submit-button').trigger('click')
+    await flushPromises()
+
+    expect(mocks.uploadPortfolioProfileImage).toHaveBeenCalledTimes(1)
+    expect(mocks.applyToRecruitment).toHaveBeenCalledWith('7', {
+      intro: '프로젝트 경험 소개',
+      portfolioIds: [11],
+      portfolioProfile: expect.objectContaining({ profileFileId: 91 }),
+    })
     expect(mocks.deletePortfolioProfileImage).toHaveBeenCalledWith(91)
-    expect(wrapper.findComponent({ name: 'PortfolioProfileForm' }).props('errorMessage')).toContain(
-      '프로필을 저장하지 못했습니다',
-    )
   })
 })

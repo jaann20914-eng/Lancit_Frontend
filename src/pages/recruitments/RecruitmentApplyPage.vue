@@ -71,6 +71,9 @@
             :initial-image-url="profileImageUrl"
             :is-submitting="isProfileSaving"
             :error-message="profileSaveError"
+            submit-label="지원서에 반영"
+            submitting-label="반영 중..."
+            image-help-text="새 이미지는 지원 완료 시 제출 프로필 사진으로 등록됩니다."
             @submit="handleProfileSave"
             @cancel="cancelProfileEdit"
           />
@@ -147,14 +150,13 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { applyToRecruitment } from '@/features/applications/api/applicationApi.js'
 import {
   deletePortfolioProfileImage,
   getPortfolioProfile,
   getPortfolioProfileImageUrl,
-  updatePortfolioProfile,
   uploadPortfolioProfileImage,
 } from '@/features/portfolio/api/portfolioProfileApi.js'
 import { getAllMyPortfolios, getPortfolioFileUrl } from '@/features/portfolio/api/portfolioApi.js'
@@ -170,6 +172,8 @@ const recruitment = ref(null)
 const profile = ref(null)
 const portfolios = ref([])
 const profileImageUrl = ref('')
+const pendingProfileImageFile = ref(null)
+const pendingProfileImagePreviewUrl = ref('')
 const portfolioBannerUrls = ref({})
 const selectedPortfolioIds = ref([])
 
@@ -193,16 +197,18 @@ const isApplicationUnavailable = computed(
   () => Boolean(recruitment.value?.isApplied || !recruitment.value?.canApply),
 )
 const submitStatusText = computed(() =>
-  submitStage.value === 'profile' ? '프로필 저장 중...' : '지원 처리 중...',
+  submitStage.value === 'image' ? '이미지 업로드 중...' : '지원 처리 중...',
 )
 
 watch(recruitmentId, loadPage, { immediate: true })
+onBeforeUnmount(clearPendingProfileImagePreview)
 
 async function loadPage() {
   recruitment.value = null
   recruitmentError.value = ''
   isRecruitmentLoading.value = true
   submitError.value = ''
+  clearPendingProfileImage()
 
   try {
     const data = await getRecruitment(recruitmentId.value)
@@ -288,47 +294,22 @@ function cancelProfileEdit() {
   isProfileEditing.value = false
 }
 
-async function handleProfileSave(form) {
+function handleProfileSave(form) {
   isProfileSaving.value = true
   profileSaveError.value = ''
   profileSuccessMessage.value = ''
 
   try {
-    const updatedProfile = await persistProfile(form)
-    profile.value = updatedProfile
-    await loadProfileImage(updatedProfile.profileFileId)
+    if (form.profileImageFile) {
+      setPendingProfileImage(form.profileImageFile)
+    }
+    profile.value = toApplicationProfile(form)
     isProfileEditing.value = false
-    profileSuccessMessage.value = '지원용 프로필이 저장되었습니다.'
+    profileSuccessMessage.value = '지원서에 반영할 프로필로 저장되었습니다.'
   } catch (error) {
-    profileSaveError.value = getRequestError(
-      error,
-      '포트폴리오 프로필을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.',
-    )
+    profileSaveError.value = getRequestError(error, '프로필을 반영하지 못했습니다.')
   } finally {
     isProfileSaving.value = false
-  }
-}
-
-async function persistProfile(form) {
-  let profileFileId = form.profileFileId
-  let uploadedFileId = null
-
-  try {
-    if (form.profileImageFile) {
-      const uploadedFile = await uploadPortfolioProfileImage(form.profileImageFile)
-      if (!uploadedFile?.fileId) throw new Error('Invalid profile image upload response')
-      uploadedFileId = uploadedFile.fileId
-      profileFileId = uploadedFileId
-    }
-
-    const updatedProfile = await updatePortfolioProfile({ ...form, profileFileId })
-    if (!updatedProfile) throw new Error('Invalid portfolio profile response')
-    return updatedProfile
-  } catch (error) {
-    if (uploadedFileId !== null) {
-      await deletePortfolioProfileImage(uploadedFileId).catch(() => {})
-    }
-    throw error
   }
 }
 
@@ -360,31 +341,68 @@ async function handleApply() {
   }
 
   isSubmitting.value = true
-  submitStage.value = 'profile'
+  submitStage.value = pendingProfileImageFile.value ? 'image' : 'application'
+  let uploadedProfileFileId = null
 
   try {
-    const savedProfile = await updatePortfolioProfile(profile.value)
-    if (!savedProfile) throw new Error('Invalid portfolio profile response')
-    profile.value = savedProfile
+    let profileFileId = profile.value.profileFileId
+    if (pendingProfileImageFile.value) {
+      const uploadedFile = await uploadPortfolioProfileImage(pendingProfileImageFile.value)
+      if (!uploadedFile?.fileId) throw new Error('Invalid profile image upload response')
+      uploadedProfileFileId = uploadedFile.fileId
+      profileFileId = uploadedProfileFileId
+    }
 
     submitStage.value = 'application'
-    const intro = (savedProfile.description || savedProfile.intro || '').trim()
-    await applyToRecruitment(recruitmentId.value, { intro, portfolioIds })
+    const portfolioProfile = toApplicationProfile({ ...profile.value, profileFileId })
+    const intro = (portfolioProfile.description || portfolioProfile.intro || '').trim()
+    await applyToRecruitment(recruitmentId.value, { intro, portfolioIds, portfolioProfile })
+    uploadedProfileFileId = null
 
     alert('지원이 완료되었습니다.')
     await router.push({ name: 'RecruitmentDetail', params: { id: recruitmentId.value } })
+    clearPendingProfileImage()
   } catch (error) {
-    submitError.value =
-      submitStage.value === 'profile'
-        ? getRequestError(
-            error,
-            '포트폴리오 프로필을 저장하지 못해 지원이 진행되지 않았습니다.',
-          )
-        : getApplicationError(error)
+    if (uploadedProfileFileId !== null) {
+      await deletePortfolioProfileImage(uploadedProfileFileId).catch(() => {})
+    }
+    submitError.value = getApplicationError(error)
   } finally {
     isSubmitting.value = false
     submitStage.value = ''
   }
+}
+
+function toApplicationProfile(value = {}) {
+  return {
+    displayName: typeof value.displayName === 'string' ? value.displayName.trim() : '',
+    jobCategory: value.jobCategory ?? null,
+    profileFileId: value.profileFileId ?? null,
+    isPortfolioPublic: Boolean(value.isPortfolioPublic),
+    intro: typeof value.intro === 'string' ? value.intro.trim() : '',
+    description: typeof value.description === 'string' ? value.description.trim() : '',
+    techStacks: Array.isArray(value.techStacks) ? value.techStacks : [],
+  }
+}
+
+function setPendingProfileImage(file) {
+  clearPendingProfileImagePreview()
+  pendingProfileImageFile.value = file
+  pendingProfileImagePreviewUrl.value = URL.createObjectURL(file)
+  profileImageUrl.value = pendingProfileImagePreviewUrl.value
+}
+
+function clearPendingProfileImage() {
+  pendingProfileImageFile.value = null
+  clearPendingProfileImagePreview()
+}
+
+function clearPendingProfileImagePreview() {
+  const previewUrl = pendingProfileImagePreviewUrl.value
+  if (!previewUrl) return
+  if (profileImageUrl.value === previewUrl) profileImageUrl.value = ''
+  URL.revokeObjectURL(previewUrl)
+  pendingProfileImagePreviewUrl.value = ''
 }
 
 async function loadPortfolioBannerUrls(items) {
