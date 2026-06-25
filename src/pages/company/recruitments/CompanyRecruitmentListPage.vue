@@ -26,7 +26,7 @@
       전체 공고 모드입니다. 다른 기업의 공고는 조회만 가능합니다.
     </p>
 
-    <section class="filter-panel" aria-label="공고 검색 및 정렬">
+    <section class="filter-panel" aria-label="공고 검색 및 필터">
       <div class="status-tabs" role="tablist" aria-label="공고 상태">
         <button
           v-for="option in RECRUITMENT_STATUS_OPTIONS"
@@ -39,23 +39,58 @@
         </button>
       </div>
 
-      <BaseFilterBar as="form" class="recruitment-search-row" flush @submit.prevent="applySearch">
+      <BaseFilterBar class="recruitment-search-row" as="form" flush @submit.prevent="applySearch">
         <BaseSearchInput
           v-model.trim="searchKeyword"
-          placeholder="제목, 내용으로 검색"
+          placeholder="공고 제목이나 내용으로 검색"
           aria-label="공고 검색어"
         />
-        <BaseSelect
-          v-model="filters.sort"
-          width="140px"
-          aria-label="정렬 방식"
-          @change="resetAndLoad"
-        >
-          <option value="LATEST">최신순</option>
-          <option value="DEADLINE">마감 임박순</option>
-          <option value="BUDGET">예산 높은순</option>
-        </BaseSelect>
         <BaseButton type="submit">검색</BaseButton>
+
+        <template #secondary>
+          <BaseSelect
+            v-model="filters.jobCategory"
+            min-width="160px"
+            aria-label="직종 카테고리"
+            @change="resetAndLoad"
+          >
+            <option value="">전체 직종</option>
+            <option
+              v-for="option in JOB_CATEGORY_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </BaseSelect>
+
+          <BaseSelect
+            v-model="filters.recruitmentCategory"
+            min-width="160px"
+            aria-label="공고 카테고리"
+            @change="resetAndLoad"
+          >
+            <option value="">전체 공고 유형</option>
+            <option
+              v-for="option in RECRUITMENT_CATEGORY_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </BaseSelect>
+
+          <BaseSelect
+            v-model="filters.sort"
+            min-width="160px"
+            aria-label="정렬 방식"
+            @change="resetAndLoad"
+          >
+            <option value="LATEST">최신순</option>
+            <option value="DEADLINE">마감 임박순</option>
+            <option value="BUDGET">예산 높은순</option>
+          </BaseSelect>
+        </template>
       </BaseFilterBar>
     </section>
 
@@ -196,6 +231,14 @@
                 </BaseButton>
                 <BaseButton
                   v-if="canManage(item)"
+                  variant="secondary"
+                  size="sm"
+                  @click="goToCopy(item)"
+                >
+                  재등록
+                </BaseButton>
+                <BaseButton
+                  v-if="canManage(item)"
                   variant="outline"
                   size="sm"
                   :disabled="!item.canEdit"
@@ -203,14 +246,6 @@
                   @click="goToEdit(item)"
                 >
                   수정
-                </BaseButton>
-                <BaseButton
-                  v-if="canManage(item)"
-                  variant="secondary"
-                  size="sm"
-                  @click="goToCopy(item)"
-                >
-                  재등록
                 </BaseButton>
                 <BaseButton
                   v-if="canManage(item)"
@@ -255,6 +290,8 @@ import {
   formatBudget,
   formatDate,
   getRecruitmentStatusMeta,
+  JOB_CATEGORY_OPTIONS,
+  RECRUITMENT_CATEGORY_OPTIONS,
   RECRUITMENT_STATUS_OPTIONS,
 } from '@/features/company/recruitments/api/companyRecruitmentMapper.js'
 import BaseButton from '@/shared/ui/BaseButton.vue'
@@ -284,7 +321,13 @@ const searchKeyword = ref('')
 const changingStatusId = ref(null)
 const deletingId = ref(null)
 const activeTab = ref(route.query.scope === 'all' ? 'ALL' : 'MY')
-const filters = reactive({ status: '', keyword: '', sort: 'LATEST' })
+const filters = reactive({
+  status: '',
+  keyword: '',
+  jobCategory: '',
+  recruitmentCategory: '',
+  sort: 'LATEST',
+})
 const pagination = reactive({
   page: 1,
   size: 10,
@@ -320,6 +363,8 @@ async function loadRecruitments() {
       size: pagination.size,
       status: filters.status || undefined,
       keyword: filters.keyword || undefined,
+      jobCategory: filters.jobCategory || undefined,
+      recruitmentCategory: filters.recruitmentCategory || undefined,
       sort: filters.sort,
     })
     if (requestId !== latestRequestId || requestedTab !== activeTab.value) return

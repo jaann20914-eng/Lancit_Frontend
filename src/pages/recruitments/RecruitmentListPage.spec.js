@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RecruitmentListPage from './RecruitmentListPage.vue'
 
 const mocks = vi.hoisted(() => ({
+  authStore: null,
+  getUserMe: vi.fn(),
   getExternalJobs: vi.fn(),
+  refreshExternalJobRecommendations: vi.fn(),
   getRecruitments: vi.fn(),
   push: vi.fn(),
   replace: vi.fn(),
@@ -18,6 +21,22 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
 }))
 
+vi.mock('@/features/auth/model/authStore.js', async () => {
+  const { reactive } = await import('vue')
+  mocks.authStore = reactive({
+    jobCategory: 'IT',
+    isFreelancer: true,
+    updateJobCategory(jobCategory) {
+      mocks.authStore.jobCategory = jobCategory || null
+    },
+  })
+  return { useAuthStore: () => mocks.authStore }
+})
+
+vi.mock('@/features/account/api/accountApi.js', () => ({
+  getUserMe: mocks.getUserMe,
+}))
+
 vi.mock('@/features/externalJobs/api/externalJobApi.js', () => ({
   EXTERNAL_JOB_RECOMMENDATION_OPTIONS: [
     { value: 'HIGHLY_RECOMMENDED', label: '매우 추천' },
@@ -25,6 +44,7 @@ vi.mock('@/features/externalJobs/api/externalJobApi.js', () => ({
     { value: 'POSSIBLE', label: '검토 가능' },
   ],
   getExternalJobs: mocks.getExternalJobs,
+  refreshExternalJobRecommendations: mocks.refreshExternalJobRecommendations,
 }))
 
 vi.mock('@/features/recruitments/api/recruitmentApi.js', () => ({
@@ -32,9 +52,17 @@ vi.mock('@/features/recruitments/api/recruitmentApi.js', () => ({
   toggleRecruitmentBookmark: mocks.toggleRecruitmentBookmark,
 }))
 
+enableAutoUnmount(afterEach)
+
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.authStore.jobCategory = 'IT'
+  mocks.authStore.isFreelancer = true
   mocks.route.query = { tab: 'APPLIED' }
+  mocks.getUserMe.mockResolvedValue({
+    data: { data: { jobCategory: 'IT' } },
+  })
+  mocks.refreshExternalJobRecommendations.mockResolvedValue({ success: true })
   mocks.getExternalJobs.mockResolvedValue({
     content: [
       {
@@ -113,6 +141,7 @@ describe('RecruitmentListPage', () => {
     await flushPromises()
 
     expect(mocks.getExternalJobs).toHaveBeenCalledWith({
+      jobCategory: 'IT',
       keyword: '',
       recommendationType: '',
       sort: 'RECOMMENDED',
@@ -120,7 +149,7 @@ describe('RecruitmentListPage', () => {
       size: 10,
     })
     expect(wrapper.text()).toContain('Vue 외주 개발자 모집')
-    expect(wrapper.text()).toContain('외부 공고는 공공 채용 API를 기반으로 수집된 정보입니다.')
+    expect(wrapper.text()).toContain('원문 출처: 서울시 일자리플러스센터')
     expect(wrapper.find('.apply-button').exists()).toBe(false)
     expect(wrapper.find('.bookmark-button').exists()).toBe(false)
 
@@ -139,6 +168,14 @@ describe('RecruitmentListPage', () => {
 
     expect(mocks.getRecruitments).not.toHaveBeenCalled()
     expect(mocks.getExternalJobs).toHaveBeenCalledTimes(1)
+    expect(mocks.getExternalJobs).toHaveBeenCalledWith({
+      jobCategory: 'IT',
+      keyword: '',
+      recommendationType: '',
+      sort: 'RECOMMENDED',
+      page: 1,
+      size: 10,
+    })
     expect(wrapper.text()).toContain('Vue 외주 개발자 모집')
   })
 })

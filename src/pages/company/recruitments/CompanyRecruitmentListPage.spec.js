@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { flushPromises, shallowMount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount, shallowMount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CompanyRecruitmentListPage from './CompanyRecruitmentListPage.vue'
 
 const mocks = vi.hoisted(() => ({
@@ -60,6 +60,8 @@ const page = {
   hasPrev: false,
 }
 
+enableAutoUnmount(afterEach)
+
 describe('CompanyRecruitmentListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -79,5 +81,42 @@ describe('CompanyRecruitmentListPage', () => {
     expect(mocks.getMyRecruitments).toHaveBeenCalledTimes(1)
     expect(mocks.getCompanyApplications).not.toHaveBeenCalled()
     expect(mocks.updateCompanyRecruitmentStatus).not.toHaveBeenCalled()
+  })
+
+  it('상태 탭을 유지하고 검색/필터/정렬 값을 공고 목록 조회 파라미터에 반영한다', async () => {
+    const wrapper = mount(CompanyRecruitmentListPage)
+    await flushPromises()
+
+    expect(wrapper.findAll('.status-tab').map((button) => button.text())).toEqual([
+      '전체',
+      '모집중',
+      '마감',
+      '기간 만료',
+      '취소',
+    ])
+    expect(wrapper.text()).toContain('전체 직종')
+    expect(wrapper.text()).toContain('전체 공고 유형')
+
+    await wrapper.get('[aria-label="공고 검색어"]').setValue('Vue')
+    await wrapper.findAll('select')[0].setValue('IT')
+    await wrapper.findAll('select')[1].setValue('WEB_APP')
+    await wrapper.findAll('select')[2].setValue('BUDGET')
+
+    const openStatusTab = wrapper
+      .findAll('.status-tab')
+      .find((button) => button.text() === '모집중')
+    await openStatusTab.trigger('click')
+    await wrapper.get('form.recruitment-search-row').trigger('submit')
+    await flushPromises()
+
+    expect(mocks.getMyRecruitments).toHaveBeenLastCalledWith({
+      page: 1,
+      size: 10,
+      status: 'OPEN',
+      keyword: 'Vue',
+      jobCategory: 'IT',
+      recruitmentCategory: 'WEB_APP',
+      sort: 'BUDGET',
+    })
   })
 })

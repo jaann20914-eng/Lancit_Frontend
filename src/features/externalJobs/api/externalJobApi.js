@@ -32,6 +32,7 @@ function unwrapResponse(response) {
 }
 
 export async function getExternalJobs({
+  jobCategory,
   keyword,
   recommendationType,
   sort = 'RECOMMENDED',
@@ -40,6 +41,7 @@ export async function getExternalJobs({
 } = {}) {
   const response = await httpClient.get('/external-jobs', {
     params: {
+      jobCategory: jobCategory || undefined,
       keyword: keyword || undefined,
       recommendationType: recommendationType || undefined,
       sort: sort || 'RECOMMENDED',
@@ -49,6 +51,13 @@ export async function getExternalJobs({
   })
 
   return mapExternalJobPageResponse(unwrapResponse(response))
+}
+
+export async function refreshExternalJobRecommendations(jobCategory) {
+  const response = await httpClient.post('/external-jobs/recommendations/refresh', {
+    jobCategory,
+  })
+  return unwrapResponse(response)
 }
 
 export async function getExternalJob(externalJobId) {
@@ -119,7 +128,7 @@ export function mapExternalJobDetailFromApi(dto) {
 
 export function mapExternalJobPageResponse(data) {
   const content = Array.isArray(data?.content)
-    ? data.content.map(mapExternalJobFromApi).filter(isDisplayableExternalJob)
+    ? data.content.map(mapExternalJobFromApi).filter(Boolean)
     : []
   const page = Number(data?.page ?? (data?.number !== undefined ? Number(data.number) + 1 : 1))
   const totalPages = Number(data?.totalPages ?? (content.length ? 1 : 0))
@@ -133,10 +142,6 @@ export function mapExternalJobPageResponse(data) {
     hasNext: data?.hasNext === undefined ? page < totalPages : Boolean(data.hasNext),
     hasPrev: data?.hasPrev === undefined ? page > 1 : Boolean(data.hasPrev),
   }
-}
-
-function isDisplayableExternalJob(item) {
-  return Boolean(item) && item.freelanceType !== 'NOT_FREELANCE'
 }
 
 function summarize(value) {

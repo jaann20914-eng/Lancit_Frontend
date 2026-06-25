@@ -148,7 +148,7 @@ describe('PortfolioListPage', () => {
     const wrapper = await mountPage()
     mocks.getMyPortfolios.mockClear()
 
-    await wrapper.get('input[aria-label="프로젝트 검색"]').setValue('랜딩 페이지')
+    await wrapper.get('input[aria-label="프로젝트 검색어"]').setValue('랜딩 페이지')
     const searchButton = wrapper
       .findAll('button')
       .find((button) => button.text().trim() === '검색')

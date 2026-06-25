@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import httpClient from '@/shared/api/httpClient.js'
-import { getExternalJob, getExternalJobs } from './externalJobApi.js'
+import {
+  getExternalJob,
+  getExternalJobs,
+  refreshExternalJobRecommendations,
+} from './externalJobApi.js'
 
 vi.mock('@/shared/api/httpClient.js', () => ({
-  default: { get: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn() },
 }))
 
 beforeEach(() => {
@@ -11,7 +15,7 @@ beforeEach(() => {
 })
 
 describe('externalJobApi', () => {
-  it('loads external jobs from the /external-jobs endpoint and filters non-freelance rows', async () => {
+  it('loads external jobs from the /external-jobs endpoint with job category params', async () => {
     httpClient.get.mockResolvedValueOnce({
       data: {
         data: {
@@ -46,8 +50,8 @@ describe('externalJobApi', () => {
     })
 
     const result = await getExternalJobs({
+      jobCategory: 'IT',
       keyword: 'Vue',
-      source: 'SEOUL',
       recommendationType: 'RECOMMENDED',
       sort: 'LATEST',
       page: 2,
@@ -56,6 +60,7 @@ describe('externalJobApi', () => {
 
     expect(httpClient.get).toHaveBeenCalledWith('/external-jobs', {
       params: {
+        jobCategory: 'IT',
         keyword: 'Vue',
         recommendationType: 'RECOMMENDED',
         sort: 'LATEST',
@@ -63,13 +68,23 @@ describe('externalJobApi', () => {
         size: 5,
       },
     })
-    expect(result.content).toHaveLength(1)
+    expect(result.content).toHaveLength(2)
     expect(result.content[0]).toMatchObject({
       externalJobId: 1,
       freelanceTypeLabel: '프리랜서 적합',
       recommendationLabel: '추천',
       sourceButtonLabel: '사이트에서 확인',
       detailButtonLabel: '상세 보기',
+    })
+  })
+
+  it('refreshes personalized external job recommendations with a job category body', async () => {
+    httpClient.post.mockResolvedValueOnce({ data: { data: { success: true } } })
+
+    await expect(refreshExternalJobRecommendations('DESIGN')).resolves.toEqual({ success: true })
+
+    expect(httpClient.post).toHaveBeenCalledWith('/external-jobs/recommendations/refresh', {
+      jobCategory: 'DESIGN',
     })
   })
 

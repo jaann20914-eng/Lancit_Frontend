@@ -7,6 +7,10 @@ export const useAuthStore = defineStore('auth', () => {
   const role = ref(localStorage.getItem('role') || null)
   const chatRoomIds = ref(JSON.parse(localStorage.getItem('chatRoomIds') || '[]'))
   const profileImageUrl = ref(localStorage.getItem('profileImageUrl') || null)
+  const jobCategory = ref(localStorage.getItem('jobCategory') || null)
+  const isExternalJobRecommendationStale = ref(
+    localStorage.getItem('externalJobRecommendationStale') === 'true',
+  )
 
   const isLoggedIn = computed(() => !!token.value)
   const isFreelancer = computed(() => role.value === 'USER')
@@ -18,6 +22,8 @@ export const useAuthStore = defineStore('auth', () => {
     role.value = data.role
     chatRoomIds.value = data.chatRoomIds || []
     profileImageUrl.value = data.profileImageUrl || null
+    setJobCategory(data.jobCategory)
+    clearExternalJobRecommendationStale()
 
     localStorage.setItem('accessToken', data.accessToken)
     localStorage.setItem('email', data.email)
@@ -41,12 +47,37 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function setJobCategory(value) {
+    jobCategory.value = value || null
+    if (jobCategory.value) localStorage.setItem('jobCategory', jobCategory.value)
+    else localStorage.removeItem('jobCategory')
+  }
+
+  function updateJobCategory(value, { markExternalJobsStale = true } = {}) {
+    const nextJobCategory = value || null
+    const hasChanged = jobCategory.value !== nextJobCategory
+    setJobCategory(nextJobCategory)
+    if (hasChanged && markExternalJobsStale) markExternalJobRecommendationStale()
+  }
+
+  function markExternalJobRecommendationStale() {
+    isExternalJobRecommendationStale.value = true
+    localStorage.setItem('externalJobRecommendationStale', 'true')
+  }
+
+  function clearExternalJobRecommendationStale() {
+    isExternalJobRecommendationStale.value = false
+    localStorage.removeItem('externalJobRecommendationStale')
+  }
+
   function logout() {
     token.value = null
     email.value = null
     role.value = null
     chatRoomIds.value = []
     profileImageUrl.value = null
+    setJobCategory(null)
+    clearExternalJobRecommendationStale()
     localStorage.removeItem('accessToken')
     localStorage.removeItem('email')
     localStorage.removeItem('role')
@@ -60,11 +91,16 @@ export const useAuthStore = defineStore('auth', () => {
     role,
     chatRoomIds,
     profileImageUrl,
+    jobCategory,
+    isExternalJobRecommendationStale,
     isLoggedIn,
     isFreelancer,
     isCompany,
     login,
     logout,
     updateProfileImage,
+    updateJobCategory,
+    markExternalJobRecommendationStale,
+    clearExternalJobRecommendationStale,
   }
 })
